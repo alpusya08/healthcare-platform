@@ -1,0 +1,9 @@
+#!/bin/bash
+set -e
+
+# Create separate DB + user for AI service feedback storage.
+psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+    CREATE USER ${AI_POSTGRES_USER} WITH PASSWORD '${AI_POSTGRES_PASSWORD}';
+    CREATE DATABASE ${AI_POSTGRES_DB} OWNER ${AI_POSTGRES_USER};
+    GRANT ALL PRIVILEGES ON DATABASE ${AI_POSTGRES_DB} TO ${AI_POSTGRES_USER};
+EOSQL
