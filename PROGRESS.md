@@ -14,24 +14,27 @@
 - `.env.example`, `.gitignore`, `README.md`
 - Проверки: `docker compose config` ✅, `mvn clean compile` ✅, python syntax ✅
 
-## ⏭️ Следующий шаг — Day 2
+### Day 2 — Auth + Users (Backend)
+- Flyway миграции: V2 (users, patients, specializations, doctors, refresh_tokens), V3 (seed specializations), V4 (event_publication для Spring Modulith)
+- Users модуль: User (aggregate root), Patient, Doctor, Specialization entities + enums (Role, Gender, UserStatus) + repositories
+- Auth модуль: RefreshToken entity, JwtService (HS512), RefreshTokenService (rotation), AuthService
+- Auth API: AuthController с 6 эндпоинтами (register/patient, login, refresh, logout, me)
+- Security: SecurityConfig (stateless JWT), JwtAuthenticationFilter, BCrypt(12), CORS
+- Shared: BusinessException base class, GlobalExceptionHandler
+- Smoke test: все 6 auth endpoints работают ✅
+
+## ⏭️ Следующий шаг — Day 3
 
 **Что делать в новой сессии Claude Code:**
 
 ```
 Привет. Возвращаюсь к проекту healthcare-platform.
-Прочитай:
-1. CLAUDE.md (правила работы)
-2. PROGRESS.md (где остановились)
-3. SPECIFICATION.md §6.2-6.3, §10 (Auth API), §13 (Security)
-4. git log --oneline -10
+Прочитай PROGRESS.md, CLAUDE.md, SPECIFICATION.md §8 (Frontend).
 
-Сейчас Day 1 закрыт. Начни Day 2 из §16:
-- Backend: Auth модуль (register/login/refresh/JWT, RefreshToken, JwtAuthenticationFilter, SecurityConfig)
-- Backend: User модуль (User aggregate root, Patient, Doctor, Specialization, миграции)
-- Flyway миграции V2/V3 для users + roles + refresh_tokens
-
-Согласовывай со мной перед каждым большим шагом.
+Day 2 закрыт. Начни Day 3 из §16:
+- Frontend: routing (react-router), базовые pages
+- Frontend: Auth pages (Login, Register), API client (axios), AuthProvider (Zustand)
+- Frontend: интеграция с backend auth API
 ```
 
 ## 🚫 НЕ делал
@@ -69,7 +72,7 @@ open http://localhost:5000   # MLflow
 ## 📋 Чек по Roadmap (§16)
 
 - [x] Day 1 — scaffolding
-- [ ] Day 2 — Auth + Users (Backend)
+- [x] Day 2 — Auth + Users (Backend)
 - [ ] Day 3 — Frontend Auth pages
 - [ ] Day 4 — AI Service core + LLM adapter
 - [ ] Day 5 — Backend ↔ AI Service integration
