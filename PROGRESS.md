@@ -23,18 +23,27 @@
 - Shared: BusinessException base class, GlobalExceptionHandler
 - Smoke test: все 6 auth endpoints работают ✅
 
-## ⏭️ Следующий шаг — Day 3
+### Day 3 — Frontend Auth pages
+- shared: axios instance с JWT interceptors и auto-refresh, env config, routes config, API types
+- features/auth: authApi (login/register/refresh/logout/me), authStore (Zustand), LoginForm, RegisterForm
+- features/auth/api: useLoginMutation, useRegisterMutation (TanStack Query)
+- app: AuthProvider (auto-восстановление сессии), ProtectedRoute (role-based), обновлённый App.tsx с routing
+- pages: LoginPage, RegisterPage, HomePage (с logout и карточками), NotFoundPage
+- shadcn/ui: button, input, label, card, form, toast, sonner
+- vite-env.d.ts для VITE_ env vars
+- Smoke test: login/register/me/logout через UI ✅
+
+## ⏭️ Следующий шаг — Day 4
 
 **Что делать в новой сессии Claude Code:**
 
 ```
 Привет. Возвращаюсь к проекту healthcare-platform.
-Прочитай PROGRESS.md, CLAUDE.md, SPECIFICATION.md §8 (Frontend).
+Прочитай PROGRESS.md, CLAUDE.md, SPECIFICATION.md §7 (AI Service).
 
-Day 2 закрыт. Начни Day 3 из §16:
-- Frontend: routing (react-router), базовые pages
-- Frontend: Auth pages (Login, Register), API client (axios), AuthProvider (Zustand)
-- Frontend: интеграция с backend auth API
+Day 3 закрыт. Начни Day 4 из §16:
+- AI Service: FastAPI структура Clean Architecture, БД через SQLAlchemy
+- AI Service: LLM adapter (Claude API), базовая интеграция
 ```
 
 ## 🚫 НЕ делал
@@ -73,7 +82,7 @@ open http://localhost:5000   # MLflow
 
 - [x] Day 1 — scaffolding
 - [x] Day 2 — Auth + Users (Backend)
-- [ ] Day 3 — Frontend Auth pages
+- [x] Day 3 — Frontend Auth pages
 - [ ] Day 4 — AI Service core + LLM adapter
 - [ ] Day 5 — Backend ↔ AI Service integration
 - [ ] Day 5-6 — ML baseline (UCI Heart Disease + MLflow)
