@@ -1,8 +1,7 @@
 from fastapi import APIRouter
 
+from app.api.v1.endpoints import analysis, health
+
 api_v1_router = APIRouter()
-
-
-@api_v1_router.get("/internal/health", tags=["internal"])
-async def internal_health() -> dict[str, str]:
-    return {"status": "UP"}
+api_v1_router.include_router(health.router)
+api_v1_router.include_router(analysis.router)

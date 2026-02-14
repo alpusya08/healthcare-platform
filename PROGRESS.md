@@ -33,17 +33,24 @@
 - vite-env.d.ts для VITE_ env vars
 - Smoke test: login/register/me/logout через UI ✅
 
-## ⏭️ Следующий шаг — Day 4
+### Day 4 — AI Service core + LLM adapter
+- Core: entities (AnalysisSession, Question, Diagnosis, MedicalFeatures, DoctorFeedback), enums, exceptions
+- Core interfaces (ports): MedicalDomain (Strategy), LLMProvider, MLPredictor, AnalysisSessionRepository
+- Domains: CardiologyDomain (extract_features, generate_question, check_emergency, predict), NeurologyDomain (stub)
+- DomainRegistry (Factory pattern), cardiology features/prompts/triage_rules
+- Infrastructure: ClaudeLLMProvider (Anthropic SDK), LLM factory, InMemorySessionRepository
+- API: schemas (Pydantic v2), analysis endpoints (start/answer/finalize), health/domains endpoints
+- Exception handlers: DomainNotSupported→400, SessionNotFound→404, LLMError→502
+- ML: train_cardiology.py (XGBoost + MLflow + sklearn pipeline), download_datasets.py
+- Smoke test: все endpoints отвечают корректно ✅ (без API key — graceful degradation)
 
-**Что делать в новой сессии Claude Code:**
+## ⏭️ Следующий шаг — Day 5
 
 ```
-Привет. Возвращаюсь к проекту healthcare-platform.
-Прочитай PROGRESS.md, CLAUDE.md, SPECIFICATION.md §7 (AI Service).
-
-Day 3 закрыт. Начни Day 4 из §16:
-- AI Service: FastAPI структура Clean Architecture, БД через SQLAlchemy
-- AI Service: LLM adapter (Claude API), базовая интеграция
+Day 4 закрыт. Начни Day 5 из §16:
+- Backend ↔ AI Service: AiServiceClient в Java, /internal/health проверка
+- ML: скачать UCI dataset, обучить baseline модель через MLflow
+- Интеграция CardiologyPredictor с MLflow model registry
 ```
 
 ## 🚫 НЕ делал
@@ -83,7 +90,7 @@ open http://localhost:5000   # MLflow
 - [x] Day 1 — scaffolding
 - [x] Day 2 — Auth + Users (Backend)
 - [x] Day 3 — Frontend Auth pages
-- [ ] Day 4 — AI Service core + LLM adapter
+- [x] Day 4 — AI Service core + LLM adapter
 - [ ] Day 5 — Backend ↔ AI Service integration
 - [ ] Day 5-6 — ML baseline (UCI Heart Disease + MLflow)
 - [ ] Day 7 — bugfix + README + integration tests
