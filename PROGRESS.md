@@ -44,13 +44,26 @@
 - ML: train_cardiology.py (XGBoost + MLflow + sklearn pipeline), download_datasets.py
 - Smoke test: все endpoints отвечают корректно ✅ (без API key — graceful degradation)
 
-## ⏭️ Следующий шаг — Day 5
+### Day 5 — Backend ↔ AI Service integration + ML baseline (commit `683f49d`)
+- XGBoost модель обучена на UCI Heart Disease (303 rows): acc=88.5%, ROC-AUC=94.5%, F1=88.5%
+- Модель зарегистрирована в MLflow как `cardiology-diagnosis@champion` (v2, sklearn 1.8.0)
+- `MLflowCardiologyPredictor` — загружает модель из MLflow, возвращает `ModelPrediction` с feature importances
+- `MockLLMProvider` — rule-based LLM для dev без API ключа (генерирует вопросы, парсит ответы)
+- Graceful fallback: MockLLM когда нет API ключа, predictor=none когда модель не загружена
+- `AiServiceClient` (Java) — `RestClient`-based HTTP клиент для backend↔AI service (`/api/v1/ai/analysis/*`)
+- `AiAnalysisController` (Java) — `/api/v1/ai/analysis/start`, `/answer`, `/finalize` проксирует в Python
+- `mlflow_data` volume расшарен с AI service контейнером для прямого доступа к артефактам
+- Smoke test: полный цикл login→start→finalize→XGBoost prediction работает ✅
+
+## ⏭️ Следующий шаг — Day 6-7
 
 ```
-Day 4 закрыт. Начни Day 5 из §16:
-- Backend ↔ AI Service: AiServiceClient в Java, /internal/health проверка
-- ML: скачать UCI dataset, обучить baseline модель через MLflow
-- Интеграция CardiologyPredictor с MLflow model registry
+Day 5 закрыт. Продолжай с Day 6-7:
+- Frontend: AI Analysis UI (форма описания симптомов, Q&A чат, отчёт с диагнозом)
+- Emergency triage UI (красный баннер "вызовите 103")
+- Appointment booking (базовый UI + backend)
+- Doctor dashboard (просмотр AI отчётов, approve/reject)
+- Общий дизайн UI (обсудить с пользователем)
 ```
 
 ## 🚫 НЕ делал
@@ -91,8 +104,7 @@ open http://localhost:5000   # MLflow
 - [x] Day 2 — Auth + Users (Backend)
 - [x] Day 3 — Frontend Auth pages
 - [x] Day 4 — AI Service core + LLM adapter
-- [ ] Day 5 — Backend ↔ AI Service integration
-- [ ] Day 5-6 — ML baseline (UCI Heart Disease + MLflow)
+- [x] Day 5 — Backend ↔ AI Service integration + ML baseline
 - [ ] Day 7 — bugfix + README + integration tests
 
 ## 📁 Расположение проектов на диске
