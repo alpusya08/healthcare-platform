@@ -160,7 +160,11 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_MODEL_NAME: cardiology-diagnosis
+      MLFLOW_MODEL_ALIAS: champion
       CORS_ALLOWED_ORIGINS: http://localhost:5173,http://backend:8080
+    volumes:
+      - mlflow_data:/mlflow
     depends_on:
       postgres:
         condition: service_healthy

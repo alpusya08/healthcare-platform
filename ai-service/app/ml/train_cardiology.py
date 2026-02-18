@@ -110,7 +110,11 @@ def train(mlflow_uri: str = "http://localhost:5000") -> None:
         mlflow.set_tag("stage", "baseline")
         mlflow.set_tag("model_type", "xgboost")
 
-    print("Training complete. Model registered in MLflow.")
+    client = mlflow.MlflowClient()
+    registered_versions = client.search_model_versions(f"name='{EXPERIMENT_NAME}'")
+    latest_version = max(int(v.version) for v in registered_versions)
+    client.set_registered_model_alias(EXPERIMENT_NAME, "champion", str(latest_version))
+    print(f"Training complete. Model v{latest_version} registered as 'champion' in MLflow.")
 
 
 if __name__ == "__main__":

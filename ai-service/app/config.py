@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-mini"
 
     mlflow_tracking_uri: str = "http://localhost:5000"
+    mlflow_model_name: str = "cardiology-diagnosis"
+    mlflow_model_alias: str = "champion"
 
     cors_allowed_origins: str = "http://localhost:5173,http://localhost:8080"
 
