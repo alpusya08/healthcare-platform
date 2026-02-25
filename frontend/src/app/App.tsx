@@ -1,10 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Toaster } from "@/shared/ui/sonner";
 import { AuthProvider } from "@/app/providers/AuthProvider";
+import { ThemeProvider } from "@/app/providers/ThemeProvider";
 import { ProtectedRoute } from "@/app/router/ProtectedRoute";
+import { AppLayout } from "@/app/router/AppLayout";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
-import { HomePage } from "@/pages/home/HomePage";
+import { DashboardPage } from "@/pages/dashboard/DashboardPage";
+import { AnalysisPage } from "@/pages/analysis/AnalysisPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { routes } from "@/shared/config/routes";
 
@@ -20,21 +24,27 @@ const queryClient = new QueryClient({
 
 export function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path={routes.login} element={<LoginPage />} />
-            <Route path={routes.register} element={<RegisterPage />} />
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              <Route path={routes.login} element={<LoginPage />} />
+              <Route path={routes.register} element={<RegisterPage />} />
 
-            <Route element={<ProtectedRoute allowedRoles={["PATIENT"]} />}>
-              <Route path={routes.patient.home} element={<HomePage />} />
-            </Route>
+              <Route element={<ProtectedRoute allowedRoles={["PATIENT"]} />}>
+                <Route element={<AppLayout />}>
+                  <Route path={routes.patient.home} element={<DashboardPage />} />
+                  <Route path={routes.patient.aiAnalysis} element={<AnalysisPage />} />
+                </Route>
+              </Route>
 
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+            <Toaster position="top-right" richColors />
+          </AuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
