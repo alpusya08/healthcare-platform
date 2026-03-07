@@ -26,14 +26,14 @@ export function Logo({ size = 32, showText = true }: LogoProps) {
         />
         <defs>
           <linearGradient id="heartGrad" x1="4" y1="6" x2="34" y2="36" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#3B82F6" />
-            <stop offset="1" stopColor="#1D4ED8" />
+            <stop stopColor="#0d9488" />
+            <stop offset="1" stopColor="#0f766e" />
           </linearGradient>
         </defs>
       </svg>
       {showText && (
         <span className="font-bold text-xl tracking-tight text-foreground">
-          Med<span className="text-blue-600">AI</span>
+          Med<span className="text-teal-600 dark:text-teal-400">AI</span>
         </span>
       )}
     </div>

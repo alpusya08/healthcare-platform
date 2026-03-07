@@ -10,5 +10,6 @@ public record AiQuestionDto(
         @JsonProperty("question_text") String questionText,
         @JsonProperty("question_type") String questionType,
         List<String> options,
-        @JsonProperty("feature_name") String featureName
+        @JsonProperty("feature_name") String featureName,
+        String hint
 ) {}

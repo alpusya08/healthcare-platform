@@ -25,6 +25,7 @@ class QuestionDto(BaseModel):
     question_type: QuestionType
     options: Optional[list[str]] = None
     feature_name: Optional[str] = None
+    hint: Optional[str] = None
 
 
 class StartAnalysisResponse(BaseModel):

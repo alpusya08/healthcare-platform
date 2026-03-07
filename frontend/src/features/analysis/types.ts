@@ -7,6 +7,7 @@ export interface QuestionDto {
   question_type: QuestionType;
   options: string[] | null;
   feature_name: string | null;
+  hint: string | null;
 }
 
 export interface StartAnalysisResponse {

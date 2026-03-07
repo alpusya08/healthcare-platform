@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, AlertTriangle, Phone, CheckCircle2, AlertCircle, Info, ArrowRight, Calendar } from "lucide-react";
+import {
+  ArrowLeft, Loader2, AlertTriangle, Phone, CheckCircle2,
+  AlertCircle, Info, ArrowRight, Calendar, HelpCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/textarea";
@@ -29,7 +32,7 @@ const TRIAGE_CONFIG: Record<TriageLevel, {
   icon: typeof AlertTriangle;
 }> = {
   EMERGENCY: {
-    label: "ЭКСТРЕННО",
+    label: "ВЫЗОВИТЕ СКОРУЮ",
     color: "text-red-700 dark:text-red-400",
     badgeVariant: "destructive",
     bg: "bg-red-50 dark:bg-red-950/40",
@@ -37,7 +40,7 @@ const TRIAGE_CONFIG: Record<TriageLevel, {
     icon: Phone,
   },
   URGENT: {
-    label: "СРОЧНО",
+    label: "НУЖНА КОНСУЛЬТАЦИЯ ВРАЧА",
     color: "text-amber-700 dark:text-amber-400",
     badgeVariant: "secondary",
     bg: "bg-amber-50 dark:bg-amber-950/40",
@@ -45,7 +48,7 @@ const TRIAGE_CONFIG: Record<TriageLevel, {
     icon: AlertTriangle,
   },
   ROUTINE: {
-    label: "ПЛАНОВЫЙ ПРИЁМ",
+    label: "ПЛАНОВАЯ КОНСУЛЬТАЦИЯ",
     color: "text-emerald-700 dark:text-emerald-400",
     badgeVariant: "outline",
     bg: "bg-emerald-50 dark:bg-emerald-950/40",
@@ -54,10 +57,10 @@ const TRIAGE_CONFIG: Record<TriageLevel, {
   },
   INSUFFICIENT_DATA: {
     label: "НЕДОСТАТОЧНО ДАННЫХ",
-    color: "text-blue-700 dark:text-blue-400",
+    color: "text-teal-700 dark:text-teal-400",
     badgeVariant: "secondary",
-    bg: "bg-blue-50 dark:bg-blue-950/40",
-    border: "border-blue-300 dark:border-blue-800",
+    bg: "bg-teal-50 dark:bg-teal-950/40",
+    border: "border-teal-300 dark:border-teal-800",
     icon: Info,
   },
 };
@@ -68,17 +71,14 @@ export function AnalysisPage() {
   const [step, setStep] = useState<Step>("describe");
   const [loading, setLoading] = useState(false);
 
-  // Describe step
   const [description, setDescription] = useState("");
   const [consentGiven, setConsentGiven] = useState(false);
 
-  // Questions step
   const [sessionId, setSessionId] = useState<string>("");
   const [currentQuestion, setCurrentQuestion] = useState<QuestionDto | null>(null);
   const [questionNumber, setQuestionNumber] = useState(1);
   const [currentAnswer, setCurrentAnswer] = useState("");
 
-  // Report step
   const [report, setReport] = useState<AnalysisReport | null>(null);
 
   const handleStart = async () => {
@@ -102,7 +102,6 @@ export function AnalysisPage() {
       setSessionId(res.session_id);
 
       if (res.first_question === null) {
-        // Emergency or no questions needed — go straight to finalize
         const finalReport = await analysisApi.finalize(res.session_id);
         setReport(finalReport);
         setStep("report");
@@ -118,15 +117,16 @@ export function AnalysisPage() {
     }
   };
 
-  const handleAnswer = async () => {
-    if (!currentQuestion || !currentAnswer.trim()) {
+  // Fix: answer is passed directly, not read from state closure
+  const submitAnswer = async (answerValue: string) => {
+    if (!currentQuestion || !answerValue.trim()) {
       toast.error("Пожалуйста, ответьте на вопрос");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await analysisApi.answer(sessionId, currentQuestion.id, currentAnswer);
+      const res = await analysisApi.answer(sessionId, currentQuestion.id, answerValue);
 
       if (res.is_complete || res.next_question === null) {
         const finalReport = await analysisApi.finalize(sessionId);
@@ -143,6 +143,9 @@ export function AnalysisPage() {
       setLoading(false);
     }
   };
+
+  const handleAnswer = () => submitAnswer(currentAnswer);
+  const handleSkip = () => submitAnswer("не знаю");
 
   const handleReset = () => {
     setStep("describe");
@@ -168,8 +171,8 @@ export function AnalysisPage() {
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <div>
-          <h1 className="text-xl font-bold text-foreground">AI Анализ симптомов</h1>
-          <p className="text-sm text-muted-foreground">Кардиология · Powered by XGBoost</p>
+          <h1 className="text-xl font-bold text-foreground">Проверка симптомов</h1>
+          <p className="text-sm text-muted-foreground">Кардиологический скрининг</p>
         </div>
       </div>
 
@@ -178,21 +181,14 @@ export function AnalysisPage() {
         {(["describe", "questions", "report"] as Step[]).map((s, i) => {
           const labels = ["Описание", "Вопросы", "Результат"];
           const done =
-            step === "questions" && i === 0
-              ? true
-              : step === "report" && i < 2
-                ? true
-                : false;
+            (step === "questions" && i === 0) ||
+            (step === "report" && i < 2);
           const active = step === s;
           return (
             <div key={s} className="flex items-center gap-2">
               <div
                 className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold transition-colors ${
-                  done
-                    ? "bg-blue-600 text-white"
-                    : active
-                      ? "bg-blue-600 text-white"
-                      : "bg-muted text-muted-foreground"
+                  done || active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                 }`}
               >
                 {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
@@ -210,21 +206,21 @@ export function AnalysisPage() {
       {step === "describe" && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Опишите ваши жалобы</CardTitle>
+            <CardTitle className="text-base">Расскажите о своих симптомах</CardTitle>
             <CardDescription>
-              Расскажите подробнее — где болит, как давно, как часто, что провоцирует
+              Опишите своими словами — что беспокоит, когда началось, как проявляется
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
             <Textarea
-              placeholder="Например: У меня периодически болит в груди при физической нагрузке, появилась одышка. Мне 55 лет, давление 150/90..."
+              placeholder="Например: болит или давит в груди при ходьбе, иногда бывает одышка. Мне 55 лет, курю, давление обычно 150/90..."
               className="min-h-[140px] resize-none text-sm"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               maxLength={5000}
             />
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Минимум 10 символов</span>
+              <span>Чем подробнее — тем точнее результат</span>
               <span>{description.length}/5000</span>
             </div>
 
@@ -236,8 +232,8 @@ export function AnalysisPage() {
                 className="mt-0.5"
               />
               <Label htmlFor="consent" className="text-sm leading-relaxed cursor-pointer">
-                Я даю согласие на обработку введённых данных AI-системой в целях предварительного
-                анализа. Понимаю, что результат не является медицинским диагнозом.
+                Я даю согласие на анализ введённых данных для предварительной оценки состояния здоровья.
+                Понимаю, что результат не является медицинским диагнозом.
               </Label>
             </div>
 
@@ -249,7 +245,7 @@ export function AnalysisPage() {
               {loading ? (
                 <><Loader2 className="mr-2 w-4 h-4 animate-spin" />Анализируем...</>
               ) : (
-                <>Начать анализ <ArrowRight className="ml-2 w-4 h-4" /></>
+                <>Начать проверку <ArrowRight className="ml-2 w-4 h-4" /></>
               )}
             </Button>
           </CardContent>
@@ -272,6 +268,16 @@ export function AnalysisPage() {
             <CardTitle className="text-base mt-4 leading-relaxed">
               {currentQuestion.question_text}
             </CardTitle>
+
+            {/* Hint block */}
+            {currentQuestion.hint && (
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 p-3">
+                <HelpCircle className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-teal-800 dark:text-teal-300 leading-relaxed">
+                  {currentQuestion.hint}
+                </p>
+              </div>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Single choice */}
@@ -285,8 +291,8 @@ export function AnalysisPage() {
                       onClick={() => setCurrentAnswer(opt)}
                       className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                         currentAnswer === opt
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50"
-                          : "border-border hover:border-blue-300 dark:hover:border-blue-700 hover:bg-accent"
+                          ? "border-teal-500 bg-teal-50 dark:bg-teal-950/50"
+                          : "border-border hover:border-teal-300 dark:hover:border-teal-700 hover:bg-accent"
                       }`}
                     >
                       <RadioGroupItem value={opt} id={opt} />
@@ -302,7 +308,7 @@ export function AnalysisPage() {
             {currentQuestion.question_type === "number" && (
               <Input
                 type="number"
-                placeholder="Введите значение..."
+                placeholder="Введите число..."
                 value={currentAnswer}
                 onChange={(e) => setCurrentAnswer(e.target.value)}
                 className="text-sm"
@@ -322,14 +328,11 @@ export function AnalysisPage() {
             <div className="flex gap-3 pt-2">
               <Button
                 variant="outline"
-                onClick={() => {
-                  setCurrentAnswer("не знаю");
-                  setTimeout(handleAnswer, 0);
-                }}
-                className="flex-1 text-sm"
+                onClick={handleSkip}
+                className="flex-1 text-sm text-muted-foreground"
                 disabled={loading}
               >
-                Не знаю
+                Не знаю / Пропустить
               </Button>
               <Button
                 onClick={handleAnswer}
@@ -357,7 +360,6 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
   const navigate = useNavigate();
   const cfg = TRIAGE_CONFIG[report.triage_level];
   const Icon = cfg.icon;
-
   const confidencePct = Math.round(report.confidence * 100);
 
   return (
@@ -365,28 +367,26 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
       {/* Triage banner */}
       <div className={`rounded-xl border-2 p-5 ${cfg.bg} ${cfg.border}`}>
         <div className="flex items-start gap-3">
-          <div className={`p-2 rounded-lg bg-white/60 dark:bg-black/20 shrink-0`}>
+          <div className="p-2 rounded-lg bg-white/60 dark:bg-black/20 shrink-0">
             <Icon className={`w-5 h-5 ${cfg.color}`} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge
-                variant={cfg.badgeVariant}
-                className={`text-xs font-bold uppercase tracking-wide ${
-                  report.triage_level === "EMERGENCY"
-                    ? "bg-red-600 text-white border-0 animate-pulse"
-                    : ""
-                }`}
-              >
-                {cfg.label}
-              </Badge>
-            </div>
-            <p className={`mt-1.5 font-semibold text-base ${cfg.color}`}>
+            <Badge
+              variant={cfg.badgeVariant}
+              className={`text-xs font-bold uppercase tracking-wide ${
+                report.triage_level === "EMERGENCY"
+                  ? "bg-red-600 text-white border-0 animate-pulse"
+                  : ""
+              }`}
+            >
+              {cfg.label}
+            </Badge>
+            <p className={`mt-2 font-semibold text-base leading-snug ${cfg.color}`}>
               {report.primary_diagnosis}
             </p>
             {report.triage_level === "EMERGENCY" && (
               <p className="mt-2 text-sm font-medium text-red-700 dark:text-red-400 flex items-center gap-1.5">
-                <Phone className="w-4 h-4" />
+                <Phone className="w-4 h-4 shrink-0" />
                 Немедленно вызовите скорую помощь — 103
               </p>
             )}
@@ -398,7 +398,7 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
       <Card>
         <CardContent className="pt-5 space-y-3">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground font-medium">Уверенность модели</span>
+            <span className="text-muted-foreground font-medium">Достоверность оценки</span>
             <span className={`font-bold text-base ${
               confidencePct >= 75 ? "text-emerald-600" :
               confidencePct >= 60 ? "text-amber-600" : "text-muted-foreground"
@@ -414,42 +414,46 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
             }`}
           />
           <p className="text-xs text-muted-foreground">
-            Модель: {report.model_version} · XGBoost, обучена на UCI Heart Disease (303 записи)
+            Оценка основана на статистической модели, обученной на клинических данных
           </p>
         </CardContent>
       </Card>
 
-      {/* Explanation */}
+      {/* Explanation — now more detailed */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-blue-500" />
-            Пояснение
+            <AlertCircle className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            Что это означает
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-foreground/90 leading-relaxed">{report.explanation}</p>
+          <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">
+            {report.explanation}
+          </div>
         </CardContent>
       </Card>
 
       {/* Recommendations */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Рекомендации</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-2">
-            {report.recommendations.map((rec, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/90">
-                <span className="mt-0.5 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-700 dark:text-blue-400 text-xs font-semibold shrink-0">
-                  {i + 1}
-                </span>
-                {rec}
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+      {report.recommendations.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Что делать дальше</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              {report.recommendations.map((rec, i) => (
+                <li key={i} className="flex items-start gap-3 text-sm text-foreground/90">
+                  <span className="mt-0.5 w-5 h-5 rounded-full bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center text-teal-700 dark:text-teal-400 text-xs font-semibold shrink-0">
+                    {i + 1}
+                  </span>
+                  {rec}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Disclaimer */}
       <div className="px-1">
@@ -466,7 +470,7 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
           Записаться к врачу (скоро)
         </Button>
         <Button variant="outline" onClick={onReset} className="flex-1">
-          Новый анализ
+          Проверить снова
         </Button>
         <Button variant="ghost" onClick={() => navigate(routes.patient.home)}>
           На главную
@@ -475,4 +479,3 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
     </div>
   );
 }
-

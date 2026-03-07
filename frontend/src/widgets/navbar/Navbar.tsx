@@ -18,7 +18,7 @@ import { cn } from "@/shared/lib/utils";
 
 const NAV_LINKS = [
   { to: routes.patient.home, label: "Главная", icon: Home },
-  { to: routes.patient.aiAnalysis, label: "AI Анализ", icon: Activity },
+  { to: routes.patient.aiAnalysis, label: "Симптомы", icon: Activity },
   { to: routes.patient.appointments, label: "Записи", icon: Calendar },
 ];
 
@@ -64,7 +64,7 @@ export function Navbar() {
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                   active
-                    ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                    ? "bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-400"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 )}
               >
@@ -93,7 +93,7 @@ export function Navbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2 h-9">
                 <Avatar className="w-7 h-7">
-                  <AvatarFallback className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs font-semibold">
+                  <AvatarFallback className="bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300 text-xs font-semibold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
