@@ -61,7 +61,9 @@ class CardiologyDomain(MedicalDomain):
     async def generate_next_question(
         self, session: AnalysisSession, partial_features: MedicalFeatures
     ) -> Optional[Question]:
-        if session.questions_count >= MAX_QUESTIONS:
+        is_non_cardiac = session.initial_description.startswith("[NON-CARDIAC]")
+        max_q = 4 if is_non_cardiac else MAX_QUESTIONS
+        if session.questions_count >= max_q:
             return None
 
         missing = partial_features.missing_fields(CARDIOLOGY_FEATURES)
@@ -86,6 +88,7 @@ class CardiologyDomain(MedicalDomain):
                 question_type=q_type,
                 options=raw.get("options"),
                 feature_name=raw.get("feature_name"),
+                hint=raw.get("hint"),
                 order_index=session.questions_count,
             )
         except Exception:

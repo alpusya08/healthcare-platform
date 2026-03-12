@@ -157,6 +157,9 @@ _FEATURE_PRIORITY = [
     "fbs", "thalach", "restecg", "oldpeak", "slope", "ca", "thal",
 ]
 
+# For non-cardiac complaints we only ask the 4 most universally informative features
+_NON_CARDIAC_FEATURES = ["age", "sex", "trestbps", "exang"]
+
 _ALL_FEATURES = list(_FEATURE_QUESTIONS.keys())
 
 
@@ -182,7 +185,30 @@ class MockLLMProvider(LLMProvider):
     # ── explanation ────────────────────────────────────────────────────────────
 
     def _build_explanation(self, prompt: str) -> str:
+        is_non_cardiac = "[NON-CARDIAC]" in prompt
         is_positive = "Выявлены признаки" in prompt or "URGENT" in prompt
+
+        if is_non_cardiac:
+            if is_positive:
+                return (
+                    "Хотя вы обратились с жалобой, не связанной напрямую с сердцем, "
+                    "базовая проверка сердечно-сосудистых показателей выявила факторы риска, "
+                    "на которые стоит обратить внимание.\n\n"
+                    "Для вашей основной жалобы — рекомендуем обратиться к профильному специалисту. "
+                    "Параллельно стоит проверить сердце у кардиолога: иногда жалобы, "
+                    "которые кажутся несвязанными с сердцем (например, головная боль при высоком давлении), "
+                    "имеют кардиологическую причину.\n\n"
+                    "Запишитесь к терапевту — он направит вас к нужным специалистам и назначит необходимые анализы."
+                )
+            else:
+                return (
+                    "По базовой проверке сердечно-сосудистые показатели в норме — "
+                    "очевидных кардиологических причин для вашей жалобы не выявлено.\n\n"
+                    "Для диагностики описанного симптома рекомендуется обратиться к терапевту: "
+                    "он проведёт осмотр, при необходимости направит к профильному специалисту "
+                    "(невролог, гастроэнтеролог, ЛОР и т.д.) и назначит нужные обследования.\n\n"
+                    "Не занимайтесь самолечением — даже «обычные» симптомы требуют профессиональной оценки."
+                )
 
         if is_positive:
             return (
@@ -283,6 +309,9 @@ class MockLLMProvider(LLMProvider):
         return match.group(1).strip() if match else ""
 
     def _pick_next_question(self, prompt: str) -> dict[str, Any]:
+        is_non_cardiac = "[NON-CARDIAC]" in prompt
+        priority = _NON_CARDIAC_FEATURES if is_non_cardiac else _FEATURE_PRIORITY
+
         match = re.search(r"Missing features that need data:\s*(.+)", prompt)
         if not match:
             return self._question_for("age")
@@ -290,7 +319,7 @@ class MockLLMProvider(LLMProvider):
         raw_missing = match.group(1).strip()
         missing_set = {f.strip() for f in raw_missing.split(",")}
 
-        for feature in _FEATURE_PRIORITY:
+        for feature in priority:
             if feature in missing_set:
                 return self._question_for(feature)
 
