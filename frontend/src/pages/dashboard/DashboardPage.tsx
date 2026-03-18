@@ -85,7 +85,6 @@ export function DashboardPage() {
               <div className="p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 w-fit">
                 <Calendar className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
-              <Badge variant="secondary" className="text-xs">Скоро</Badge>
             </div>
             <CardTitle className="text-lg">Запись к врачу</CardTitle>
             <CardDescription>
@@ -93,12 +92,11 @@ export function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              className="w-full border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
-              disabled
-            >
-              В разработке
+            <Button asChild variant="outline" className="w-full border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30">
+              <Link to={routes.patient.doctors}>
+                Выбрать врача
+                <ArrowRight className="ml-2 w-4 h-4" />
+              </Link>
             </Button>
           </CardContent>
         </Card>

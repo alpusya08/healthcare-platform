@@ -9,6 +9,9 @@ import { LoginPage } from "@/pages/auth/LoginPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 import { AnalysisPage } from "@/pages/analysis/AnalysisPage";
+import { AppointmentsPage } from "@/pages/appointments/AppointmentsPage";
+import { DoctorsPage } from "@/pages/appointments/DoctorsPage";
+import { BookAppointmentPage } from "@/pages/appointments/BookAppointmentPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { routes } from "@/shared/config/routes";
 
@@ -36,6 +39,9 @@ export function App() {
                 <Route element={<AppLayout />}>
                   <Route path={routes.patient.home} element={<DashboardPage />} />
                   <Route path={routes.patient.aiAnalysis} element={<AnalysisPage />} />
+                  <Route path={routes.patient.appointments} element={<AppointmentsPage />} />
+                  <Route path={routes.patient.doctors} element={<DoctorsPage />} />
+                  <Route path={routes.patient.bookAppointment} element={<BookAppointmentPage />} />
                 </Route>
               </Route>
 
