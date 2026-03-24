@@ -17,7 +17,6 @@ from app.api.v1.schemas.analysis import (
 )
 from app.core.entities.analysis_session import AnalysisSession
 from app.core.enums import AnalysisStatus
-from app.core.exceptions import SessionNotFoundException
 from app.core.interfaces.session_repository import AnalysisSessionRepository
 from app.core.symptom_router import detect_symptom_area
 from app.domains.registry import DomainRegistry
@@ -31,6 +30,17 @@ DISCLAIMER = (
 )
 
 
+def _make_question_dto(q) -> QuestionDto:
+    return QuestionDto(
+        id=q.id,
+        question_text=q.question_text,
+        question_type=q.question_type,
+        options=q.options,
+        feature_name=q.feature_name,
+        hint=q.hint,
+    )
+
+
 @router.post("/start", response_model=StartAnalysisResponse)
 async def start_analysis(
     request: StartAnalysisRequest,
@@ -39,32 +49,27 @@ async def start_analysis(
     session_repo: AnalysisSessionRepository = Depends(get_session_repo),
     _: None = Depends(verify_internal_token),
 ) -> StartAnalysisResponse:
+    # Route to the correct domain based on symptom content, ignoring client-sent domain_code
     symptom_area = detect_symptom_area(request.initial_description)
-    routing_note: str | None = None
-    if symptom_area == "general":
-        routing_note = (
-            "Наша система специализируется на оценке сердечно-сосудистых рисков. "
-            "Для вашей жалобы мы зададим несколько базовых вопросов о здоровье сердца — "
-            "это поможет исключить кардиологические причины. "
-            "Для точной диагностики описанного симптома обратитесь к профильному специалисту."
-        )
+    actual_domain_code = "cardiology" if symptom_area == "cardiology" else "general"
 
-    description_with_area = (
-        f"[NON-CARDIAC] {request.initial_description}"
-        if symptom_area == "general"
-        else request.initial_description
-    )
-
-    domain = registry.get(request.domain_code)
+    domain = registry.get(actual_domain_code)
 
     session = AnalysisSession(
         id=uuid.uuid4(),
         user_id=uuid.UUID(user_id) if user_id else uuid.uuid4(),
-        domain_code=request.domain_code,
-        initial_description=description_with_area,
+        domain_code=actual_domain_code,
+        initial_description=request.initial_description,
         status=AnalysisStatus.STARTED,
     )
     await session_repo.create(session)
+
+    logger.info(
+        "analysis.started",
+        session_id=str(session.id),
+        domain=actual_domain_code,
+        symptom_area=symptom_area,
+    )
 
     features = await domain.extract_features(session)
     emergency = await domain.check_emergency(features)
@@ -81,22 +86,10 @@ async def start_analysis(
         await session_repo.add_question(question)
         await session_repo.update_status(session.id, AnalysisStatus.QUESTIONING.value)
 
-    first_q = None
-    if question:
-        first_q = QuestionDto(
-            id=question.id,
-            question_text=question.question_text,
-            question_type=question.question_type,
-            options=question.options,
-            feature_name=question.feature_name,
-            hint=question.hint,
-        )
-
-    base_disclaimer = f"{routing_note}\n\n{DISCLAIMER}" if routing_note else DISCLAIMER
     return StartAnalysisResponse(
         session_id=session.id,
-        first_question=first_q,
-        disclaimer=base_disclaimer,
+        first_question=_make_question_dto(question) if question else None,
+        disclaimer=DISCLAIMER,
     )
 
 
@@ -126,14 +119,7 @@ async def answer_question(
     if next_question:
         await session_repo.add_question(next_question)
         return AnswerQuestionResponse(
-            next_question=QuestionDto(
-                id=next_question.id,
-                question_text=next_question.question_text,
-                question_type=next_question.question_type,
-                options=next_question.options,
-                feature_name=next_question.feature_name,
-                hint=next_question.hint,
-            ),
+            next_question=_make_question_dto(next_question),
             is_complete=False,
         )
 
@@ -174,15 +160,14 @@ async def finalize_analysis(
     diagnosis = await domain.predict(features)
     await session_repo.update_status(session.id, AnalysisStatus.COMPLETED.value)
 
-    report_data = {
+    await session_repo.save_report(session.id, {
         "triage_level": diagnosis.triage_level.value,
         "primary_diagnosis": diagnosis.primary_diagnosis,
         "confidence": diagnosis.confidence,
         "explanation": diagnosis.explanation,
         "recommendations": diagnosis.recommendations,
         "model_version": diagnosis.model_version,
-    }
-    await session_repo.save_report(session.id, report_data)
+    })
 
     return AnalysisReportResponse(
         session_id=session.id,

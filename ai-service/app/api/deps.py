@@ -8,6 +8,7 @@ from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.ml_predictor import MLPredictor
 from app.core.interfaces.session_repository import AnalysisSessionRepository
 from app.domains.cardiology.domain import CardiologyDomain
+from app.domains.general.domain import GeneralSymptomDomain
 from app.domains.registry import DomainRegistry
 from app.infrastructure.persistence.in_memory_session_repo import InMemorySessionRepository
 
@@ -54,6 +55,7 @@ def get_domain_registry(settings: Settings = Depends(get_settings)) -> DomainReg
         predictor = _create_ml_predictor(settings)
         _domain_registry = DomainRegistry()
         _domain_registry.register(CardiologyDomain(llm=llm, predictor=predictor))
+        _domain_registry.register(GeneralSymptomDomain(llm=llm))
         logger.info(
             "domain_registry.initialized",
             llm=type(llm).__name__,
