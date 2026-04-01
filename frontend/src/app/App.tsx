@@ -5,6 +5,7 @@ import { AuthProvider } from "@/app/providers/AuthProvider";
 import { ThemeProvider } from "@/app/providers/ThemeProvider";
 import { ProtectedRoute } from "@/app/router/ProtectedRoute";
 import { AppLayout } from "@/app/router/AppLayout";
+import { DoctorLayout } from "@/app/router/DoctorLayout";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
 import { DashboardPage } from "@/pages/dashboard/DashboardPage";
@@ -12,6 +13,7 @@ import { AnalysisPage } from "@/pages/analysis/AnalysisPage";
 import { AppointmentsPage } from "@/pages/appointments/AppointmentsPage";
 import { DoctorsPage } from "@/pages/appointments/DoctorsPage";
 import { BookAppointmentPage } from "@/pages/appointments/BookAppointmentPage";
+import { DoctorDashboard } from "@/pages/doctor/DoctorDashboard";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { routes } from "@/shared/config/routes";
 
@@ -42,6 +44,12 @@ export function App() {
                   <Route path={routes.patient.appointments} element={<AppointmentsPage />} />
                   <Route path={routes.patient.doctors} element={<DoctorsPage />} />
                   <Route path={routes.patient.bookAppointment} element={<BookAppointmentPage />} />
+                </Route>
+              </Route>
+
+              <Route element={<ProtectedRoute allowedRoles={["DOCTOR"]} />}>
+                <Route element={<DoctorLayout />}>
+                  <Route path={routes.doctor.dashboard} element={<DoctorDashboard />} />
                 </Route>
               </Route>
 

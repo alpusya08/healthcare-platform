@@ -3,10 +3,12 @@ package kz.healthcare.platform.appointments.application;
 import kz.healthcare.platform.appointments.application.dto.*;
 import kz.healthcare.platform.appointments.domain.Appointment;
 import kz.healthcare.platform.appointments.domain.AppointmentStatus;
+import kz.healthcare.platform.appointments.domain.DoctorFeedback;
 import kz.healthcare.platform.appointments.domain.TimeSlot;
 import kz.healthcare.platform.appointments.domain.exceptions.AppointmentNotCancellableException;
 import kz.healthcare.platform.appointments.domain.exceptions.SlotAlreadyBookedException;
 import kz.healthcare.platform.appointments.infrastructure.AppointmentRepository;
+import kz.healthcare.platform.appointments.infrastructure.DoctorFeedbackRepository;
 import kz.healthcare.platform.appointments.infrastructure.TimeSlotRepository;
 import kz.healthcare.platform.users.domain.Doctor;
 import kz.healthcare.platform.users.domain.Patient;
@@ -14,8 +16,10 @@ import kz.healthcare.platform.users.infrastructure.DoctorRepository;
 import kz.healthcare.platform.users.infrastructure.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
@@ -31,6 +35,7 @@ public class AppointmentService {
     private final TimeSlotRepository timeSlotRepository;
     private final DoctorRepository doctorRepository;
     private final PatientRepository patientRepository;
+    private final DoctorFeedbackRepository feedbackRepository;
 
     public List<DoctorSummaryResponse> listDoctors(String specializationCode) {
         return doctorRepository.findVerified(specializationCode).stream()
@@ -94,6 +99,50 @@ public class AppointmentService {
         appt.getTimeSlot().setBooked(false);
         appointmentRepository.save(appt);
         log.info("appointment.cancelled id={} patient={}", appointmentId, patientId);
+    }
+
+    public List<DoctorAppointmentResponse> listForDoctor(UUID doctorId) {
+        return appointmentRepository.findByDoctorIdOrderBySlot(doctorId).stream()
+                .map(this::toDoctorAppointmentResponse)
+                .toList();
+    }
+
+    @Transactional
+    public void submitFeedback(UUID doctorId, UUID appointmentId, DoctorFeedbackRequest request) {
+        Appointment appt = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new NoSuchElementException("Запись не найдена"));
+
+        if (!appt.getDoctor().getId().equals(doctorId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Это не ваша запись");
+        }
+        if (feedbackRepository.existsByAppointmentId(appointmentId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Отзыв уже отправлен");
+        }
+
+        DoctorFeedback feedback = DoctorFeedback.builder()
+                .appointment(appt)
+                .doctor(appt.getDoctor())
+                .aiSessionId(appt.getAiSessionId())
+                .verdict(DoctorFeedback.FeedbackVerdict.valueOf(request.verdict().name()))
+                .comment(request.comment())
+                .build();
+
+        feedbackRepository.save(feedback);
+        log.info("feedback.submitted doctor={} appointment={} verdict={}", doctorId, appointmentId, request.verdict());
+    }
+
+    private DoctorAppointmentResponse toDoctorAppointmentResponse(Appointment a) {
+        return new DoctorAppointmentResponse(
+                a.getId(),
+                a.getPatient().getId(),
+                a.getPatient().getUser().getFullName(),
+                a.getTimeSlot().getStartTime(),
+                a.getTimeSlot().getEndTime(),
+                a.getStatus(),
+                a.getType(),
+                a.getComplaint(),
+                a.getAiSessionId()
+        );
     }
 
     private DoctorSummaryResponse toDoctorSummary(Doctor d) {
