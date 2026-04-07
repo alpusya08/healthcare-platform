@@ -38,25 +38,43 @@ _CARDIAC_PATTERNS = [
     r"\bгруд",           # chest
     r"\bсердц",          # heart
     r"\bсердеч",         # cardiac
-    r"\bдавлени",        # pressure (blood pressure context)
+    r"\bдавлени[ея]",    # blood pressure (not "давление" in "давление в голове"→ too broad)
     r"\bодышк",          # shortness of breath
     r"\bинфаркт",        # heart attack
     r"\bсосуд",          # vessels
     r"\bаритм",          # arrhythmia
     r"\bтахикард",       # tachycardia
-    r"\bпульс",          # pulse
+    r"\bпульс\b",        # pulse — exact word, NOT пульсирует (pulsating pain)
     r"\bпрерывани",      # heart skipping
     r"\bстенокард",      # angina
+    r"\bкардио",         # cardio
+    r"\bсжима",          # chest squeezing
+]
+
+# Non-cardiac symptoms that override cardiac keywords when present in head context
+_HEAD_CONTEXT_OVERRIDES = [
+    r"пульсиру",         # пульсирует (pulsating pain — head)
+    r"висках?",          # temples
+    r"стучит в голов",   # pounding in the head
 ]
 
 
 def detect_symptom_area(description: str) -> str:
     """Return 'cardiology' or 'general' based on description keywords."""
     lower = description.lower()
+
+    has_non_cardiac = any(re.search(p, lower) for p in _NON_CARDIAC_PATTERNS)
+    has_head_context = any(re.search(p, lower) for p in _HEAD_CONTEXT_OVERRIDES)
+
+    # Head-pain context words (пульсирует, виски) override cardiac keyword detection
+    if has_head_context and has_non_cardiac:
+        return "general"
+
     has_cardiac = any(re.search(p, lower) for p in _CARDIAC_PATTERNS)
     if has_cardiac:
         return "cardiology"
-    has_non_cardiac = any(re.search(p, lower) for p in _NON_CARDIAC_PATTERNS)
+
     if has_non_cardiac:
         return "general"
+
     return "cardiology"

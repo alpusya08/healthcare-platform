@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Stethoscope, Star, Clock, ChevronRight, Search } from "lucide-react";
 import { Card, CardContent } from "@/shared/ui/card";
@@ -56,6 +56,8 @@ function DoctorCard({ doctor, onClick }: { doctor: Doctor; onClick: () => void }
 
 export function DoctorsPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const specFilter = searchParams.get("specialization");
   const [search, setSearch] = useState("");
 
   const { data: doctors = [], isLoading } = useQuery({
@@ -63,11 +65,15 @@ export function DoctorsPage() {
     queryFn: () => appointmentsApi.listDoctors(),
   });
 
-  const filtered = doctors.filter(
-    (d) =>
+  const filtered = doctors.filter((d) => {
+    const matchesSpec = specFilter
+      ? d.specialization.toLowerCase() === specFilter.toLowerCase()
+      : true;
+    const matchesSearch =
       d.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      d.specialization.toLowerCase().includes(search.toLowerCase())
-  );
+      d.specialization.toLowerCase().includes(search.toLowerCase());
+    return matchesSpec && matchesSearch;
+  });
 
   return (
     <div className="space-y-6">
@@ -77,6 +83,22 @@ export function DoctorsPage() {
           Выберите специалиста и запишитесь на удобное время
         </p>
       </div>
+
+      {specFilter && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-sm text-teal-700 dark:text-teal-300">
+          <Stethoscope className="w-4 h-4 shrink-0" />
+          <span>
+            По результатам анализа рекомендован специалист:{" "}
+            <strong className="capitalize">{specFilter}</strong>
+          </span>
+          <button
+            className="ml-auto text-xs underline text-teal-600 dark:text-teal-400"
+            onClick={() => navigate("/doctors")}
+          >
+            Все врачи
+          </button>
+        </div>
+      )}
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

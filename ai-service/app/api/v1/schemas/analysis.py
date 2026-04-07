@@ -54,3 +54,4 @@ class AnalysisReportResponse(BaseModel):
     model_version: str
     disclaimer: str
     created_at: datetime
+    recommended_specialization: str = "therapy"

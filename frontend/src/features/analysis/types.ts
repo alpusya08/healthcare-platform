@@ -31,4 +31,5 @@ export interface AnalysisReport {
   model_version: string;
   disclaimer: string;
   created_at: string;
+  recommended_specialization: string | null;
 }

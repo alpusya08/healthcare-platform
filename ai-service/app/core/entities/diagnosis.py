@@ -15,6 +15,7 @@ class Diagnosis:
     recommendations: list[str] = field(default_factory=list)
     triage_level: TriageLevel = TriageLevel.ROUTINE
     model_version: str = "unknown"
+    recommended_specialization: str = "therapy"
 
 
 @dataclass

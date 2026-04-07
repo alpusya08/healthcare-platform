@@ -164,6 +164,7 @@ class GeneralSymptomDomain(MedicalDomain):
             recommendations=recommendations,
             triage_level=triage,
             model_version="general-rule-based-v1",
+            recommended_specialization=self._specialization_for_area(area),
         )
 
     def get_model_version(self) -> str:
@@ -216,6 +217,17 @@ class GeneralSymptomDomain(MedicalDomain):
             "Важно: данная оценка носит информационный характер и не является диагнозом. "
             "Для точного диагноза необходим очный осмотр врача и при необходимости — анализы."
         )
+
+    @staticmethod
+    def _specialization_for_area(area: str) -> str:
+        return {
+            "head": "neurology",
+            "back": "neurology",
+            "abdomen": "therapy",
+            "throat": "therapy",
+            "limbs": "therapy",
+            "skin": "dermatology",
+        }.get(area, "therapy")
 
     def _build_recommendations(self, area: str, is_severe: bool, is_long: bool) -> list[str]:
         specialist = {

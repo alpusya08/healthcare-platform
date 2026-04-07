@@ -465,9 +465,18 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
 
       {/* Actions */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <Button className="flex-1" onClick={() => navigate(routes.patient.appointments)} disabled>
+        <Button
+          className="flex-1"
+          onClick={() => {
+            const spec = report.recommended_specialization;
+            const path = spec
+              ? `${routes.patient.doctors}?specialization=${spec}`
+              : routes.patient.doctors;
+            navigate(path);
+          }}
+        >
           <Calendar className="mr-2 w-4 h-4" />
-          Записаться к врачу (скоро)
+          Записаться к врачу
         </Button>
         <Button variant="outline" onClick={onReset} className="flex-1">
           Проверить снова

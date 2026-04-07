@@ -117,6 +117,7 @@ class CardiologyDomain(MedicalDomain):
                 recommendations=["Запишитесь на очный прием к кардиологу"],
                 triage_level=TriageLevel.INSUFFICIENT_DATA,
                 model_version=self.get_model_version(),
+                recommended_specialization="cardiology",
             )
 
         explanation = await self._generate_explanation(prediction, features)
@@ -133,6 +134,7 @@ class CardiologyDomain(MedicalDomain):
             recommendations=self._build_recommendations(prediction),
             triage_level=triage,
             model_version=self.get_model_version(),
+            recommended_specialization="cardiology",
         )
 
     def get_model_version(self) -> str:
@@ -172,4 +174,5 @@ class CardiologyDomain(MedicalDomain):
             recommendations=["Запишитесь на прием к кардиологу"],
             triage_level=TriageLevel.INSUFFICIENT_DATA,
             model_version="no-ml-model",
+            recommended_specialization="cardiology",
         )

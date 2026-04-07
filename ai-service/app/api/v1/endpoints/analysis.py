@@ -179,4 +179,5 @@ async def finalize_analysis(
         model_version=diagnosis.model_version,
         disclaimer=DISCLAIMER,
         created_at=datetime.now(timezone.utc),
+        recommended_specialization=diagnosis.recommended_specialization,
     )
