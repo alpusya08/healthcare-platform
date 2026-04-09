@@ -154,13 +154,13 @@ services:
       ENVIRONMENT: dev
       DB_URL: postgresql+asyncpg://${AI_POSTGRES_USER:-ai_feedback}:${AI_POSTGRES_PASSWORD:-ai_feedback_secret}@postgres:5432/${AI_POSTGRES_DB:-ai_feedback}
       AI_SERVICE_INTERNAL_TOKEN: ${AI_SERVICE_INTERNAL_TOKEN:-internal-shared-secret-between-backend-and-ai}
-      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
       MLFLOW_TRACKING_URI: http://mlflow:5000
       MLFLOW_MODEL_NAME: cardiology-diagnosis
       MLFLOW_MODEL_ALIAS: champion

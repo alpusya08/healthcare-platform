@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-2.0-flash"
 
     mlflow_tracking_uri: str = "http://localhost:5000"
     mlflow_model_name: str = "cardiology-diagnosis"
