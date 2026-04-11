@@ -27,8 +27,8 @@ _NON_CARDIAC_PATTERNS = [
     r"\bзуд",            # itching
     r"\bсустав",         # joint
     r"\bколен",          # knee
-    r"\bрук[аи]\b",      # arm
-    r"\bног[аи]\b",      # leg
+    r"\bрук(?:[аиуе]|ой)\b",   # arm — рука/руки/руку/руке/рукой
+    r"\bног(?:[аиуе]|ой)\b",   # leg — нога/ноги/ногу/ноге/ногой
     r"\bпсих",           # psychological
     r"\bтревог",         # anxiety
     r"\bдепресс",        # depression
