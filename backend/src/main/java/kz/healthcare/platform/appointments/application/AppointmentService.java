@@ -21,6 +21,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import org.springframework.data.domain.PageRequest;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -46,6 +48,29 @@ public class AppointmentService {
     public List<TimeSlotResponse> listAvailableSlots(UUID doctorId) {
         return timeSlotRepository.findAvailableByDoctorId(doctorId).stream()
                 .map(ts -> new TimeSlotResponse(ts.getId(), ts.getStartTime(), ts.getEndTime()))
+                .toList();
+    }
+
+    public List<UpcomingSlotResponse> listUpcomingSlots(String specializationCode, int limit) {
+        int safeLimit = Math.min(Math.max(limit, 1), 20);
+        return timeSlotRepository
+                .findUpcomingBySpecialization(specializationCode, PageRequest.of(0, safeLimit))
+                .stream()
+                .map(ts -> {
+                    Doctor d = ts.getDoctor();
+                    return new UpcomingSlotResponse(
+                            ts.getId(),
+                            ts.getStartTime(),
+                            ts.getEndTime(),
+                            d.getId(),
+                            d.getUser().getFullName(),
+                            d.getSpecialization().getDisplayName(),
+                            d.getSpecialization().getCode(),
+                            d.getYearsExperience(),
+                            d.getConsultationFee(),
+                            d.getAverageRating()
+                    );
+                })
                 .toList();
     }
 

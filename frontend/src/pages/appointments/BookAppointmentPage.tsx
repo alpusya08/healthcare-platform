@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Calendar, Clock, ChevronLeft, Stethoscope } from "lucide-react";
 import { toast } from "sonner";
@@ -40,6 +40,9 @@ export function BookAppointmentPage() {
   const { doctorId } = useParams<{ doctorId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const presetSlotId = searchParams.get("slotId");
+  const aiSessionId = searchParams.get("aiSessionId");
 
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [appointmentType, setAppointmentType] = useState<AppointmentType>("OFFLINE");
@@ -57,6 +60,13 @@ export function BookAppointmentPage() {
     queryFn: () => appointmentsApi.listSlots(doctorId!),
     enabled: !!doctorId,
   });
+
+  useEffect(() => {
+    if (presetSlotId && slots.length > 0 && !selectedSlot) {
+      const match = slots.find((s) => s.id === presetSlotId);
+      if (match) setSelectedSlot(match);
+    }
+  }, [presetSlotId, slots, selectedSlot]);
 
   const bookMutation = useMutation({
     mutationFn: appointmentsApi.book,
@@ -82,6 +92,7 @@ export function BookAppointmentPage() {
       slotId: selectedSlot.id,
       type: appointmentType,
       complaint: complaint || undefined,
+      aiSessionId: aiSessionId || undefined,
     });
   };
 

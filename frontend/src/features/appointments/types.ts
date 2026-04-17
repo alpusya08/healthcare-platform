@@ -36,3 +36,16 @@ export interface CreateAppointmentRequest {
   complaint?: string;
   aiSessionId?: string;
 }
+
+export interface UpcomingSlot {
+  slotId: string;
+  startTime: string;
+  endTime: string;
+  doctorId: string;
+  doctorFullName: string;
+  specialization: string;
+  specializationCode: string;
+  yearsExperience: number;
+  consultationFee: number | null;
+  averageRating: number;
+}

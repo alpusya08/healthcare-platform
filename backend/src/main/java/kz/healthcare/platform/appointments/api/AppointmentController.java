@@ -30,6 +30,13 @@ public class AppointmentController {
         return appointmentService.listAvailableSlots(doctorId);
     }
 
+    @GetMapping("/slots/upcoming")
+    public List<UpcomingSlotResponse> listUpcomingSlots(
+            @RequestParam(required = false) String specialization,
+            @RequestParam(defaultValue = "3") int limit) {
+        return appointmentService.listUpcomingSlots(specialization, limit);
+    }
+
     @PostMapping
     public ResponseEntity<AppointmentResponse> create(
             @AuthenticationPrincipal UUID patientId,

@@ -1,5 +1,5 @@
 import { apiClient } from "@/shared/api/axios";
-import type { Appointment, CreateAppointmentRequest, Doctor, TimeSlot } from "../types";
+import type { Appointment, CreateAppointmentRequest, Doctor, TimeSlot, UpcomingSlot } from "../types";
 
 export const appointmentsApi = {
   listDoctors: (specialization?: string) =>
@@ -10,6 +10,13 @@ export const appointmentsApi = {
   listSlots: (doctorId: string) =>
     apiClient
       .get<TimeSlot[]>(`/appointments/doctors/${doctorId}/slots`)
+      .then((r) => r.data),
+
+  listUpcomingSlots: (specialization?: string, limit = 3) =>
+    apiClient
+      .get<UpcomingSlot[]>("/appointments/slots/upcoming", {
+        params: { specialization, limit },
+      })
       .then((r) => r.data),
 
   book: (request: CreateAppointmentRequest) =>

@@ -18,6 +18,7 @@ import { Separator } from "@/shared/ui/separator";
 import { analysisApi } from "@/features/analysis/api/analysisApi";
 import type { AnalysisReport, QuestionDto, TriageLevel } from "@/features/analysis/types";
 import { routes } from "@/shared/config/routes";
+import { UpcomingSlotsCard } from "@/widgets/upcoming-slots/UpcomingSlotsCard";
 
 type Step = "describe" | "questions" | "report";
 
@@ -455,6 +456,14 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
         </Card>
       )}
 
+      {/* Embedded upcoming-slots widget — only for non-emergency triage */}
+      {report.triage_level !== "EMERGENCY" && (
+        <UpcomingSlotsCard
+          specializationCode={report.recommended_specialization}
+          aiSessionId={report.session_id}
+        />
+      )}
+
       {/* Disclaimer */}
       <div className="px-1">
         <Separator className="mb-3" />
@@ -476,7 +485,7 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
           }}
         >
           <Calendar className="mr-2 w-4 h-4" />
-          Записаться к врачу
+          Все врачи этой специализации
         </Button>
         <Button variant="outline" onClick={onReset} className="flex-1">
           Проверить снова
