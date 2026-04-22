@@ -55,3 +55,6 @@ class AnalysisReportResponse(BaseModel):
     disclaimer: str
     created_at: datetime
     recommended_specialization: str = "therapy"
+    possible_causes: list[str] = Field(default_factory=list)
+    red_flags: list[str] = Field(default_factory=list)
+    summary: str = ""

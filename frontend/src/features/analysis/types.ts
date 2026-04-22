@@ -32,4 +32,7 @@ export interface AnalysisReport {
   disclaimer: string;
   created_at: string;
   recommended_specialization: string | null;
+  possible_causes: string[];
+  red_flags: string[];
+  summary: string;
 }

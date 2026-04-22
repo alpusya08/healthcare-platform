@@ -16,6 +16,9 @@ class Diagnosis:
     triage_level: TriageLevel = TriageLevel.ROUTINE
     model_version: str = "unknown"
     recommended_specialization: str = "therapy"
+    possible_causes: list[str] = field(default_factory=list)
+    red_flags: list[str] = field(default_factory=list)
+    summary: str = ""
 
 
 @dataclass

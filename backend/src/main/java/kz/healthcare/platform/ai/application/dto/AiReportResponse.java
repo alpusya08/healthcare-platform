@@ -16,5 +16,8 @@ public record AiReportResponse(
         @JsonProperty("model_version") String modelVersion,
         String disclaimer,
         @JsonProperty("created_at") OffsetDateTime createdAt,
-        @JsonProperty("recommended_specialization") String recommendedSpecialization
+        @JsonProperty("recommended_specialization") String recommendedSpecialization,
+        @JsonProperty("possible_causes") List<String> possibleCauses,
+        @JsonProperty("red_flags") List<String> redFlags,
+        String summary
 ) {}

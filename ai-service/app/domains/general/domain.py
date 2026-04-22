@@ -21,7 +21,7 @@ from app.infrastructure.llm.general_questions import (
 
 logger = structlog.get_logger()
 
-MAX_QUESTIONS = 6
+MAX_QUESTIONS = 7
 
 GENERAL_FEATURES = [
     "duration_days",
@@ -144,17 +144,19 @@ class GeneralSymptomDomain(MedicalDomain):
     async def predict(self, features: MedicalFeatures) -> Diagnosis:
         area = features.get("symptom_area") or "general"
         area_name = AREA_DISPLAY_NAMES.get(area, "симптомы")
-        severity_raw = features.get("pain_severity") or ""
-        duration_raw = features.get("duration_days") or ""
-        description = features.get("_raw_description") or ""
+        severity_raw = str(features.get("pain_severity") or "")
+        duration_raw = str(features.get("duration_days") or "")
 
-        is_severe = any(w in str(severity_raw).lower() for w in ["7–8", "9–10", "сильн", "невынос"])
-        is_long = any(w in str(duration_raw).lower() for w in ["больше недели", "больше месяца"])
+        is_severe = any(w in severity_raw.lower() for w in ["7–8", "9–10", "сильн", "невынос"])
+        is_long = any(w in duration_raw.lower() for w in ["больше недели", "больше месяца"])
 
-        explanation = self._build_general_explanation(area, area_name, severity_raw, duration_raw, description, is_severe)
+        summary = self._build_summary(area_name, features, severity_raw, duration_raw)
+        explanation = self._build_general_explanation(area, area_name, is_severe)
+        possible_causes = self._build_possible_causes(area, features)
         recommendations = self._build_recommendations(area, is_severe, is_long)
+        red_flags = self._build_red_flags(area, features)
 
-        triage = TriageLevel.URGENT if is_severe else TriageLevel.ROUTINE
+        triage = TriageLevel.URGENT if (is_severe or red_flags) else TriageLevel.ROUTINE
 
         return Diagnosis(
             domain=self.code,
@@ -163,60 +165,199 @@ class GeneralSymptomDomain(MedicalDomain):
             explanation=explanation,
             recommendations=recommendations,
             triage_level=triage,
-            model_version="general-rule-based-v1",
+            model_version="general-rule-based-v2",
             recommended_specialization=self._specialization_for_area(area),
+            possible_causes=possible_causes,
+            red_flags=red_flags,
+            summary=summary,
         )
 
     def get_model_version(self) -> str:
-        return "general-rule-based-v1"
+        return "general-rule-based-v2"
 
-    def _build_general_explanation(
-        self, area: str, area_name: str, severity: str, duration: str, description: str, is_severe: bool
-    ) -> str:
-        severity_text = f"интенсивность: {severity}" if severity else "интенсивность не указана"
-        duration_text = f"длительность: {duration}" if duration else "длительность не указана"
+    def _build_summary(self, area_name: str, features: MedicalFeatures, severity: str, duration: str) -> str:
+        parts = [f"Основная жалоба: {area_name}."]
+        if duration:
+            parts.append(f"Длительность: {duration}.")
+        if severity:
+            parts.append(f"Интенсивность: {severity}.")
 
+        location = features.get("pain_location")
+        if location:
+            parts.append(f"Локализация: {location}.")
+        character = features.get("pain_character")
+        if character:
+            parts.append(f"Характер: {character}.")
+        fever = features.get("fever")
+        if fever and "нет" not in str(fever).lower() and "нормал" not in str(fever).lower():
+            parts.append(f"Температура: {fever}.")
+        return " ".join(parts)
+
+    def _build_general_explanation(self, area: str, area_name: str, is_severe: bool) -> str:
         area_advice = {
             "head": (
                 "Головная боль — один из самых распространённых симптомов. "
                 "Большинство случаев связано с напряжением, стрессом или недосыпанием. "
-                "Однако регулярные или очень интенсивные боли требуют консультации невролога."
+                "Однако регулярные, очень интенсивные или впервые возникшие резкие боли "
+                "требуют консультации невролога."
             ),
             "abdomen": (
                 "Боль в животе может быть вызвана широким спектром причин: "
                 "от функциональных расстройств (синдром раздражённого кишечника, гастрит) "
-                "до состояний, требующих лечения (аппендицит, панкреатит). "
-                "Точный диагноз устанавливается только после осмотра и анализов."
+                "до состояний, требующих неотложного лечения (аппендицит, панкреатит, кишечная непроходимость). "
+                "Точный диагноз устанавливается только после осмотра, анализов и инструментальных исследований."
             ),
             "throat": (
-                "Симптомы простуды или ангины чаще всего вызваны вирусами или бактериями. "
-                "Большинство ОРВИ проходят самостоятельно за 5–7 дней. "
-                "При высокой температуре, сильной боли в горле или ухудшении состояния нужна консультация врача."
+                "Симптомы простуды чаще всего вызваны вирусами и проходят самостоятельно за 5–7 дней. "
+                "Бактериальные инфекции (стрептококковая ангина) требуют антибиотиков и определяются по анализам. "
+                "При высокой температуре, сильной боли в горле, одышке или ухудшении состояния — нужна консультация врача."
             ),
             "back": (
-                "Боль в спине — частая жалоба, в большинстве случаев связанная с мышечным напряжением "
-                "или остеохондрозом. Однако боль, отдающая в ногу, или онемение требуют осмотра невролога."
+                "Боль в спине в большинстве случаев связана с мышечным спазмом, остеохондрозом или защемлением нерва. "
+                "Боль, отдающая в ногу до стопы, онемение или слабость в ногах — признак серьёзного защемления "
+                "и требуют срочного осмотра невролога."
             ),
             "limbs": (
-                "Боль в суставах или мышцах может быть результатом травмы, воспаления или артроза. "
-                "Для точной диагностики необходим осмотр травматолога или ревматолога."
+                "Боль в суставах или мышцах может быть результатом травмы, перегрузки, воспаления или артроза. "
+                "Длительная утренняя скованность или боль в нескольких суставах одновременно — повод исключить "
+                "ревматическое заболевание у ревматолога."
+            ),
+            "skin": (
+                "Кожные симптомы чаще всего вызваны контактным дерматитом, аллергической реакцией или инфекцией. "
+                "В большинстве случаев они хорошо поддаются местному лечению. "
+                "Затяжные или распространяющиеся высыпания требуют осмотра дерматолога."
             ),
         }.get(area, "Ваши симптомы требуют профессиональной медицинской оценки.")
 
         severity_comment = (
-            "\n\nИнтенсивность жалоб высокая — рекомендуем не откладывать визит к врачу."
+            "\n\n⚠️ Интенсивность жалоб высокая — настоятельно рекомендуем не откладывать визит к врачу."
             if is_severe
             else ""
         )
 
         return (
-            f"На основе описания ваших симптомов ({area_name}, {severity_text}, {duration_text}) "
-            f"проведена предварительная оценка.\n\n"
-            f"{area_advice}"
-            f"{severity_comment}\n\n"
+            f"{area_advice}{severity_comment}\n\n"
             "Важно: данная оценка носит информационный характер и не является диагнозом. "
-            "Для точного диагноза необходим очный осмотр врача и при необходимости — анализы."
+            "Для точного диагноза необходим очный осмотр врача и при необходимости — анализы и инструментальные исследования."
         )
+
+    def _build_possible_causes(self, area: str, features: MedicalFeatures) -> list[str]:
+        character = str(features.get("pain_character") or "").lower()
+        location = str(features.get("pain_location") or "").lower()
+        food = str(features.get("food_relation") or "").lower()
+        fever = str(features.get("fever") or "").lower()
+        bowel = str(features.get("bowel_changes") or "").lower()
+        radiation = str(features.get("radiation") or "").lower()
+        trauma = str(features.get("trauma") or "").lower()
+        swelling = str(features.get("swelling") or "").lower()
+        photo = str(features.get("photophobia") or "").lower()
+        nausea = str(features.get("associated_nausea") or "").lower()
+
+        causes: list[str] = []
+
+        if area == "head":
+            if "пульсиру" in character or "висках" in character or photo.startswith("да") or nausea.startswith("да"):
+                causes.append("Мигрень — пульсирующая односторонняя боль с тошнотой и светобоязнью")
+            if "давящ" in character or "сжима" in character:
+                causes.append("Головная боль напряжения — двусторонняя сжимающая боль на фоне стресса или переутомления")
+            if "острая" in character or "стреляющ" in character:
+                causes.append("Невралгия (раздражение нерва) — стреляющая короткая боль")
+            causes.append("Повышение или понижение артериального давления")
+            causes.append("Шейный остеохондроз с сосудистым компонентом")
+
+        elif area == "abdomen":
+            if "верхн" in location or "эпигастр" in location:
+                causes.append("Гастрит или язвенная болезнь желудка")
+            if "правое подреберь" in location:
+                causes.append("Заболевания желчного пузыря или печени")
+            if "пупочн" in location or "по всему" in location:
+                causes.append("Кишечная колика, синдром раздражённого кишечника")
+            if "справа" in location and "вниз" in location:
+                causes.append("Аппендицит — требует срочной диагностики")
+            if "после еды" in food or "натощак" in food or "жирн" in food:
+                causes.append("Заболевания желудочно-кишечного тракта (гастрит, панкреатит)")
+            if "понос" in bowel or "запор" in bowel:
+                causes.append("Кишечная инфекция или функциональное расстройство кишечника")
+            if not fever.startswith("нет") and "37.5" in fever:
+                causes.append("Воспалительный процесс в органах брюшной полости")
+
+        elif area == "throat":
+            if "выше 39" in fever or "38–39" in fever:
+                causes.append("Бактериальная ангина или грипп")
+            else:
+                causes.append("Острая респираторная вирусная инфекция (ОРВИ)")
+            if "лающий" in str(features.get("cough_type") or "").lower():
+                causes.append("Ларингит (воспаление гортани)")
+            if "жёлто" in str(features.get("nasal_congestion") or "").lower() or "густ" in str(features.get("cough_type") or "").lower():
+                causes.append("Возможна бактериальная инфекция (синусит, бронхит)")
+
+        elif area == "back":
+            if "стреляющ" in character or "острая" in character:
+                causes.append("Острый приступ радикулопатии (защемление нерва)")
+            if "ноющ" in character or "тупая" in character:
+                causes.append("Мышечно-тонический синдром, остеохондроз")
+            if "ногу" in radiation or "ногу" in radiation or "седалищ" in radiation:
+                causes.append("Грыжа межпозвонкового диска со сдавлением седалищного нерва")
+            if "тяжест" in trauma or "поднят" in trauma:
+                causes.append("Перенапряжение мышц спины, миозит")
+
+        elif area == "limbs":
+            if "травма" in trauma or "падени" in trauma:
+                causes.append("Ушиб, растяжение связок или возможный перелом")
+            if "отёк" in swelling or "покрасн" in swelling:
+                causes.append("Воспалительный процесс в суставе (артрит) или мягких тканях")
+            if "перегрузка" in trauma:
+                causes.append("Тендинит / миозит после физической нагрузки")
+            assoc = str(features.get("associated_symptoms") or "").lower()
+            if "30 минут" in assoc and "более" in assoc:
+                causes.append("Воспалительный артрит (ревматоидный, реактивный)")
+            if not causes:
+                causes.append("Артроз — возрастные изменения сустава")
+
+        elif area == "skin":
+            trigger = str(features.get("trigger") or "").lower()
+            sym = str(features.get("skin_symptom") or "").lower()
+            if "контакт" in trigger:
+                causes.append("Контактный дерматит — реакция на химию, косметику, ткань")
+            if "лекарств" in trigger or "еда" in trigger:
+                causes.append("Аллергическая реакция (крапивница, лекарственная сыпь)")
+            if "пузырьк" in sym or "волдыр" in sym:
+                causes.append("Герпетическая инфекция или буллёзный дерматоз")
+            if "зуд" in sym:
+                causes.append("Атопический дерматит, чесотка, грибковое поражение")
+            if not causes:
+                causes.append("Неуточнённое кожное заболевание — нужен осмотр")
+
+        if not causes:
+            causes.append("Точную причину можно определить только после очного осмотра")
+
+        return causes[:5]
+
+    def _build_red_flags(self, area: str, features: MedicalFeatures) -> list[str]:
+        flags: list[str] = []
+        onset = str(features.get("onset") or "").lower()
+        radiation = str(features.get("radiation") or "").lower()
+        bowel = str(features.get("bowel_changes") or "").lower()
+        fever = str(features.get("fever") or "").lower()
+        assoc = str(features.get("associated_symptoms") or "").lower()
+        swelling = str(features.get("swelling") or "").lower()
+        trauma = str(features.get("trauma") or "").lower()
+
+        if "удар грома" in onset or "резко" in onset:
+            flags.append("Внезапная сильная головная боль 'как удар' — повод исключить инсульт или субарахноидальное кровоизлияние")
+        if "выше 38.5" in fever or "выше 39" in fever:
+            flags.append("Высокая температура (выше 38.5°C) более 3 дней — требует осмотра врача")
+        if area == "abdomen" and ("кров" in bowel or "чёрный" in bowel):
+            flags.append("Кровь в стуле или чёрный стул — признак желудочно-кишечного кровотечения")
+        if area == "back" and "ногу" in radiation and ("седалищ" in radiation or "стопы" in radiation):
+            flags.append("Боль с онемением и слабостью в ноге — возможно сдавление нерва, нужен срочный осмотр")
+        if area == "throat" and ("одышк" in assoc or "грудь" in assoc):
+            flags.append("Одышка или боль в груди при простуде — повод срочно показаться врачу")
+        if area == "skin" and ("отёк лица" in assoc or "дыхани" in assoc):
+            flags.append("Отёк лица или затруднённое дыхание — признак тяжёлой аллергии, вызывайте 103")
+        if area == "limbs" and "травма" in trauma and "сильн" in swelling:
+            flags.append("Сильный отёк после травмы — нельзя исключить перелом, нужен рентген")
+        return flags
 
     @staticmethod
     def _specialization_for_area(area: str) -> str:

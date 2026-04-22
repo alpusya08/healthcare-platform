@@ -420,7 +420,24 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
         </CardContent>
       </Card>
 
-      {/* Explanation — now more detailed */}
+      {/* Summary — what we learned about the patient */}
+      {report.summary && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Info className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              Что мы выяснили
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-foreground/90 leading-relaxed">
+              {report.summary}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Explanation */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
@@ -435,11 +452,64 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
         </CardContent>
       </Card>
 
+      {/* Possible causes */}
+      {report.possible_causes && report.possible_causes.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <HelpCircle className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              Возможные причины
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Это лишь предположения на основе ваших ответов — точный диагноз ставит врач
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2.5">
+              {report.possible_causes.map((cause, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/90">
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" />
+                  <span>{cause}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Red flags — emergency warnings specific to this case */}
+      {report.red_flags && report.red_flags.length > 0 && (
+        <Card className="border-coral-200 dark:border-coral-900 bg-coral-50/50 dark:bg-coral-950/10">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2 text-coral-700 dark:text-coral-300">
+              <AlertTriangle className="w-4 h-4" />
+              Когда срочно к врачу
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Признаки, при которых нужна неотложная помощь
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2">
+              {report.red_flags.map((flag, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/90">
+                  <AlertCircle className="w-4 h-4 mt-0.5 text-coral-600 dark:text-coral-400 shrink-0" />
+                  <span>{flag}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Recommendations */}
       {report.recommendations.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Что делать дальше</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              Что делать дальше
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">

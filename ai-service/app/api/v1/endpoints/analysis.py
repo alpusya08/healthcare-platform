@@ -180,4 +180,7 @@ async def finalize_analysis(
         disclaimer=DISCLAIMER,
         created_at=datetime.now(timezone.utc),
         recommended_specialization=diagnosis.recommended_specialization,
+        possible_causes=diagnosis.possible_causes,
+        red_flags=diagnosis.red_flags,
+        summary=diagnosis.summary,
     )
