@@ -33,4 +33,9 @@ export const doctorApi = {
     apiClient
       .post<AnalysisReport>(`/ai/analysis/${sessionId}/finalize`)
       .then((r) => r.data),
+
+  markCompleted: (appointmentId: string) =>
+    apiClient
+      .post(`/doctor/appointments/${appointmentId}/complete`)
+      .then(() => undefined),
 };

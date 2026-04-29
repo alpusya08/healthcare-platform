@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Stethoscope, Calendar, Clock, FileText, User } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Stethoscope, Calendar, Clock, FileText, User, CheckCheck } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { doctorApi, type DoctorAppointment } from "@/features/doctor/api/doctorApi";
 import { DoctorFeedbackModal } from "./DoctorFeedbackModal";
@@ -33,10 +35,25 @@ function formatDateTime(iso: string) {
 
 export function DoctorDashboard() {
   const [selectedAppt, setSelectedAppt] = useState<DoctorAppointment | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: appointments = [], isLoading, refetch } = useQuery({
     queryKey: ["doctor", "appointments"],
     queryFn: doctorApi.myAppointments,
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: doctorApi.markCompleted,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["doctor", "appointments"] });
+      toast.success("Приём отмечен как завершённый");
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Не удалось завершить приём";
+      toast.error(msg);
+    },
   });
 
   const upcoming = appointments.filter((a) => a.status === "SCHEDULED");
@@ -88,14 +105,24 @@ export function DoctorDashboard() {
           {upcoming.length > 0 && (
             <Section title="Предстоящие">
               {upcoming.map((a) => (
-                <AppointmentRow key={a.id} appt={a} onOpen={() => setSelectedAppt(a)} />
+                <AppointmentRow
+                  key={a.id}
+                  appt={a}
+                  onOpen={() => setSelectedAppt(a)}
+                  onComplete={() => completeMutation.mutate(a.id)}
+                  completing={completeMutation.isPending}
+                />
               ))}
             </Section>
           )}
           {past.length > 0 && (
             <Section title="История">
               {past.map((a) => (
-                <AppointmentRow key={a.id} appt={a} onOpen={() => setSelectedAppt(a)} />
+                <AppointmentRow
+                  key={a.id}
+                  appt={a}
+                  onOpen={() => setSelectedAppt(a)}
+                />
               ))}
             </Section>
           )}
@@ -130,20 +157,26 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function AppointmentRow({
   appt,
   onOpen,
+  onComplete,
+  completing,
 }: {
   appt: DoctorAppointment;
   onOpen: () => void;
+  onComplete?: () => void;
+  completing?: boolean;
 }) {
   return (
     <Card
       className={cn(
-        "border-border cursor-pointer hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-sm transition-all"
+        "border-border hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-sm transition-all"
       )}
-      onClick={onOpen}
     >
       <CardContent className="pt-4 pb-4">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex gap-3 min-w-0">
+          <div
+            className="flex gap-3 min-w-0 cursor-pointer flex-1"
+            onClick={onOpen}
+          >
             <div className="p-2 rounded-lg bg-teal-50 dark:bg-teal-950/50 shrink-0">
               <User className="w-4 h-4 text-teal-600 dark:text-teal-400" />
             </div>
@@ -172,7 +205,24 @@ function AppointmentRow({
               )}
             </div>
           </div>
-          <Badge variant={STATUS_VARIANTS[appt.status]}>{STATUS_LABELS[appt.status]}</Badge>
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <Badge variant={STATUS_VARIANTS[appt.status]}>{STATUS_LABELS[appt.status]}</Badge>
+            {onComplete && appt.status === "SCHEDULED" && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onComplete();
+                }}
+                disabled={completing}
+                className="h-7 text-xs"
+              >
+                <CheckCheck className="w-3 h-3 mr-1" />
+                Завершить приём
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

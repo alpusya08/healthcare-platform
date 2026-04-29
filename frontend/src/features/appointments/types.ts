@@ -28,6 +28,22 @@ export interface Appointment {
   status: AppointmentStatus;
   type: AppointmentType;
   complaint: string | null;
+  hasReview: boolean;
+}
+
+export interface DoctorReview {
+  id: string;
+  doctorId: string;
+  patientId: string;
+  patientName: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface CreateReviewRequest {
+  rating: number;
+  comment?: string;
 }
 
 export interface CreateAppointmentRequest {

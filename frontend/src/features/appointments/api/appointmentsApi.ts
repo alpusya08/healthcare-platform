@@ -1,5 +1,13 @@
 import { apiClient } from "@/shared/api/axios";
-import type { Appointment, CreateAppointmentRequest, Doctor, TimeSlot, UpcomingSlot } from "../types";
+import type {
+  Appointment,
+  CreateAppointmentRequest,
+  CreateReviewRequest,
+  Doctor,
+  DoctorReview,
+  TimeSlot,
+  UpcomingSlot,
+} from "../types";
 
 export const appointmentsApi = {
   listDoctors: (specialization?: string) =>
@@ -29,4 +37,14 @@ export const appointmentsApi = {
 
   cancel: (id: string) =>
     apiClient.delete(`/appointments/${id}`).then(() => undefined),
+
+  submitReview: (appointmentId: string, payload: CreateReviewRequest) =>
+    apiClient
+      .post<DoctorReview>(`/appointments/${appointmentId}/review`, payload)
+      .then((r) => r.data),
+
+  doctorReviews: (doctorId: string) =>
+    apiClient
+      .get<DoctorReview[]>(`/appointments/doctors/${doctorId}/reviews`)
+      .then((r) => r.data),
 };

@@ -58,4 +58,18 @@ public class AppointmentController {
         appointmentService.cancel(patientId, id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/{id}/review")
+    public ResponseEntity<ReviewResponse> review(
+            @AuthenticationPrincipal UUID patientId,
+            @PathVariable UUID id,
+            @Valid @RequestBody CreateReviewRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(appointmentService.createReview(patientId, id, request));
+    }
+
+    @GetMapping("/doctors/{doctorId}/reviews")
+    public List<ReviewResponse> doctorReviews(@PathVariable UUID doctorId) {
+        return appointmentService.listReviewsForDoctor(doctorId);
+    }
 }

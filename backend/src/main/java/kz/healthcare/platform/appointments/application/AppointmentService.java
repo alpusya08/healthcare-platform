@@ -4,16 +4,21 @@ import kz.healthcare.platform.appointments.application.dto.*;
 import kz.healthcare.platform.appointments.domain.Appointment;
 import kz.healthcare.platform.appointments.domain.AppointmentStatus;
 import kz.healthcare.platform.appointments.domain.DoctorFeedback;
+import kz.healthcare.platform.appointments.domain.DoctorReview;
 import kz.healthcare.platform.appointments.domain.TimeSlot;
 import kz.healthcare.platform.appointments.domain.exceptions.AppointmentNotCancellableException;
 import kz.healthcare.platform.appointments.domain.exceptions.SlotAlreadyBookedException;
 import kz.healthcare.platform.appointments.infrastructure.AppointmentRepository;
 import kz.healthcare.platform.appointments.infrastructure.DoctorFeedbackRepository;
+import kz.healthcare.platform.appointments.infrastructure.DoctorReviewRepository;
 import kz.healthcare.platform.appointments.infrastructure.TimeSlotRepository;
 import kz.healthcare.platform.users.domain.Doctor;
 import kz.healthcare.platform.users.domain.Patient;
 import kz.healthcare.platform.users.infrastructure.DoctorRepository;
 import kz.healthcare.platform.users.infrastructure.PatientRepository;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -38,6 +43,7 @@ public class AppointmentService {
     private final DoctorRepository doctorRepository;
     private final PatientRepository patientRepository;
     private final DoctorFeedbackRepository feedbackRepository;
+    private final DoctorReviewRepository reviewRepository;
 
     public List<DoctorSummaryResponse> listDoctors(String specializationCode) {
         return doctorRepository.findVerified(specializationCode).stream()
@@ -126,6 +132,23 @@ public class AppointmentService {
         log.info("appointment.cancelled id={} patient={}", appointmentId, patientId);
     }
 
+    @Transactional
+    public void markCompleted(UUID doctorId, UUID appointmentId) {
+        Appointment appt = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new NoSuchElementException("Запись не найдена"));
+        if (!appt.getDoctor().getId().equals(doctorId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Это не ваша запись");
+        }
+        if (appt.getStatus() != AppointmentStatus.SCHEDULED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Можно завершить только запланированный приём");
+        }
+        appt.setStatus(AppointmentStatus.COMPLETED);
+        appt.setUpdatedAt(Instant.now());
+        appointmentRepository.save(appt);
+        log.info("appointment.completed doctor={} appointment={}", doctorId, appointmentId);
+    }
+
     public List<DoctorAppointmentResponse> listForDoctor(UUID doctorId) {
         return appointmentRepository.findByDoctorIdOrderBySlot(doctorId).stream()
                 .map(this::toDoctorAppointmentResponse)
@@ -156,6 +179,63 @@ public class AppointmentService {
         log.info("feedback.submitted doctor={} appointment={} verdict={}", doctorId, appointmentId, request.verdict());
     }
 
+    @Transactional
+    public ReviewResponse createReview(UUID patientId, UUID appointmentId, CreateReviewRequest request) {
+        Appointment appt = appointmentRepository.findByIdAndPatientId(appointmentId, patientId)
+                .orElseThrow(() -> new NoSuchElementException("Запись не найдена"));
+
+        if (appt.getStatus() != AppointmentStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Оставить отзыв можно только после завершённого приёма");
+        }
+        if (reviewRepository.existsByAppointmentId(appointmentId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Отзыв уже оставлен");
+        }
+
+        DoctorReview review = DoctorReview.builder()
+                .appointment(appt)
+                .doctor(appt.getDoctor())
+                .patient(appt.getPatient())
+                .rating(request.rating().shortValue())
+                .comment(request.comment())
+                .build();
+
+        reviewRepository.save(review);
+        recomputeDoctorRating(appt.getDoctor());
+        log.info("review.created doctor={} appointment={} rating={}",
+                appt.getDoctor().getId(), appointmentId, request.rating());
+
+        return toReviewResponse(review);
+    }
+
+    public List<ReviewResponse> listReviewsForDoctor(UUID doctorId) {
+        return reviewRepository.findByDoctorId(doctorId).stream()
+                .map(this::toReviewResponse)
+                .toList();
+    }
+
+    private void recomputeDoctorRating(Doctor doctor) {
+        Double avg = reviewRepository.averageRatingForDoctor(doctor.getId());
+        if (avg == null) {
+            doctor.setAverageRating(BigDecimal.ZERO);
+        } else {
+            doctor.setAverageRating(BigDecimal.valueOf(avg).setScale(2, RoundingMode.HALF_UP));
+        }
+        doctorRepository.save(doctor);
+    }
+
+    private ReviewResponse toReviewResponse(DoctorReview r) {
+        return new ReviewResponse(
+                r.getId(),
+                r.getDoctor().getId(),
+                r.getPatient().getId(),
+                r.getPatient().getUser().getFullName(),
+                r.getRating(),
+                r.getComment(),
+                r.getCreatedAt()
+        );
+    }
+
     private DoctorAppointmentResponse toDoctorAppointmentResponse(Appointment a) {
         return new DoctorAppointmentResponse(
                 a.getId(),
@@ -184,6 +264,8 @@ public class AppointmentService {
     }
 
     private AppointmentResponse toResponse(Appointment a) {
+        boolean hasReview = a.getStatus() == AppointmentStatus.COMPLETED
+                && reviewRepository.existsByAppointmentId(a.getId());
         return new AppointmentResponse(
                 a.getId(),
                 a.getDoctor().getId(),
@@ -193,7 +275,8 @@ public class AppointmentService {
                 a.getTimeSlot().getEndTime(),
                 a.getStatus(),
                 a.getType(),
-                a.getComplaint()
+                a.getComplaint(),
+                hasReview
         );
     }
 }

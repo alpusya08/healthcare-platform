@@ -1,6 +1,7 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Calendar, Clock, Stethoscope, XCircle, Plus } from "lucide-react";
+import { Calendar, Clock, Stethoscope, XCircle, Plus, Star, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -8,6 +9,7 @@ import { Badge } from "@/shared/ui/badge";
 import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
 import type { Appointment, AppointmentStatus } from "@/features/appointments/types";
 import { routes } from "@/shared/config/routes";
+import { ReviewModal } from "@/widgets/review-modal/ReviewModal";
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
   SCHEDULED: "Запланировано",
@@ -32,7 +34,15 @@ function formatDateTime(iso: string) {
   });
 }
 
-function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel: (id: string) => void }) {
+function AppointmentCard({
+  appt,
+  onCancel,
+  onReview,
+}: {
+  appt: Appointment;
+  onCancel: (id: string) => void;
+  onReview: (appt: Appointment) => void;
+}) {
   return (
     <Card className="border-border">
       <CardContent className="pt-5 pb-4">
@@ -72,6 +82,21 @@ function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel: (id:
                 Отменить
               </button>
             )}
+            {appt.status === "COMPLETED" && !appt.hasReview && (
+              <button
+                onClick={() => onReview(appt)}
+                className="flex items-center gap-1 text-xs text-teal-700 dark:text-teal-400 hover:underline font-medium"
+              >
+                <Star className="w-3.5 h-3.5" />
+                Оставить отзыв
+              </button>
+            )}
+            {appt.status === "COMPLETED" && appt.hasReview && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Отзыв оставлен
+              </span>
+            )}
           </div>
         </div>
       </CardContent>
@@ -81,6 +106,7 @@ function AppointmentCard({ appt, onCancel }: { appt: Appointment; onCancel: (id:
 
 export function AppointmentsPage() {
   const queryClient = useQueryClient();
+  const [reviewTarget, setReviewTarget] = useState<Appointment | null>(null);
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments", "my"],
@@ -141,6 +167,7 @@ export function AppointmentsPage() {
                   key={a.id}
                   appt={a}
                   onCancel={(id) => cancelMutation.mutate(id)}
+                  onReview={setReviewTarget}
                 />
               ))}
             </div>
@@ -155,11 +182,20 @@ export function AppointmentsPage() {
                   key={a.id}
                   appt={a}
                   onCancel={(id) => cancelMutation.mutate(id)}
+                  onReview={setReviewTarget}
                 />
               ))}
             </div>
           )}
         </>
+      )}
+
+      {reviewTarget && (
+        <ReviewModal
+          appointmentId={reviewTarget.id}
+          doctorName={reviewTarget.doctorName}
+          onClose={() => setReviewTarget(null)}
+        />
       )}
     </div>
   );

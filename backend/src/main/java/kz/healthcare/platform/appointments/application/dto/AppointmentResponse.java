@@ -15,5 +15,6 @@ public record AppointmentResponse(
         Instant endTime,
         AppointmentStatus status,
         AppointmentType type,
-        String complaint
+        String complaint,
+        boolean hasReview
 ) {}

@@ -36,4 +36,12 @@ public class DoctorPortalController {
         appointmentService.submitFeedback(doctorId, appointmentId, request);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/appointments/{appointmentId}/complete")
+    public ResponseEntity<Void> markCompleted(
+            @AuthenticationPrincipal UUID doctorId,
+            @PathVariable UUID appointmentId) {
+        appointmentService.markCompleted(doctorId, appointmentId);
+        return ResponseEntity.noContent().build();
+    }
 }
