@@ -9,6 +9,8 @@ export const routes = {
     appointments: "/appointments",
     bookAppointment: "/book/:doctorId",
     doctors: "/doctors",
+    doctorProfile: "/doctors/:doctorId",
+    cabinet: "/cabinet",
     profile: "/profile",
   },
 

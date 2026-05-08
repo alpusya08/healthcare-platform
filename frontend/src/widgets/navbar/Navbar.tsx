@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Moon, Sun, LogOut, User, ChevronDown, Activity, Calendar, Home } from "lucide-react";
+import { Moon, Sun, LogOut, User, ChevronDown, Activity, Calendar, Home, LayoutDashboard } from "lucide-react";
 import { Logo } from "@/shared/ui/Logo";
 import { Button } from "@/shared/ui/button";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
@@ -20,6 +20,7 @@ const NAV_LINKS = [
   { to: routes.patient.home, label: "Главная", icon: Home },
   { to: routes.patient.aiAnalysis, label: "Симптомы", icon: Activity },
   { to: routes.patient.appointments, label: "Записи", icon: Calendar },
+  { to: routes.patient.cabinet, label: "Кабинет", icon: LayoutDashboard },
 ];
 
 export function Navbar() {
@@ -109,9 +110,11 @@ export function Navbar() {
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 cursor-pointer">
-                <User className="w-4 h-4" />
-                Профиль
+              <DropdownMenuItem asChild className="gap-2 cursor-pointer">
+                <Link to={routes.patient.cabinet}>
+                  <User className="w-4 h-4" />
+                  Мой кабинет
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

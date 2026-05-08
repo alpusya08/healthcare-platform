@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { Stethoscope, Star, Clock, ChevronRight, Search } from "lucide-react";
+import { Stethoscope, Star, Clock, ChevronRight, Search, SlidersHorizontal, X } from "lucide-react";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
 import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
 import type { Doctor } from "@/features/appointments/types";
 
@@ -54,26 +55,60 @@ function DoctorCard({ doctor, onClick }: { doctor: Doctor; onClick: () => void }
   );
 }
 
+const RATING_OPTIONS = [
+  { label: "Любой", value: 0 },
+  { label: "4+", value: 4 },
+  { label: "4.5+", value: 4.5 },
+];
+
+const PRICE_OPTIONS = [
+  { label: "Любая", value: Infinity },
+  { label: "до 5 000 ₸", value: 5000 },
+  { label: "до 10 000 ₸", value: 10000 },
+  { label: "до 20 000 ₸", value: 20000 },
+];
+
 export function DoctorsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const specFilter = searchParams.get("specialization");
+
   const [search, setSearch] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [minRating, setMinRating] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(Infinity);
+  const [selectedSpec, setSelectedSpec] = useState<string>(specFilter ?? "");
 
   const { data: doctors = [], isLoading } = useQuery({
     queryKey: ["doctors"],
     queryFn: () => appointmentsApi.listDoctors(),
   });
 
-  const filtered = doctors.filter((d) => {
-    const matchesSpec = specFilter
-      ? d.specialization.toLowerCase() === specFilter.toLowerCase()
+  const specializations = useMemo(
+    () => Array.from(new Set(doctors.map((d) => d.specialization))).sort(),
+    [doctors]
+  );
+
+  const filtered = doctors.filter((d: Doctor) => {
+    const matchesSpec = selectedSpec
+      ? d.specialization.toLowerCase() === selectedSpec.toLowerCase()
       : true;
     const matchesSearch =
       d.fullName.toLowerCase().includes(search.toLowerCase()) ||
       d.specialization.toLowerCase().includes(search.toLowerCase());
-    return matchesSpec && matchesSearch;
+    const matchesRating = d.averageRating >= minRating;
+    const matchesPrice =
+      d.consultationFee == null ? true : d.consultationFee <= maxPrice;
+    return matchesSpec && matchesSearch && matchesRating && matchesPrice;
   });
+
+  const hasActiveFilters = minRating > 0 || maxPrice < Infinity || selectedSpec !== "";
+
+  const clearFilters = () => {
+    setMinRating(0);
+    setMaxPrice(Infinity);
+    setSelectedSpec("");
+  };
 
   return (
     <div className="space-y-6">
@@ -84,45 +119,147 @@ export function DoctorsPage() {
         </p>
       </div>
 
-      {specFilter && (
+      {specFilter && selectedSpec === specFilter && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-sm text-teal-700 dark:text-teal-300">
           <Stethoscope className="w-4 h-4 shrink-0" />
           <span>
-            По результатам анализа рекомендован специалист:{" "}
+            По результатам анализа рекомендован:{" "}
             <strong className="capitalize">{specFilter}</strong>
           </span>
           <button
             className="ml-auto text-xs underline text-teal-600 dark:text-teal-400"
-            onClick={() => navigate("/doctors")}
+            onClick={clearFilters}
           >
             Все врачи
           </button>
         </div>
       )}
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Поиск по имени или специальности..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Search + filter toggle */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Поиск по имени или специальности..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button
+          variant={showFilters ? "default" : "outline"}
+          size="icon"
+          onClick={() => setShowFilters((v) => !v)}
+          className="shrink-0"
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+        </Button>
       </div>
+
+      {/* Filters panel */}
+      {showFilters && (
+        <Card className="border-border">
+          <CardContent className="pt-4 pb-4 space-y-4">
+            {/* Specialization */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">
+                Специализация
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedSpec("")}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                    selectedSpec === ""
+                      ? "bg-teal-600 border-teal-600 text-white"
+                      : "border-border text-foreground hover:border-teal-400"
+                  }`}
+                >
+                  Все
+                </button>
+                {specializations.map((spec) => (
+                  <button
+                    key={spec}
+                    onClick={() => setSelectedSpec(spec)}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                      selectedSpec === spec
+                        ? "bg-teal-600 border-teal-600 text-white"
+                        : "border-border text-foreground hover:border-teal-400"
+                    }`}
+                  >
+                    {spec}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Rating */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">
+                Минимальный рейтинг
+              </p>
+              <div className="flex gap-2">
+                {RATING_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setMinRating(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                      minRating === opt.value
+                        ? "bg-teal-600 border-teal-600 text-white"
+                        : "border-border text-foreground hover:border-teal-400"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Price */}
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">
+                Стоимость приёма
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PRICE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setMaxPrice(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                      maxPrice === opt.value
+                        ? "bg-teal-600 border-teal-600 text-white"
+                        : "border-border text-foreground hover:border-teal-400"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+                Сбросить фильтры
+              </button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="text-center py-12 text-muted-foreground">Загрузка...</div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          Врачи не найдены
-        </div>
+        <div className="text-center py-12 text-muted-foreground">Врачи не найдены</div>
       ) : (
         <div className="space-y-3">
           {filtered.map((doctor) => (
             <DoctorCard
               key={doctor.id}
               doctor={doctor}
-              onClick={() => navigate(`/book/${doctor.id}`)}
+              onClick={() => navigate(`/doctors/${doctor.id}`)}
             />
           ))}
         </div>

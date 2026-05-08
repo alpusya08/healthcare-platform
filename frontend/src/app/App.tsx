@@ -12,7 +12,9 @@ import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 import { AnalysisPage } from "@/pages/analysis/AnalysisPage";
 import { AppointmentsPage } from "@/pages/appointments/AppointmentsPage";
 import { DoctorsPage } from "@/pages/appointments/DoctorsPage";
+import { DoctorProfilePage } from "@/pages/appointments/DoctorProfilePage";
 import { BookAppointmentPage } from "@/pages/appointments/BookAppointmentPage";
+import { PatientCabinetPage } from "@/pages/cabinet/PatientCabinetPage";
 import { DoctorDashboard } from "@/pages/doctor/DoctorDashboard";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { routes } from "@/shared/config/routes";
@@ -43,7 +45,9 @@ export function App() {
                   <Route path={routes.patient.aiAnalysis} element={<AnalysisPage />} />
                   <Route path={routes.patient.appointments} element={<AppointmentsPage />} />
                   <Route path={routes.patient.doctors} element={<DoctorsPage />} />
+                  <Route path={routes.patient.doctorProfile} element={<DoctorProfilePage />} />
                   <Route path={routes.patient.bookAppointment} element={<BookAppointmentPage />} />
+                  <Route path={routes.patient.cabinet} element={<PatientCabinetPage />} />
                 </Route>
               </Route>
 
