@@ -45,18 +45,21 @@ public class AppointmentService {
     private final DoctorFeedbackRepository feedbackRepository;
     private final DoctorReviewRepository reviewRepository;
 
+    @Transactional(readOnly = true)
     public List<DoctorSummaryResponse> listDoctors(String specializationCode) {
         return doctorRepository.findVerified(specializationCode).stream()
                 .map(this::toDoctorSummary)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<TimeSlotResponse> listAvailableSlots(UUID doctorId) {
         return timeSlotRepository.findAvailableByDoctorId(doctorId).stream()
                 .map(ts -> new TimeSlotResponse(ts.getId(), ts.getStartTime(), ts.getEndTime()))
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<UpcomingSlotResponse> listUpcomingSlots(String specializationCode, int limit) {
         int safeLimit = Math.min(Math.max(limit, 1), 20);
         return timeSlotRepository

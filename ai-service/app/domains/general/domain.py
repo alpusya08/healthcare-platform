@@ -69,7 +69,7 @@ All output fields must be in RUSSIAN. Return a single JSON object:
 {"primary_diagnosis":"1-sentence working diagnosis in Russian","summary":"1-2 sentence summary in Russian","explanation":"2-3 sentence explanation in Russian ending with: Важно: данная оценка носит информационный характер и не является диагнозом.","possible_causes":["cause1","cause2","cause3"],"red_flags":[],"recommendations":["rec1","rec2","rec3"],"triage_level":"ROUTINE","recommended_specialization":"therapy","confidence":0.6}
 
 triage_level: EMERGENCY (call ambulance now) / URGENT (see doctor today) / ROUTINE (schedule appointment).
-recommended_specialization: therapy / neurology / cardiology / surgery / dermatology / orthopedics / gastroenterology / pulmonology / otolaryngology.
+recommended_specialization — use ONLY one of these exact codes: therapy, neurology, cardiology, dermatology, endocrinology, gastroenterology, orthopedics, surgery, pulmonology, otolaryngology.
 confidence: 0.0–1.0 reflecting how certain the assessment is given available data.
 red_flags: list serious warning signs if any, empty array otherwise.
 """
