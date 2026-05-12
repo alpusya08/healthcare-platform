@@ -166,7 +166,7 @@ services:
     restart: no
     entrypoint: >
       /bin/sh -c "
-        ollama pull ${OLLAMA_MODEL:-llama3.2:3b};
+        ollama pull ${OLLAMA_MODEL:-qwen2.5:1.5b};
         echo 'Model ready';
       "
     environment:
@@ -193,7 +193,7 @@ services:
       AI_SERVICE_INTERNAL_TOKEN: ${AI_SERVICE_INTERNAL_TOKEN:-internal-shared-secret-between-backend-and-ai}
       LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
       OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
