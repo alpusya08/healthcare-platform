@@ -118,7 +118,10 @@ class GeneralSymptomDomain(MedicalDomain):
     ) -> Optional[Question]:
         if session.questions_count >= MAX_QUESTIONS:
             return None
-        return self._fallback_question(session, partial_features)
+        try:
+            return await self._llm_next_question(session, partial_features)
+        except Exception:
+            return self._fallback_question(session, partial_features)
 
     async def check_emergency(self, features: MedicalFeatures) -> Optional[str]:
         desc = (features.get("_raw_description") or "").lower()
@@ -128,7 +131,10 @@ class GeneralSymptomDomain(MedicalDomain):
         return None
 
     async def predict(self, features: MedicalFeatures) -> Diagnosis:
-        return self._smart_diagnosis(features)
+        try:
+            return await self._llm_predict(features)
+        except Exception:
+            return self._smart_diagnosis(features)
 
     def get_model_version(self) -> str:
         return "general-llm-v1"
