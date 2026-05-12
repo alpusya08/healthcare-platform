@@ -42,7 +42,7 @@ app:
   ai-service:
     base-url: ${AI_SERVICE_URL:http://localhost:8000}
     internal-token: ${AI_SERVICE_INTERNAL_TOKEN:internal-shared-secret-between-backend-and-ai}
-    timeout: PT60S
+    timeout: ${AI_SERVICE_TIMEOUT:PT180S}
   storage:
     minio:
       endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

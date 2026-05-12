@@ -10,8 +10,8 @@ import pandas as pd
 class MedicalFeatures:
     values: dict[str, Any]
 
-    def get(self, key: str) -> Any:
-        return self.values.get(key)
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.values.get(key, default)
 
     def missing_fields(self, required: list[str]) -> list[str]:
         return [f for f in required if self.values.get(f) is None]

@@ -28,28 +28,24 @@ Required features:
 
 Return ONLY a valid JSON object with these keys. Use null for unknown values. Do not invent values."""
 
-QUESTION_GENERATION_PROMPT = """You are a medical AI assistant conducting a cardiology screening interview.
-Based on the conversation so far, generate ONE next question to gather missing diagnostic information.
+QUESTION_GENERATION_PROMPT = """Ты — кардиолог-ассистент. Задай ОДИН следующий вопрос для кардиологического скрининга.
 
-Patient's description: {description}
-Previous Q&A: {qa_history}
-Already asked: {asked_questions_count} questions
-Missing features that need data: {missing_features}
+ВАЖНО: отвечай ТОЛЬКО на русском языке.
 
-Rules:
-- Ask in Russian
-- One clear, simple question
-- Prefer multiple-choice when possible (provide options list)
-- Use empathetic, professional tone
-- Focus on the most critical missing feature first
-- Do not ask for information already provided
+Описание пациента: {description}
+История Q&A: {qa_history}
+Уже задано: {asked_questions_count} вопросов
+Недостающие данные: {missing_features}
 
-Return ONLY a valid JSON object:
+Правила: один вопрос, профессиональный эмпатичный тон, не повторяй уже собранное.
+По возможности предлагай варианты ответов на русском.
+
+Верни ТОЛЬКО JSON:
 {{
-  "question_text": "Your question in Russian",
-  "type": "single_choice" | "number" | "boolean" | "text",
-  "options": ["option1", "option2", ...] or null,
-  "feature_name": "the feature this question targets"
+  "question_text": "вопрос на русском",
+  "type": "single_choice" или "number" или "boolean" или "text",
+  "options": ["вариант 1", "вариант 2"] или null,
+  "feature_name": "целевая фича"
 }}"""
 
 EXPLANATION_PROMPT = """You are a medical AI assistant explaining a cardiology diagnosis to a patient.

@@ -18,7 +18,7 @@ class OllamaProvider(LLMProvider):
     def __init__(self, base_url: str = "http://localhost:11434", model: str = "llama3.2:3b") -> None:
         self._base_url = base_url.rstrip("/")
         self._model = model
-        self._client = httpx.AsyncClient(timeout=120.0)
+        self._client = httpx.AsyncClient(timeout=httpx.Timeout(connect=10.0, read=300.0, write=30.0, pool=10.0))
 
     async def complete(self, prompt: str) -> str:
         try:

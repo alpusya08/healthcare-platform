@@ -43,61 +43,34 @@ _EMERGENCY_PATTERNS = [
 ]
 
 _QUESTION_SYSTEM_PROMPT = """\
-You are a medical AI assistant helping to gather clinical information from a patient.
-The patient has described their symptoms. Your job is to ask ONE focused follow-up question
-to better understand their condition.
+Ты — медицинский ИИ-ассистент. Твоя задача — задать ОДИН уточняющий вопрос пациенту на русском языке.
 
-Rules:
-- Ask exactly one question per turn
-- Make the question feel natural and conversational, NOT like a form field
-- Tailor the question specifically to what the patient just described
-- Do not repeat information the patient already gave
-- Do not suggest diagnoses yet
-- If you have enough information (symptoms, duration, severity, context), return null for the question
+ВАЖНО: отвечай ТОЛЬКО на русском языке. Никакого английского.
 
-Respond ONLY with valid JSON in this exact format:
-{
-  "question_text": "Your question here in Russian",
-  "question_type": "text" | "choice" | "scale",
-  "options": ["option1", "option2"] or null,
-  "feature_name": "one_of_the_feature_names",
-  "hint": "optional clarifying hint in Russian or null"
-}
+Правила:
+- Один вопрос за раз
+- Разговорный тон, не как анкета
+- Вопрос должен касаться конкретных симптомов пациента
+- Не повторяй уже полученную информацию
+- Не ставь диагноз
 
-If enough information is already collected, respond with:
-{"done": true}
+Если информации уже достаточно — верни {"done": true}
 
-Feature names to use (pick the most relevant):
-duration_days, pain_severity, pain_character, pain_location, associated_symptoms,
-fever, food_relation, radiation, movement_relation, swelling, trauma, movement_limit,
-cough_type, throat_pain, nasal_congestion, onset, photophobia, associated_nausea,
-spread, trigger, skin_symptom
+Иначе верни JSON:
+{"question_text": "вопрос на русском", "question_type": "text", "options": null, "feature_name": "имя_фичи", "hint": null}
+
+question_type: "text" для открытых, "choice" если есть варианты (тогда заполни options на русском).
+feature_name — одно из: duration_days, pain_severity, pain_character, pain_location, associated_symptoms,
+fever, food_relation, radiation, movement_relation, swelling, trauma, onset, photophobia, associated_nausea, trigger
 """
 
 _REPORT_SYSTEM_PROMPT = """\
-You are an experienced general practitioner reviewing a patient's symptom intake.
-Based on the conversation below, produce a structured clinical assessment.
+Ты — врач-терапевт. На основе жалоб пациента дай краткое заключение ТОЛЬКО на русском языке.
 
-Respond ONLY with valid JSON in this exact format:
-{
-  "primary_diagnosis": "Brief working diagnosis in Russian (1 sentence)",
-  "summary": "Clinical summary of the chief complaint and key findings in Russian (2-3 sentences)",
-  "explanation": "Patient-friendly explanation of what might be happening, in Russian (3-5 sentences)",
-  "possible_causes": ["cause1 in Russian", "cause2", "cause3"],
-  "red_flags": ["flag1 in Russian if present"] or [],
-  "recommendations": ["rec1 in Russian", "rec2", "rec3"],
-  "triage_level": "EMERGENCY" | "URGENT" | "ROUTINE",
-  "recommended_specialization": "therapy" | "neurology" | "cardiology" | "surgery" | "dermatology" | "orthopedics" | "gastroenterology",
-  "confidence": 0.0
-}
+Верни JSON — все поля короткие, на русском:
+{"primary_diagnosis":"диагноз 1 предложение","summary":"резюме 1-2 предложения","explanation":"объяснение 2 предложения. Важно: данная оценка носит информационный характер и не является диагнозом.","possible_causes":["причина1","причина2"],"red_flags":[],"recommendations":["рек1","рек2"],"triage_level":"ROUTINE","recommended_specialization":"therapy","confidence":0.0}
 
-Always end explanation with:
-"Важно: данная оценка носит информационный характер и не является диагнозом."
-
-For triage_level:
-- EMERGENCY: life-threatening symptoms (stroke signs, acute abdomen, severe allergic reaction)
-- URGENT: significant symptoms needing same-day or next-day care
-- ROUTINE: non-urgent, can wait for scheduled appointment
+triage_level: EMERGENCY/URGENT/ROUTINE. specialization: therapy/neurology/cardiology/surgery/dermatology/orthopedics/gastroenterology.
 """
 
 
@@ -144,12 +117,7 @@ class GeneralSymptomDomain(MedicalDomain):
     ) -> Optional[Question]:
         if session.questions_count >= MAX_QUESTIONS:
             return None
-
-        try:
-            return await self._llm_next_question(session, partial_features)
-        except Exception as exc:
-            logger.warning("llm_question_failed_falling_back", error=str(exc))
-            return self._fallback_question(session, partial_features)
+        return self._fallback_question(session, partial_features)
 
     async def check_emergency(self, features: MedicalFeatures) -> Optional[str]:
         desc = (features.get("_raw_description") or "").lower()
@@ -159,11 +127,7 @@ class GeneralSymptomDomain(MedicalDomain):
         return None
 
     async def predict(self, features: MedicalFeatures) -> Diagnosis:
-        try:
-            return await self._llm_predict(features)
-        except Exception as exc:
-            logger.warning("llm_predict_failed_falling_back", error=str(exc))
-            return self._fallback_diagnosis(features)
+        return self._smart_diagnosis(features)
 
     def get_model_version(self) -> str:
         return "general-llm-v1"
@@ -291,11 +255,21 @@ class GeneralSymptomDomain(MedicalDomain):
                 )
         return None
 
-    def _fallback_diagnosis(self, features: MedicalFeatures) -> Diagnosis:
+    def _smart_diagnosis(self, features: MedicalFeatures) -> Diagnosis:
         area = features.get("symptom_area") or "general"
         area_name = AREA_DISPLAY_NAMES.get(area, "симптомы")
-        severity_raw = str(features.get("pain_severity") or "")
-        is_severe = any(w in severity_raw.lower() for w in ["7–8", "9–10", "сильн", "невынос"])
+        desc = features.get("_raw_description") or ""
+        severity = str(features.get("pain_severity") or "")
+        duration = str(features.get("duration_days") or "")
+        character = str(features.get("pain_character") or "")
+        location = str(features.get("pain_location") or "")
+        fever = str(features.get("fever") or "")
+        onset = str(features.get("onset") or "")
+
+        is_severe = any(w in severity.lower() for w in ["7", "8", "9", "10", "сильн", "невынос"])
+        is_long = any(w in duration.lower() for w in ["недел", "месяц", "давно"])
+        is_sudden = any(w in onset.lower() for w in ["внезапн", "резко", "сразу"])
+        has_fever = fever and "нет" not in fever.lower() and "нормал" not in fever.lower()
 
         spec_map = {
             "head": "neurology", "back": "neurology", "abdomen": "gastroenterology",
@@ -306,24 +280,69 @@ class GeneralSymptomDomain(MedicalDomain):
             "throat": "терапевту или ЛОР-врачу", "limbs": "травматологу или ревматологу",
             "skin": "дерматологу",
         }
+        causes_map = {
+            "head": ["Головная боль напряжения (стресс, переутомление)", "Мигрень", "Повышение артериального давления", "Шейный остеохондроз"],
+            "back": ["Мышечный спазм или остеохондроз", "Протрузия или грыжа межпозвонкового диска", "Перенапряжение мышц спины"],
+            "abdomen": ["Гастрит или язвенная болезнь", "Кишечная колика или СРК", "Панкреатит"],
+            "throat": ["ОРВИ (вирусная инфекция)", "Ангина (бактериальная инфекция)", "Фарингит или ларингит"],
+            "limbs": ["Артроз или артрит сустава", "Растяжение связок или мышц", "Тендинит после нагрузки"],
+            "skin": ["Контактный дерматит", "Аллергическая реакция", "Атопический дерматит"],
+        }
+
+        # Build personalized summary
+        summary_parts = [f"Основная жалоба: {area_name}."]
+        if duration:
+            summary_parts.append(f"Длительность: {duration}.")
+        if severity:
+            summary_parts.append(f"Интенсивность: {severity}.")
+        if character:
+            summary_parts.append(f"Характер: {character}.")
+        if location:
+            summary_parts.append(f"Локализация: {location}.")
+        if has_fever:
+            summary_parts.append(f"Температура: {fever}.")
+
+        # Build explanation
+        explanation_parts = [f"По вашим симптомам наиболее вероятна патология в области «{area_name}»."]
+        if is_severe:
+            explanation_parts.append("Интенсивность жалоб высокая — рекомендуем не откладывать визит к врачу.")
+        if is_long:
+            explanation_parts.append("Длительное течение симптомов требует углублённого обследования.")
+        if is_sudden:
+            explanation_parts.append("Внезапное начало симптомов требует внимания специалиста.")
+        if has_fever:
+            explanation_parts.append("Наличие температуры может указывать на воспалительный процесс.")
+        explanation_parts.append("Важно: данная оценка носит информационный характер и не является диагнозом.")
+
+        # Red flags
+        red_flags = []
+        if is_severe and is_sudden and area == "head":
+            red_flags.append("Внезапная сильная головная боль требует исключения сосудистой катастрофы")
+        if is_severe and area == "abdomen":
+            red_flags.append("Выраженная боль в животе — исключить хирургическую патологию")
+
+        # Recommendations
+        specialist = specialist_ru.get(area, "терапевту")
+        recs = [f"Запишитесь на консультацию к {specialist}"]
+        if is_severe or is_long:
+            recs.insert(0, "Не откладывайте визит — симптомы требуют обследования")
+        recs.append("Если состояние резко ухудшится — вызовите скорую: 103")
+
+        triage = TriageLevel.URGENT if (is_severe or is_long or red_flags) else TriageLevel.ROUTINE
 
         return Diagnosis(
             domain=self.code,
-            primary_diagnosis=f"Жалобы на {area_name}",
+            primary_diagnosis=f"Жалобы на {area_name}" + (f", {character}" if character else ""),
             confidence=0.0,
-            explanation=(
-                f"По описанным симптомам можно предположить проблемы в области «{area_name}». "
-                "Для точного диагноза необходим осмотр врача.\n\n"
-                "Важно: данная оценка носит информационный характер и не является диагнозом."
-            ),
-            recommendations=[
-                f"Запишитесь на консультацию к {specialist_ru.get(area, 'терапевту')}",
-                "Если состояние ухудшится — вызовите скорую: 103",
-            ],
-            triage_level=TriageLevel.URGENT if is_severe else TriageLevel.ROUTINE,
+            explanation=" ".join(explanation_parts),
+            recommendations=recs,
+            triage_level=triage,
             model_version=self.get_model_version(),
             recommended_specialization=spec_map.get(area, "therapy"),
-            possible_causes=["Требуется уточнение после осмотра врача"],
-            red_flags=[],
-            summary=f"Жалобы на {area_name}. {features.get('_raw_description', '')}",
+            possible_causes=(causes_map.get(area) or ["Требуется уточнение после осмотра врача"])[:3],
+            red_flags=red_flags,
+            summary=" ".join(summary_parts),
         )
+
+    def _fallback_diagnosis(self, features: MedicalFeatures) -> Diagnosis:
+        return self._smart_diagnosis(features)

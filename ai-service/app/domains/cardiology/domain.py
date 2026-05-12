@@ -25,6 +25,7 @@ from app.domains.cardiology.prompts import (
     EXTRACTION_PROMPT,
     QUESTION_GENERATION_PROMPT,
 )
+from app.domains.cardiology.static_questions import get_next_static_question
 from app.domains.cardiology.triage_rules import check_cardiology_emergency
 
 logger = structlog.get_logger()
@@ -48,14 +49,29 @@ class CardiologyDomain(MedicalDomain):
         self._predictor = predictor
 
     async def extract_features(self, session: AnalysisSession) -> MedicalFeatures:
-        prompt = EXTRACTION_PROMPT.format(
-            description=session.initial_description,
-            qa_history=session.format_qa_history(),
-            file_summaries=session.format_files_summary(),
-        )
-        raw = await self._llm.complete_structured(prompt, schema={})
-        values = {k: raw.get(k) for k in CARDIOLOGY_FEATURES}
+        return self._extract_from_answers(session)
+
+    async def extract_features_for_prediction(self, session: AnalysisSession) -> MedicalFeatures:
+        try:
+            prompt = EXTRACTION_PROMPT.format(
+                description=session.initial_description,
+                qa_history=session.format_qa_history(),
+                file_summaries=session.format_files_summary(),
+            )
+            raw = await self._llm.complete_structured(prompt, schema={})
+            values = {k: raw.get(k) for k in CARDIOLOGY_FEATURES}
+            values["_raw_description"] = session.initial_description
+            return MedicalFeatures(values=values)
+        except Exception:
+            logger.exception("cardiology_llm_extraction_failed_using_answers")
+            return self._extract_from_answers(session)
+
+    def _extract_from_answers(self, session: AnalysisSession) -> MedicalFeatures:
+        values: dict = {k: None for k in CARDIOLOGY_FEATURES}
         values["_raw_description"] = session.initial_description
+        for q in session.questions:
+            if q.feature_name and q.answer and q.feature_name in CARDIOLOGY_FEATURES:
+                values[q.feature_name] = q.answer
         return MedicalFeatures(values=values)
 
     async def generate_next_question(
@@ -70,30 +86,7 @@ class CardiologyDomain(MedicalDomain):
         if len(missing) <= TOLERATED_MISSING_THRESHOLD:
             return None
 
-        prioritized = [f for f in FEATURE_PRIORITY if f in missing]
-        prompt = QUESTION_GENERATION_PROMPT.format(
-            description=session.initial_description,
-            qa_history=session.format_qa_history(),
-            asked_questions_count=session.questions_count,
-            missing_features=", ".join(prioritized[:5]),
-        )
-
-        try:
-            raw = await self._llm.complete_structured(prompt, schema={})
-            q_type = QuestionType(raw.get("type", "text"))
-            return Question(
-                id=uuid.uuid4(),
-                session_id=session.id,
-                question_text=raw["question_text"],
-                question_type=q_type,
-                options=raw.get("options"),
-                feature_name=raw.get("feature_name"),
-                hint=raw.get("hint"),
-                order_index=session.questions_count,
-            )
-        except Exception:
-            logger.exception("question_generation_failed")
-            return None
+        return get_next_static_question(session, partial_features)
 
     async def check_emergency(self, features: MedicalFeatures) -> Optional[str]:
         return check_cardiology_emergency(features)
