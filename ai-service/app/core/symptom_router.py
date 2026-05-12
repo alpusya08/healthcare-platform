@@ -7,7 +7,7 @@ _NON_CARDIAC_PATTERNS = [
     r"\bмигрен",         # migraine
     r"\bжелудо",         # stomach
     r"\bживот",          # abdomen
-    r"\bтошнот",         # nausea
+    r"\bтошн",           # nausea: тошнит, тошнота, тошнило
     r"\bрвот",           # vomiting
     r"\bспин",           # back
     r"\bпоясниц",        # lower back
@@ -77,4 +77,4 @@ def detect_symptom_area(description: str) -> str:
     if has_non_cardiac:
         return "general"
 
-    return "cardiology"
+    return "general"
