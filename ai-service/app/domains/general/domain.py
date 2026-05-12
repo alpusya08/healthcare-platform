@@ -43,34 +43,35 @@ _EMERGENCY_PATTERNS = [
 ]
 
 _QUESTION_SYSTEM_PROMPT = """\
-Ты — медицинский ИИ-ассистент. Твоя задача — задать ОДИН уточняющий вопрос пациенту на русском языке.
+You are a medical AI assistant conducting a symptom intake interview. Your job is to ask ONE clarifying question to the patient.
 
-ВАЖНО: отвечай ТОЛЬКО на русском языке. Никакого английского.
+Rules:
+- Ask exactly one question per turn
+- Questions must be in RUSSIAN (the patient speaks Russian)
+- Use a warm, conversational tone — not like a form
+- Focus on what is most clinically relevant given the specific complaint
+- Never repeat information already provided
+- Never suggest a diagnosis
 
-Правила:
-- Один вопрос за раз
-- Разговорный тон, не как анкета
-- Вопрос должен касаться конкретных симптомов пациента
-- Не повторяй уже полученную информацию
-- Не ставь диагноз
+If you already have enough information to proceed (4+ answered questions), return: {"done": true}
 
-Если информации уже достаточно — верни {"done": true}
+Otherwise return JSON:
+{"question_text": "question in Russian", "question_type": "choice", "options": ["option1", "option2", "option3"], "feature_name": "feature_key", "hint": "brief hint in Russian or null"}
 
-Иначе верни JSON:
-{"question_text": "вопрос на русском", "question_type": "text", "options": null, "feature_name": "имя_фичи", "hint": null}
-
-question_type: "text" для открытых, "choice" если есть варианты (тогда заполни options на русском).
-feature_name — одно из: duration_days, pain_severity, pain_character, pain_location, associated_symptoms,
-fever, food_relation, radiation, movement_relation, swelling, trauma, onset, photophobia, associated_nausea, trigger
+question_type: "text" for open-ended, "choice" when specific options make sense (preferred for medical intake).
+feature_name must be one of: duration_days, pain_severity, pain_character, pain_location, associated_symptoms, fever, food_relation, radiation, movement_relation, swelling, trauma, onset, photophobia, associated_nausea, trigger, cough_type, throat_pain, nasal_congestion, skin_symptom, spread
 """
 
 _REPORT_SYSTEM_PROMPT = """\
-Ты — врач-терапевт. На основе жалоб пациента дай краткое заключение ТОЛЬКО на русском языке.
+You are an experienced general practitioner. Based on the patient's reported symptoms, produce a brief clinical assessment.
 
-Верни JSON — все поля короткие, на русском:
-{"primary_diagnosis":"диагноз 1 предложение","summary":"резюме 1-2 предложения","explanation":"объяснение 2 предложения. Важно: данная оценка носит информационный характер и не является диагнозом.","possible_causes":["причина1","причина2"],"red_flags":[],"recommendations":["рек1","рек2"],"triage_level":"ROUTINE","recommended_specialization":"therapy","confidence":0.0}
+All output fields must be in RUSSIAN. Return a single JSON object:
+{"primary_diagnosis":"1-sentence working diagnosis in Russian","summary":"1-2 sentence summary in Russian","explanation":"2-3 sentence explanation in Russian ending with: Важно: данная оценка носит информационный характер и не является диагнозом.","possible_causes":["cause1","cause2","cause3"],"red_flags":[],"recommendations":["rec1","rec2","rec3"],"triage_level":"ROUTINE","recommended_specialization":"therapy","confidence":0.6}
 
-triage_level: EMERGENCY/URGENT/ROUTINE. specialization: therapy/neurology/cardiology/surgery/dermatology/orthopedics/gastroenterology.
+triage_level: EMERGENCY (call ambulance now) / URGENT (see doctor today) / ROUTINE (schedule appointment).
+recommended_specialization: therapy / neurology / cardiology / surgery / dermatology / orthopedics / gastroenterology / pulmonology / otolaryngology.
+confidence: 0.0–1.0 reflecting how certain the assessment is given available data.
+red_flags: list serious warning signs if any, empty array otherwise.
 """
 
 
@@ -141,6 +142,11 @@ class GeneralSymptomDomain(MedicalDomain):
         if raw.get("done"):
             return None
 
+        feature_name = raw.get("feature_name", f"llm_q_{session.questions_count}")
+        asked = {q.feature_name for q in session.questions if q.feature_name}
+        if feature_name in asked:
+            return self._fallback_question(session, partial_features)
+
         q_type_str = raw.get("question_type", "text")
         try:
             q_type = QuestionType(q_type_str)
@@ -153,7 +159,7 @@ class GeneralSymptomDomain(MedicalDomain):
             question_text=raw["question_text"],
             question_type=q_type,
             options=raw.get("options"),
-            feature_name=raw.get("feature_name", f"llm_q_{session.questions_count}"),
+            feature_name=feature_name,
             hint=raw.get("hint"),
             order_index=session.questions_count,
         )
