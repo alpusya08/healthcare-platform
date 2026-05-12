@@ -151,11 +151,11 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      test: ["CMD", "ollama", "list"]
       interval: 10s
-      timeout: 5s
+      timeout: 10s
       retries: 10
-      start_period: 20s
+      start_period: 15s
     networks: [hc-net]
 
   # ─── Ollama model pull (runs once, cached in volume) ────────
@@ -165,9 +165,6 @@ services:
     restart: no
     entrypoint: >
       /bin/sh -c "
-        until curl -sf http://ollama:11434/api/tags; do
-          echo 'Waiting for Ollama...'; sleep 3;
-        done;
         ollama pull ${OLLAMA_MODEL:-llama3.2:3b};
         echo 'Model ready';
       "
