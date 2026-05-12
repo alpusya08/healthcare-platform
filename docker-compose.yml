@@ -141,6 +141,45 @@ services:
         condition: service_healthy
     networks: [hc-net]
 
+  # ─── Ollama (local LLM) ─────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: hc-ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [hc-net]
+
+  # ─── Ollama model pull (runs once, cached in volume) ────────
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: hc-ollama-init
+    restart: no
+    entrypoint: >
+      /bin/sh -c "
+        until curl -sf http://ollama:11434/api/tags; do
+          echo 'Waiting for Ollama...'; sleep 3;
+        done;
+        ollama pull ${OLLAMA_MODEL:-llama3.2:3b};
+        echo 'Model ready';
+      "
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - ollama_data:/root/.ollama
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks: [hc-net]
+
   # ─── AI Service (Python) ────────────────────────────────────
   ai-service:
     build:
@@ -154,7 +193,9 @@ services:
       ENVIRONMENT: dev
       DB_URL: postgresql+asyncpg://${AI_POSTGRES_USER:-ai_feedback}:${AI_POSTGRES_PASSWORD:-ai_feedback_secret}@postgres:5432/${AI_POSTGRES_DB:-ai_feedback}
       AI_SERVICE_INTERNAL_TOKEN: ${AI_SERVICE_INTERNAL_TOKEN:-internal-shared-secret-between-backend-and-ai}
-      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
@@ -172,6 +213,8 @@ services:
         condition: service_healthy
       mlflow:
         condition: service_started
+      ollama-init:
+        condition: service_completed_successfully
     networks: [hc-net]
 
   # ─── Frontend (React) ───────────────────────────────────────
@@ -192,6 +235,7 @@ volumes:
   redis_data:
   minio_data:
   mlflow_data:
+  ollama_data:
 
 networks:
   hc-net:
