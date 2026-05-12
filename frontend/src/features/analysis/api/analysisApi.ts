@@ -27,4 +27,14 @@ export const analysisApi = {
     apiClient
       .post<AnalysisReport>(`/ai/analysis/${sessionId}/finalize`)
       .then((r) => r.data),
+
+  uploadFile: (sessionId: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return apiClient
+      .post<{ ok: boolean; summary: string }>(`/ai/analysis/${sessionId}/upload`, form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      .then((r) => r.data);
+  },
 };

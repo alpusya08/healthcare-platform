@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import io
 import uuid
 from datetime import datetime, timezone
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.api.deps import get_domain_registry, get_session_repo, verify_internal_token
 from app.api.v1.schemas.analysis import (
@@ -124,6 +125,49 @@ async def answer_question(
         )
 
     return AnswerQuestionResponse(next_question=None, is_complete=True)
+
+
+@router.post("/{session_id}/upload")
+async def upload_file(
+    session_id: uuid.UUID,
+    file: UploadFile = File(...),
+    session_repo: AnalysisSessionRepository = Depends(get_session_repo),
+    _: None = Depends(verify_internal_token),
+) -> dict:
+    session = await session_repo.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    content_type = file.content_type or ""
+    raw = await file.read()
+    summary = _extract_file_summary(raw, content_type, file.filename or "")
+    await session_repo.add_file_summary(session_id, summary)
+    logger.info("analysis.file_uploaded", session_id=str(session_id), filename=file.filename)
+    return {"ok": True, "summary": summary}
+
+
+def _extract_file_summary(raw: bytes, content_type: str, filename: str) -> str:
+    if "pdf" in content_type or filename.lower().endswith(".pdf"):
+        try:
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(raw))
+            pages_text = " ".join(
+                (page.extract_text() or "") for page in reader.pages[:5]
+            ).strip()
+            if pages_text:
+                truncated = pages_text[:2000]
+                return f"[PDF: {filename}] {truncated}"
+        except Exception:
+            pass
+    if content_type.startswith("image/"):
+        return f"[Изображение: {filename}] Медицинский документ — изображение предоставлено пациентом (рентген/ЭКГ/УЗИ)."
+    if content_type.startswith("text/"):
+        try:
+            text = raw.decode("utf-8", errors="replace")[:2000]
+            return f"[Текстовый файл: {filename}] {text}"
+        except Exception:
+            pass
+    return f"[Файл: {filename}] Документ предоставлен пациентом (тип: {content_type})."
 
 
 @router.post("/{session_id}/finalize", response_model=AnalysisReportResponse)

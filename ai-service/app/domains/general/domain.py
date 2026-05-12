@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 import re
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 import structlog
 
@@ -21,34 +22,17 @@ from app.infrastructure.llm.general_questions import (
 
 logger = structlog.get_logger()
 
-MAX_QUESTIONS = 7
+MAX_QUESTIONS = 6
 
 GENERAL_FEATURES = [
-    "duration_days",
-    "pain_severity",
-    "pain_character",
-    "pain_location",
-    "associated_symptoms",
-    "fever",
-    "food_relation",
-    "radiation",
-    "movement_relation",
-    "swelling",
-    "trauma",
-    "movement_limit",
-    "cough_type",
-    "throat_pain",
-    "nasal_congestion",
-    "onset",
-    "photophobia",
-    "associated_nausea",
-    "spread",
-    "trigger",
-    "skin_symptom",
-    "symptom_area",
+    "duration_days", "pain_severity", "pain_character", "pain_location",
+    "associated_symptoms", "fever", "food_relation", "radiation",
+    "movement_relation", "swelling", "trauma", "movement_limit",
+    "cough_type", "throat_pain", "nasal_congestion", "onset",
+    "photophobia", "associated_nausea", "spread", "trigger",
+    "skin_symptom", "symptom_area",
 ]
 
-# Emergency keyword patterns for non-cardiac complaints
 _EMERGENCY_PATTERNS = [
     (r"внезапн.{0,20}сильн.{0,20}голов", "Внезапная сильная головная боль — возможен инсульт или разрыв аневризмы. Немедленно вызовите скорую — 103"),
     (r"онемени.{0,20}(рук|ног|лиц|половин)", "Онемение конечностей или лица — возможен инсульт. Немедленно вызовите скорую — 103"),
@@ -58,9 +42,67 @@ _EMERGENCY_PATTERNS = [
     (r"(потер.{0,10}сознани|упал в обморок)", "Потеря сознания — требует немедленной медицинской помощи. Вызовите скорую — 103"),
 ]
 
+_QUESTION_SYSTEM_PROMPT = """\
+You are a medical AI assistant helping to gather clinical information from a patient.
+The patient has described their symptoms. Your job is to ask ONE focused follow-up question
+to better understand their condition.
+
+Rules:
+- Ask exactly one question per turn
+- Make the question feel natural and conversational, NOT like a form field
+- Tailor the question specifically to what the patient just described
+- Do not repeat information the patient already gave
+- Do not suggest diagnoses yet
+- If you have enough information (symptoms, duration, severity, context), return null for the question
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "question_text": "Your question here in Russian",
+  "question_type": "text" | "choice" | "scale",
+  "options": ["option1", "option2"] or null,
+  "feature_name": "one_of_the_feature_names",
+  "hint": "optional clarifying hint in Russian or null"
+}
+
+If enough information is already collected, respond with:
+{"done": true}
+
+Feature names to use (pick the most relevant):
+duration_days, pain_severity, pain_character, pain_location, associated_symptoms,
+fever, food_relation, radiation, movement_relation, swelling, trauma, movement_limit,
+cough_type, throat_pain, nasal_congestion, onset, photophobia, associated_nausea,
+spread, trigger, skin_symptom
+"""
+
+_REPORT_SYSTEM_PROMPT = """\
+You are an experienced general practitioner reviewing a patient's symptom intake.
+Based on the conversation below, produce a structured clinical assessment.
+
+Respond ONLY with valid JSON in this exact format:
+{
+  "primary_diagnosis": "Brief working diagnosis in Russian (1 sentence)",
+  "summary": "Clinical summary of the chief complaint and key findings in Russian (2-3 sentences)",
+  "explanation": "Patient-friendly explanation of what might be happening, in Russian (3-5 sentences)",
+  "possible_causes": ["cause1 in Russian", "cause2", "cause3"],
+  "red_flags": ["flag1 in Russian if present"] or [],
+  "recommendations": ["rec1 in Russian", "rec2", "rec3"],
+  "triage_level": "EMERGENCY" | "URGENT" | "ROUTINE",
+  "recommended_specialization": "therapy" | "neurology" | "cardiology" | "surgery" | "dermatology" | "orthopedics" | "gastroenterology",
+  "confidence": 0.0
+}
+
+Always end explanation with:
+"Важно: данная оценка носит информационный характер и не является диагнозом."
+
+For triage_level:
+- EMERGENCY: life-threatening symptoms (stroke signs, acute abdomen, severe allergic reaction)
+- URGENT: significant symptoms needing same-day or next-day care
+- ROUTINE: non-urgent, can wait for scheduled appointment
+"""
+
 
 class GeneralSymptomDomain(MedicalDomain):
-    """Universal symptom intake domain for non-cardiology complaints."""
+    """Universal symptom intake domain using LLM for dynamic Q&A and personalized reports."""
 
     def __init__(self, llm: LLMProvider) -> None:
         self._llm = llm
@@ -79,29 +121,22 @@ class GeneralSymptomDomain(MedicalDomain):
 
     async def extract_features(self, session: AnalysisSession) -> MedicalFeatures:
         area = detect_general_area(session.initial_description)
-
-        asked_features: set[str] = set()
-        answered: dict[str, str] = {}
-        for q in session.questions:
-            if q.feature_name:
-                asked_features.add(q.feature_name)
-            if q.feature_name and q.answer:
-                answered[q.feature_name] = q.answer
-
-        # Try to pull age from description text (used only for context, not a GENERAL_FEATURE)
-        age: int | None = None
+        answered: dict[str, str] = {
+            q.feature_name: q.answer
+            for q in session.questions
+            if q.feature_name and q.answer
+        }
         age_match = re.search(r"\b(\d{1,3})\s*(?:лет|год|года)\b", session.initial_description, re.IGNORECASE)
-        if age_match:
-            age = int(age_match.group(1))
 
-        values: dict = {f: None for f in GENERAL_FEATURES}
+        values: dict[str, Any] = {f: None for f in GENERAL_FEATURES}
         values["symptom_area"] = area
-        for feature, answer in answered.items():
-            values[feature] = answer
-        if age is not None:
-            values["_age_from_description"] = age
-
+        values.update(answered)
         values["_raw_description"] = session.initial_description
+        if age_match:
+            values["_age_from_description"] = int(age_match.group(1))
+        if hasattr(session, "file_summaries") and session.file_summaries:
+            values["_file_summaries"] = session.file_summaries
+
         return MedicalFeatures(values=values)
 
     async def generate_next_question(
@@ -110,29 +145,11 @@ class GeneralSymptomDomain(MedicalDomain):
         if session.questions_count >= MAX_QUESTIONS:
             return None
 
-        area = partial_features.get("symptom_area") or detect_general_area(session.initial_description)
-        questions = get_questions_for_area(area)
-
-        asked_feature_names: set[str] = {
-            q.feature_name for q in session.questions if q.feature_name
-        }
-
-        for q_def in questions:
-            fname = q_def["feature_name"]
-            if fname not in asked_feature_names:
-                q_type = QuestionType(q_def["type"])
-                return Question(
-                    id=uuid.uuid4(),
-                    session_id=session.id,
-                    question_text=q_def["question_text"],
-                    question_type=q_type,
-                    options=q_def.get("options"),
-                    feature_name=fname,
-                    hint=q_def.get("hint"),
-                    order_index=session.questions_count,
-                )
-
-        return None
+        try:
+            return await self._llm_next_question(session, partial_features)
+        except Exception as exc:
+            logger.warning("llm_question_failed_falling_back", error=str(exc))
+            return self._fallback_question(session, partial_features)
 
     async def check_emergency(self, features: MedicalFeatures) -> Optional[str]:
         desc = (features.get("_raw_description") or "").lower()
@@ -142,248 +159,171 @@ class GeneralSymptomDomain(MedicalDomain):
         return None
 
     async def predict(self, features: MedicalFeatures) -> Diagnosis:
+        try:
+            return await self._llm_predict(features)
+        except Exception as exc:
+            logger.warning("llm_predict_failed_falling_back", error=str(exc))
+            return self._fallback_diagnosis(features)
+
+    def get_model_version(self) -> str:
+        return "general-llm-v1"
+
+    async def _llm_next_question(
+        self, session: AnalysisSession, partial_features: MedicalFeatures
+    ) -> Optional[Question]:
+        prompt = self._build_question_prompt(session, partial_features)
+        raw = await self._llm.complete_structured(prompt, {})
+
+        if raw.get("done"):
+            return None
+
+        q_type_str = raw.get("question_type", "text")
+        try:
+            q_type = QuestionType(q_type_str)
+        except ValueError:
+            q_type = QuestionType.TEXT
+
+        return Question(
+            id=uuid.uuid4(),
+            session_id=session.id,
+            question_text=raw["question_text"],
+            question_type=q_type,
+            options=raw.get("options"),
+            feature_name=raw.get("feature_name", f"llm_q_{session.questions_count}"),
+            hint=raw.get("hint"),
+            order_index=session.questions_count,
+        )
+
+    async def _llm_predict(self, features: MedicalFeatures) -> Diagnosis:
+        prompt = self._build_report_prompt(features)
+        raw = await self._llm.complete_structured(prompt, {})
+
+        triage_map = {
+            "EMERGENCY": TriageLevel.EMERGENCY,
+            "URGENT": TriageLevel.URGENT,
+            "ROUTINE": TriageLevel.ROUTINE,
+        }
+        triage = triage_map.get(str(raw.get("triage_level", "ROUTINE")).upper(), TriageLevel.ROUTINE)
+
+        return Diagnosis(
+            domain=self.code,
+            primary_diagnosis=raw.get("primary_diagnosis", "Жалобы требуют уточнения"),
+            confidence=float(raw.get("confidence", 0.0)),
+            explanation=raw.get("explanation", ""),
+            recommendations=raw.get("recommendations", []),
+            triage_level=triage,
+            model_version=self.get_model_version(),
+            recommended_specialization=raw.get("recommended_specialization", "therapy"),
+            possible_causes=raw.get("possible_causes", []),
+            red_flags=raw.get("red_flags", []),
+            summary=raw.get("summary", ""),
+        )
+
+    def _build_question_prompt(
+        self, session: AnalysisSession, partial_features: MedicalFeatures
+    ) -> str:
+        lines = [
+            _QUESTION_SYSTEM_PROMPT,
+            f"\n--- PATIENT COMPLAINT ---\n{session.initial_description}",
+        ]
+
+        file_summaries = partial_features.get("_file_summaries")
+        if file_summaries:
+            lines.append("\n--- UPLOADED DOCUMENTS ---")
+            for fs in (file_summaries if isinstance(file_summaries, list) else [file_summaries]):
+                lines.append(str(fs))
+
+        if session.questions:
+            lines.append("\n--- Q&A SO FAR ---")
+            for q in session.questions:
+                if q.answer:
+                    lines.append(f"Q: {q.question_text}")
+                    lines.append(f"A: {q.answer}")
+
+        asked = {q.feature_name for q in session.questions if q.feature_name}
+        if asked:
+            lines.append(f"\nAlready collected features: {', '.join(asked)}")
+
+        lines.append(f"\nQuestions asked so far: {session.questions_count}/{MAX_QUESTIONS}")
+        lines.append("\nNow generate the next most useful question, or {\"done\": true} if enough info.")
+        return "\n".join(lines)
+
+    def _build_report_prompt(self, features: MedicalFeatures) -> str:
+        lines = [_REPORT_SYSTEM_PROMPT, "\n--- PATIENT INTAKE ---"]
+        lines.append(f"Chief complaint: {features.get('_raw_description', '')}")
+
+        file_summaries = features.get("_file_summaries")
+        if file_summaries:
+            lines.append("\n--- MEDICAL DOCUMENTS PROVIDED ---")
+            for fs in (file_summaries if isinstance(file_summaries, list) else [file_summaries]):
+                lines.append(str(fs))
+
+        answered = {
+            k: v for k, v in features.values.items()
+            if v is not None and not k.startswith("_")
+        }
+        if answered:
+            lines.append("\n--- SYMPTOM DETAILS ---")
+            for k, v in answered.items():
+                lines.append(f"  {k}: {v}")
+
+        lines.append("\nGenerate the clinical assessment JSON now.")
+        return "\n".join(lines)
+
+    def _fallback_question(
+        self, session: AnalysisSession, partial_features: MedicalFeatures
+    ) -> Optional[Question]:
+        area = partial_features.get("symptom_area") or detect_general_area(session.initial_description)
+        questions = get_questions_for_area(area)
+        asked = {q.feature_name for q in session.questions if q.feature_name}
+
+        for q_def in questions:
+            if q_def["feature_name"] not in asked:
+                return Question(
+                    id=uuid.uuid4(),
+                    session_id=session.id,
+                    question_text=q_def["question_text"],
+                    question_type=QuestionType(q_def["type"]),
+                    options=q_def.get("options"),
+                    feature_name=q_def["feature_name"],
+                    hint=q_def.get("hint"),
+                    order_index=session.questions_count,
+                )
+        return None
+
+    def _fallback_diagnosis(self, features: MedicalFeatures) -> Diagnosis:
         area = features.get("symptom_area") or "general"
         area_name = AREA_DISPLAY_NAMES.get(area, "симптомы")
         severity_raw = str(features.get("pain_severity") or "")
-        duration_raw = str(features.get("duration_days") or "")
-
         is_severe = any(w in severity_raw.lower() for w in ["7–8", "9–10", "сильн", "невынос"])
-        is_long = any(w in duration_raw.lower() for w in ["больше недели", "больше месяца"])
 
-        summary = self._build_summary(area_name, features, severity_raw, duration_raw)
-        explanation = self._build_general_explanation(area, area_name, is_severe)
-        possible_causes = self._build_possible_causes(area, features)
-        recommendations = self._build_recommendations(area, is_severe, is_long)
-        red_flags = self._build_red_flags(area, features)
-
-        triage = TriageLevel.URGENT if (is_severe or red_flags) else TriageLevel.ROUTINE
+        spec_map = {
+            "head": "neurology", "back": "neurology", "abdomen": "gastroenterology",
+            "throat": "therapy", "limbs": "orthopedics", "skin": "dermatology",
+        }
+        specialist_ru = {
+            "head": "неврологу", "back": "неврологу", "abdomen": "терапевту или гастроэнтерологу",
+            "throat": "терапевту или ЛОР-врачу", "limbs": "травматологу или ревматологу",
+            "skin": "дерматологу",
+        }
 
         return Diagnosis(
             domain=self.code,
             primary_diagnosis=f"Жалобы на {area_name}",
             confidence=0.0,
-            explanation=explanation,
-            recommendations=recommendations,
-            triage_level=triage,
-            model_version="general-rule-based-v2",
-            recommended_specialization=self._specialization_for_area(area),
-            possible_causes=possible_causes,
-            red_flags=red_flags,
-            summary=summary,
+            explanation=(
+                f"По описанным симптомам можно предположить проблемы в области «{area_name}». "
+                "Для точного диагноза необходим осмотр врача.\n\n"
+                "Важно: данная оценка носит информационный характер и не является диагнозом."
+            ),
+            recommendations=[
+                f"Запишитесь на консультацию к {specialist_ru.get(area, 'терапевту')}",
+                "Если состояние ухудшится — вызовите скорую: 103",
+            ],
+            triage_level=TriageLevel.URGENT if is_severe else TriageLevel.ROUTINE,
+            model_version=self.get_model_version(),
+            recommended_specialization=spec_map.get(area, "therapy"),
+            possible_causes=["Требуется уточнение после осмотра врача"],
+            red_flags=[],
+            summary=f"Жалобы на {area_name}. {features.get('_raw_description', '')}",
         )
-
-    def get_model_version(self) -> str:
-        return "general-rule-based-v2"
-
-    def _build_summary(self, area_name: str, features: MedicalFeatures, severity: str, duration: str) -> str:
-        parts = [f"Основная жалоба: {area_name}."]
-        if duration:
-            parts.append(f"Длительность: {duration}.")
-        if severity:
-            parts.append(f"Интенсивность: {severity}.")
-
-        location = features.get("pain_location")
-        if location:
-            parts.append(f"Локализация: {location}.")
-        character = features.get("pain_character")
-        if character:
-            parts.append(f"Характер: {character}.")
-        fever = features.get("fever")
-        if fever and "нет" not in str(fever).lower() and "нормал" not in str(fever).lower():
-            parts.append(f"Температура: {fever}.")
-        return " ".join(parts)
-
-    def _build_general_explanation(self, area: str, area_name: str, is_severe: bool) -> str:
-        area_advice = {
-            "head": (
-                "Головная боль — один из самых распространённых симптомов. "
-                "Большинство случаев связано с напряжением, стрессом или недосыпанием. "
-                "Однако регулярные, очень интенсивные или впервые возникшие резкие боли "
-                "требуют консультации невролога."
-            ),
-            "abdomen": (
-                "Боль в животе может быть вызвана широким спектром причин: "
-                "от функциональных расстройств (синдром раздражённого кишечника, гастрит) "
-                "до состояний, требующих неотложного лечения (аппендицит, панкреатит, кишечная непроходимость). "
-                "Точный диагноз устанавливается только после осмотра, анализов и инструментальных исследований."
-            ),
-            "throat": (
-                "Симптомы простуды чаще всего вызваны вирусами и проходят самостоятельно за 5–7 дней. "
-                "Бактериальные инфекции (стрептококковая ангина) требуют антибиотиков и определяются по анализам. "
-                "При высокой температуре, сильной боли в горле, одышке или ухудшении состояния — нужна консультация врача."
-            ),
-            "back": (
-                "Боль в спине в большинстве случаев связана с мышечным спазмом, остеохондрозом или защемлением нерва. "
-                "Боль, отдающая в ногу до стопы, онемение или слабость в ногах — признак серьёзного защемления "
-                "и требуют срочного осмотра невролога."
-            ),
-            "limbs": (
-                "Боль в суставах или мышцах может быть результатом травмы, перегрузки, воспаления или артроза. "
-                "Длительная утренняя скованность или боль в нескольких суставах одновременно — повод исключить "
-                "ревматическое заболевание у ревматолога."
-            ),
-            "skin": (
-                "Кожные симптомы чаще всего вызваны контактным дерматитом, аллергической реакцией или инфекцией. "
-                "В большинстве случаев они хорошо поддаются местному лечению. "
-                "Затяжные или распространяющиеся высыпания требуют осмотра дерматолога."
-            ),
-        }.get(area, "Ваши симптомы требуют профессиональной медицинской оценки.")
-
-        severity_comment = (
-            "\n\n⚠️ Интенсивность жалоб высокая — настоятельно рекомендуем не откладывать визит к врачу."
-            if is_severe
-            else ""
-        )
-
-        return (
-            f"{area_advice}{severity_comment}\n\n"
-            "Важно: данная оценка носит информационный характер и не является диагнозом. "
-            "Для точного диагноза необходим очный осмотр врача и при необходимости — анализы и инструментальные исследования."
-        )
-
-    def _build_possible_causes(self, area: str, features: MedicalFeatures) -> list[str]:
-        character = str(features.get("pain_character") or "").lower()
-        location = str(features.get("pain_location") or "").lower()
-        food = str(features.get("food_relation") or "").lower()
-        fever = str(features.get("fever") or "").lower()
-        bowel = str(features.get("bowel_changes") or "").lower()
-        radiation = str(features.get("radiation") or "").lower()
-        trauma = str(features.get("trauma") or "").lower()
-        swelling = str(features.get("swelling") or "").lower()
-        photo = str(features.get("photophobia") or "").lower()
-        nausea = str(features.get("associated_nausea") or "").lower()
-
-        causes: list[str] = []
-
-        if area == "head":
-            if "пульсиру" in character or "висках" in character or photo.startswith("да") or nausea.startswith("да"):
-                causes.append("Мигрень — пульсирующая односторонняя боль с тошнотой и светобоязнью")
-            if "давящ" in character or "сжима" in character:
-                causes.append("Головная боль напряжения — двусторонняя сжимающая боль на фоне стресса или переутомления")
-            if "острая" in character or "стреляющ" in character:
-                causes.append("Невралгия (раздражение нерва) — стреляющая короткая боль")
-            causes.append("Повышение или понижение артериального давления")
-            causes.append("Шейный остеохондроз с сосудистым компонентом")
-
-        elif area == "abdomen":
-            if "верхн" in location or "эпигастр" in location:
-                causes.append("Гастрит или язвенная болезнь желудка")
-            if "правое подреберь" in location:
-                causes.append("Заболевания желчного пузыря или печени")
-            if "пупочн" in location or "по всему" in location:
-                causes.append("Кишечная колика, синдром раздражённого кишечника")
-            if "справа" in location and "вниз" in location:
-                causes.append("Аппендицит — требует срочной диагностики")
-            if "после еды" in food or "натощак" in food or "жирн" in food:
-                causes.append("Заболевания желудочно-кишечного тракта (гастрит, панкреатит)")
-            if "понос" in bowel or "запор" in bowel:
-                causes.append("Кишечная инфекция или функциональное расстройство кишечника")
-            if not fever.startswith("нет") and "37.5" in fever:
-                causes.append("Воспалительный процесс в органах брюшной полости")
-
-        elif area == "throat":
-            if "выше 39" in fever or "38–39" in fever:
-                causes.append("Бактериальная ангина или грипп")
-            else:
-                causes.append("Острая респираторная вирусная инфекция (ОРВИ)")
-            if "лающий" in str(features.get("cough_type") or "").lower():
-                causes.append("Ларингит (воспаление гортани)")
-            if "жёлто" in str(features.get("nasal_congestion") or "").lower() or "густ" in str(features.get("cough_type") or "").lower():
-                causes.append("Возможна бактериальная инфекция (синусит, бронхит)")
-
-        elif area == "back":
-            if "стреляющ" in character or "острая" in character:
-                causes.append("Острый приступ радикулопатии (защемление нерва)")
-            if "ноющ" in character or "тупая" in character:
-                causes.append("Мышечно-тонический синдром, остеохондроз")
-            if "ногу" in radiation or "ногу" in radiation or "седалищ" in radiation:
-                causes.append("Грыжа межпозвонкового диска со сдавлением седалищного нерва")
-            if "тяжест" in trauma or "поднят" in trauma:
-                causes.append("Перенапряжение мышц спины, миозит")
-
-        elif area == "limbs":
-            if "травма" in trauma or "падени" in trauma:
-                causes.append("Ушиб, растяжение связок или возможный перелом")
-            if "отёк" in swelling or "покрасн" in swelling:
-                causes.append("Воспалительный процесс в суставе (артрит) или мягких тканях")
-            if "перегрузка" in trauma:
-                causes.append("Тендинит / миозит после физической нагрузки")
-            assoc = str(features.get("associated_symptoms") or "").lower()
-            if "30 минут" in assoc and "более" in assoc:
-                causes.append("Воспалительный артрит (ревматоидный, реактивный)")
-            if not causes:
-                causes.append("Артроз — возрастные изменения сустава")
-
-        elif area == "skin":
-            trigger = str(features.get("trigger") or "").lower()
-            sym = str(features.get("skin_symptom") or "").lower()
-            if "контакт" in trigger:
-                causes.append("Контактный дерматит — реакция на химию, косметику, ткань")
-            if "лекарств" in trigger or "еда" in trigger:
-                causes.append("Аллергическая реакция (крапивница, лекарственная сыпь)")
-            if "пузырьк" in sym or "волдыр" in sym:
-                causes.append("Герпетическая инфекция или буллёзный дерматоз")
-            if "зуд" in sym:
-                causes.append("Атопический дерматит, чесотка, грибковое поражение")
-            if not causes:
-                causes.append("Неуточнённое кожное заболевание — нужен осмотр")
-
-        if not causes:
-            causes.append("Точную причину можно определить только после очного осмотра")
-
-        return causes[:5]
-
-    def _build_red_flags(self, area: str, features: MedicalFeatures) -> list[str]:
-        flags: list[str] = []
-        onset = str(features.get("onset") or "").lower()
-        radiation = str(features.get("radiation") or "").lower()
-        bowel = str(features.get("bowel_changes") or "").lower()
-        fever = str(features.get("fever") or "").lower()
-        assoc = str(features.get("associated_symptoms") or "").lower()
-        swelling = str(features.get("swelling") or "").lower()
-        trauma = str(features.get("trauma") or "").lower()
-
-        if "удар грома" in onset or "резко" in onset:
-            flags.append("Внезапная сильная головная боль 'как удар' — повод исключить инсульт или субарахноидальное кровоизлияние")
-        if "выше 38.5" in fever or "выше 39" in fever:
-            flags.append("Высокая температура (выше 38.5°C) более 3 дней — требует осмотра врача")
-        if area == "abdomen" and ("кров" in bowel or "чёрный" in bowel):
-            flags.append("Кровь в стуле или чёрный стул — признак желудочно-кишечного кровотечения")
-        if area == "back" and "ногу" in radiation and ("седалищ" in radiation or "стопы" in radiation):
-            flags.append("Боль с онемением и слабостью в ноге — возможно сдавление нерва, нужен срочный осмотр")
-        if area == "throat" and ("одышк" in assoc or "грудь" in assoc):
-            flags.append("Одышка или боль в груди при простуде — повод срочно показаться врачу")
-        if area == "skin" and ("отёк лица" in assoc or "дыхани" in assoc):
-            flags.append("Отёк лица или затруднённое дыхание — признак тяжёлой аллергии, вызывайте 103")
-        if area == "limbs" and "травма" in trauma and "сильн" in swelling:
-            flags.append("Сильный отёк после травмы — нельзя исключить перелом, нужен рентген")
-        return flags
-
-    @staticmethod
-    def _specialization_for_area(area: str) -> str:
-        return {
-            "head": "neurology",
-            "back": "neurology",
-            "abdomen": "therapy",
-            "throat": "therapy",
-            "limbs": "therapy",
-            "skin": "dermatology",
-        }.get(area, "therapy")
-
-    def _build_recommendations(self, area: str, is_severe: bool, is_long: bool) -> list[str]:
-        specialist = {
-            "head": "неврологу",
-            "abdomen": "терапевту или гастроэнтерологу",
-            "throat": "терапевту или ЛОР-врачу",
-            "back": "неврологу или ортопеду",
-            "limbs": "травматологу или ревматологу",
-            "skin": "дерматологу",
-        }.get(area, "терапевту")
-
-        recs = [f"Запишитесь на консультацию к {specialist}"]
-        if is_severe:
-            recs.insert(0, "Не откладывайте визит к врачу — симптомы выражены сильно")
-        if is_long:
-            recs.append("Длительные симптомы требуют обследования — сдайте общий анализ крови")
-        recs.append("Если состояние резко ухудшится — вызовите скорую помощь: 103")
-        return recs

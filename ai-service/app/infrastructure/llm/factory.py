@@ -3,6 +3,7 @@ from app.core.interfaces.llm_provider import LLMProvider
 from app.infrastructure.llm.claude_client import ClaudeLLMProvider
 from app.infrastructure.llm.gemini_provider import GeminiLLMProvider
 from app.infrastructure.llm.mock_llm import MockLLMProvider
+from app.infrastructure.llm.ollama_provider import OllamaProvider
 
 
 def create_llm_provider(settings: Settings) -> LLMProvider:
@@ -19,6 +20,11 @@ def create_llm_provider(settings: Settings) -> LLMProvider:
         return GeminiLLMProvider(
             api_key=settings.gemini_api_key,
             model=settings.gemini_model,
+        )
+    if settings.llm_provider == "ollama":
+        return OllamaProvider(
+            base_url=settings.ollama_base_url,
+            model=settings.ollama_model,
         )
     if settings.llm_provider == "mock":
         return MockLLMProvider()

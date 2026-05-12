@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Loader2, AlertTriangle, Phone, CheckCircle2,
-  AlertCircle, Info, ArrowRight, Calendar, HelpCircle,
+  AlertCircle, Info, ArrowRight, Calendar, HelpCircle, Paperclip,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
@@ -81,6 +81,25 @@ export function AnalysisPage() {
   const [currentAnswer, setCurrentAnswer] = useState("");
 
   const [report, setReport] = useState<AnalysisReport | null>(null);
+
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [fileUploading, setFileUploading] = useState(false);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !sessionId) return;
+    setFileUploading(true);
+    try {
+      await analysisApi.uploadFile(sessionId, file);
+      setUploadedFiles((prev) => [...prev, file]);
+      toast.success("Файл загружен и проанализирован");
+    } catch {
+      toast.error("Не удалось загрузить файл");
+    } finally {
+      setFileUploading(false);
+      e.target.value = "";
+    }
+  };
 
   const handleStart = async () => {
     if (description.trim().length < 10) {
@@ -325,6 +344,35 @@ export function AnalysisPage() {
                 className="min-h-[80px] resize-none text-sm"
               />
             )}
+
+            {/* Optional file upload */}
+            <div className="pt-1">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-fit">
+                <Paperclip className="w-3.5 h-3.5" />
+                {fileUploading ? (
+                  <><Loader2 className="w-3 h-3 animate-spin" /> Загрузка...</>
+                ) : (
+                  "Прикрепить файл (рентген, ЭКГ, УЗИ, PDF)"
+                )}
+                <input
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.txt"
+                  className="hidden"
+                  onChange={handleFileSelect}
+                  disabled={fileUploading || !sessionId}
+                />
+              </label>
+              {uploadedFiles.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {uploadedFiles.map((f, i) => (
+                    <li key={i} className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate max-w-[260px]">{f.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
 
             <div className="flex gap-3 pt-2">
               <Button

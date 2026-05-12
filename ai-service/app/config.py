@@ -28,13 +28,15 @@ class Settings(BaseSettings):
         alias="AI_SERVICE_INTERNAL_TOKEN",
     )
 
-    llm_provider: Literal["anthropic", "openai", "gemini", "mock"] = "gemini"
+    llm_provider: Literal["anthropic", "openai", "gemini", "ollama", "mock"] = "mock"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-6"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.0-flash"
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.2:3b"
 
     mlflow_tracking_uri: str = "http://localhost:5000"
     mlflow_model_name: str = "cardiology-diagnosis"
