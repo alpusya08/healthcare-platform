@@ -7,6 +7,12 @@ type Props = {
   allowedRoles?: UserInfo["role"][];
 };
 
+function homeForRole(role: string): string {
+  if (role === "DOCTOR") return routes.doctor.dashboard;
+  if (role === "ADMIN") return routes.admin.dashboard;
+  return routes.patient.home;
+}
+
 export function ProtectedRoute({ allowedRoles }: Props) {
   const { isAuthenticated, isLoading, user } = useAuthStore();
 
@@ -23,7 +29,7 @@ export function ProtectedRoute({ allowedRoles }: Props) {
   }
 
   if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={homeForRole(user.role)} replace />;
   }
 
   return <Outlet />;
