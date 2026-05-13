@@ -22,7 +22,7 @@ from app.infrastructure.llm.general_questions import (
 
 logger = structlog.get_logger()
 
-MAX_QUESTIONS = 6
+MAX_QUESTIONS = 8
 
 GENERAL_FEATURES = [
     "duration_days", "pain_severity", "pain_character", "pain_location",

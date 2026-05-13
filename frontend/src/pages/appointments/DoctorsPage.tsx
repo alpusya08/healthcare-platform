@@ -72,8 +72,9 @@ export function DoctorsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const specFilter = searchParams.get("specialization");
+  const qFilter = searchParams.get("q") ?? "";
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(qFilter);
   const [showFilters, setShowFilters] = useState(false);
   const [minRating, setMinRating] = useState(0);
   const [maxPrice, setMaxPrice] = useState(Infinity);
