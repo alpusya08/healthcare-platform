@@ -6,6 +6,7 @@ type AuthState = {
   isAuthenticated: boolean;
   isLoading: boolean;
   setUser: (user: UserInfo, accessToken: string, refreshToken: string) => void;
+  updateUser: (patch: Partial<UserInfo>) => void;
   clearAuth: () => void;
   setLoading: (loading: boolean) => void;
 };
@@ -20,6 +21,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem("refreshToken", refreshToken);
     set({ user, isAuthenticated: true, isLoading: false });
   },
+
+  updateUser: (patch) => set((state) => ({
+    user: state.user ? { ...state.user, ...patch } : state.user,
+  })),
 
   clearAuth: () => {
     localStorage.removeItem("accessToken");

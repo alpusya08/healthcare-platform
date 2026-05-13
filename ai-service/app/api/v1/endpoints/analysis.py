@@ -184,7 +184,10 @@ async def finalize_analysis(
     await session_repo.update_status(session.id, AnalysisStatus.ANALYZING.value)
 
     domain = registry.get(session.domain_code)
-    features = await domain.extract_features(session)
+
+    # Use LLM-based extraction only at prediction time (not during Q&A loop)
+    extract_fn = getattr(domain, "extract_features_for_prediction", domain.extract_features)
+    features = await extract_fn(session)
 
     emergency = await domain.check_emergency(features)
     if emergency:

@@ -1,15 +1,18 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   User, Calendar, Star, Activity, Clock, CheckCircle2,
-  ArrowRight, Heart, Shield, ChevronRight, Phone, Mail,
+  ArrowRight, Heart, Shield, ChevronRight, Phone, Mail, Pencil, X, Check,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
+import { Input } from "@/shared/ui/input";
 import { useAuthStore } from "@/features/auth/model/authStore";
+import { authApi } from "@/features/auth/api/authApi";
 import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
 import { routes } from "@/shared/config/routes";
 import { AppointmentDetailModal } from "@/widgets/appointment-detail/AppointmentDetailModal";
@@ -43,12 +46,25 @@ function formatTime(iso: string) {
 }
 
 export function PatientCabinetPage() {
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
   const [detailTarget, setDetailTarget] = useState<Appointment | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editName, setEditName] = useState(user?.fullName ?? "");
+  const [editPhone, setEditPhone] = useState(user?.phone ?? "");
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments"],
     queryFn: appointmentsApi.myAppointments,
+  });
+
+  const updateProfileMutation = useMutation({
+    mutationFn: () => authApi.updateProfile({ fullName: editName.trim(), phone: editPhone.trim() || undefined }),
+    onSuccess: (updated) => {
+      updateUser({ fullName: updated.fullName, phone: updated.phone });
+      setEditMode(false);
+      toast.success("Профиль обновлён");
+    },
+    onError: () => toast.error("Не удалось сохранить изменения"),
   });
 
   const scheduled = appointments.filter((a) => a.status === "SCHEDULED");
@@ -86,16 +102,68 @@ export function PatientCabinetPage() {
                   </Badge>
                 </div>
                 <Separator className="w-full" />
-                <div className="w-full space-y-2 text-left">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="w-4 h-4 shrink-0" />
-                    <span className="truncate">{user?.email}</span>
+                {editMode ? (
+                  <div className="w-full space-y-3 text-left">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Имя</label>
+                      <Input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Телефон</label>
+                      <Input
+                        value={editPhone}
+                        onChange={(e) => setEditPhone(e.target.value)}
+                        placeholder="+7 (___) ___-__-__"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => updateProfileMutation.mutate()}
+                        disabled={updateProfileMutation.isPending || !editName.trim()}
+                      >
+                        <Check className="w-3.5 h-3.5 mr-1" />
+                        Сохранить
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => { setEditMode(false); setEditName(user?.fullName ?? ""); setEditPhone(user?.phone ?? ""); }}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="w-4 h-4 shrink-0" />
-                    <span className="text-muted-foreground/60 italic">Не указан</span>
+                ) : (
+                  <div className="w-full space-y-2 text-left">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Mail className="w-4 h-4 shrink-0" />
+                      <span className="truncate">{user?.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="w-4 h-4 shrink-0" />
+                      {user?.phone
+                        ? <span>{user.phone}</span>
+                        : <span className="text-muted-foreground/60 italic">Не указан</span>
+                      }
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full mt-2"
+                      onClick={() => { setEditMode(true); setEditName(user?.fullName ?? ""); setEditPhone(user?.phone ?? ""); }}
+                    >
+                      <Pencil className="w-3.5 h-3.5 mr-2" />
+                      Редактировать профиль
+                    </Button>
                   </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

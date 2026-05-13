@@ -105,6 +105,23 @@ public class AuthService {
     public UserInfoResponse getCurrentUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(InvalidCredentialsException::new);
-        return new UserInfoResponse(user.getId(), user.getEmail(), user.getFullName(), user.getRole().name());
+        String phone = patientRepository.findById(userId).map(Patient::getPhone).orElse(null);
+        return new UserInfoResponse(user.getId(), user.getEmail(), user.getFullName(), user.getRole().name(), phone);
+    }
+
+    @Transactional
+    public UserInfoResponse updateProfile(UUID userId, String fullName, String phone) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(InvalidCredentialsException::new);
+        user.setFullName(fullName);
+        userRepository.save(user);
+
+        patientRepository.findById(userId).ifPresent(patient -> {
+            patient.setPhone(phone);
+            patientRepository.save(patient);
+        });
+
+        log.info("Profile updated for user: {}", userId);
+        return new UserInfoResponse(user.getId(), user.getEmail(), user.getFullName(), user.getRole().name(), phone);
     }
 }

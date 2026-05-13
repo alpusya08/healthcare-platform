@@ -50,4 +50,12 @@ public class AuthController {
     public ResponseEntity<UserInfoResponse> me(@AuthenticationPrincipal UUID userId) {
         return ResponseEntity.ok(authService.getCurrentUser(userId));
     }
+
+    @PutMapping("/me")
+    public ResponseEntity<UserInfoResponse> updateProfile(
+            @Valid @RequestBody UpdateProfileRequest request,
+            @AuthenticationPrincipal UUID userId
+    ) {
+        return ResponseEntity.ok(authService.updateProfile(userId, request.fullName(), request.phone()));
+    }
 }

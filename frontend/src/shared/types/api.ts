@@ -9,6 +9,7 @@ export type UserInfo = {
   email: string;
   fullName: string;
   role: "PATIENT" | "DOCTOR" | "ADMIN";
+  phone?: string | null;
 };
 
 export type TokenResponse = {

@@ -31,5 +31,8 @@ export const authApi = {
 
   me: () => apiClient.get<UserInfo>("/auth/me").then((r) => r.data),
 
+  updateProfile: (payload: { fullName: string; phone?: string }) =>
+    apiClient.put<UserInfo>("/auth/me", payload).then((r) => r.data),
+
   logout: () => apiClient.post("/auth/logout"),
 };
