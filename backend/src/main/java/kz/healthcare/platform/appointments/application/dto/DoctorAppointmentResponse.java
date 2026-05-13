@@ -10,10 +10,12 @@ public record DoctorAppointmentResponse(
         UUID id,
         UUID patientId,
         String patientName,
+        String patientPhone,
         Instant startTime,
         Instant endTime,
         AppointmentStatus status,
         AppointmentType type,
         String complaint,
-        UUID aiSessionId
+        UUID aiSessionId,
+        boolean hasFeedback
 ) {}

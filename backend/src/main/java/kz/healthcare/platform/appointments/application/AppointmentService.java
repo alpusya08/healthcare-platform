@@ -152,10 +152,46 @@ public class AppointmentService {
         log.info("appointment.completed doctor={} appointment={}", doctorId, appointmentId);
     }
 
+    @Transactional(readOnly = true)
     public List<DoctorAppointmentResponse> listForDoctor(UUID doctorId) {
         return appointmentRepository.findByDoctorIdOrderBySlot(doctorId).stream()
                 .map(this::toDoctorAppointmentResponse)
                 .toList();
+    }
+
+    @Transactional
+    public void markNoShow(UUID doctorId, UUID appointmentId) {
+        Appointment appt = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new NoSuchElementException("Запись не найдена"));
+        if (!appt.getDoctor().getId().equals(doctorId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Это не ваша запись");
+        }
+        if (appt.getStatus() != AppointmentStatus.SCHEDULED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Можно отметить только запланированный приём");
+        }
+        appt.setStatus(AppointmentStatus.NO_SHOW);
+        appt.setUpdatedAt(Instant.now());
+        appointmentRepository.save(appt);
+        log.info("appointment.no_show doctor={} appointment={}", doctorId, appointmentId);
+    }
+
+    @Transactional(readOnly = true)
+    public DoctorProfileResponse getDoctorProfile(UUID doctorId) {
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new NoSuchElementException("Врач не найден"));
+        return new DoctorProfileResponse(
+                doctor.getId(),
+                doctor.getUser().getFullName(),
+                doctor.getUser().getEmail(),
+                doctor.getSpecialization().getDisplayName(),
+                doctor.getSpecialization().getCode(),
+                doctor.getYearsExperience(),
+                doctor.getBio(),
+                doctor.getConsultationFee(),
+                doctor.getAverageRating(),
+                doctor.isVerified(),
+                doctor.getLicenseNumber()
+        );
     }
 
     @Transactional
@@ -240,16 +276,21 @@ public class AppointmentService {
     }
 
     private DoctorAppointmentResponse toDoctorAppointmentResponse(Appointment a) {
+        String phone = patientRepository.findById(a.getPatient().getId())
+                .map(p -> p.getPhone()).orElse(null);
+        boolean hasFeedback = feedbackRepository.existsByAppointmentId(a.getId());
         return new DoctorAppointmentResponse(
                 a.getId(),
                 a.getPatient().getId(),
                 a.getPatient().getUser().getFullName(),
+                phone,
                 a.getTimeSlot().getStartTime(),
                 a.getTimeSlot().getEndTime(),
                 a.getStatus(),
                 a.getType(),
                 a.getComplaint(),
-                a.getAiSessionId()
+                a.getAiSessionId(),
+                hasFeedback
         );
     }
 

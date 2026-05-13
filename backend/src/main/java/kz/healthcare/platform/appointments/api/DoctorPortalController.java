@@ -1,11 +1,10 @@
 package kz.healthcare.platform.appointments.api;
 
 import jakarta.validation.Valid;
-import kz.healthcare.platform.ai.application.AiServiceClient;
-import kz.healthcare.platform.ai.application.dto.AiReportResponse;
 import kz.healthcare.platform.appointments.application.AppointmentService;
 import kz.healthcare.platform.appointments.application.dto.DoctorAppointmentResponse;
 import kz.healthcare.platform.appointments.application.dto.DoctorFeedbackRequest;
+import kz.healthcare.platform.appointments.application.dto.DoctorProfileResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,7 +19,6 @@ import java.util.UUID;
 public class DoctorPortalController {
 
     private final AppointmentService appointmentService;
-    private final AiServiceClient aiServiceClient;
 
     @GetMapping("/appointments")
     public List<DoctorAppointmentResponse> myAppointments(
@@ -43,5 +41,19 @@ public class DoctorPortalController {
             @PathVariable UUID appointmentId) {
         appointmentService.markCompleted(doctorId, appointmentId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/appointments/{appointmentId}/no-show")
+    public ResponseEntity<Void> markNoShow(
+            @AuthenticationPrincipal UUID doctorId,
+            @PathVariable UUID appointmentId) {
+        appointmentService.markNoShow(doctorId, appointmentId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<DoctorProfileResponse> getProfile(
+            @AuthenticationPrincipal UUID doctorId) {
+        return ResponseEntity.ok(appointmentService.getDoctorProfile(doctorId));
     }
 }
