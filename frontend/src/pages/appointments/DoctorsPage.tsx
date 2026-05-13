@@ -86,20 +86,24 @@ export function DoctorsPage() {
   });
 
   const specializations = useMemo(
-    () => Array.from(new Set(doctors.map((d) => d.specialization))).sort(),
+    () =>
+      Array.from(
+        new Map(doctors.map((d) => [d.specializationCode, d.specialization])).entries()
+      ).sort((a, b) => a[1].localeCompare(b[1])),
     [doctors]
   );
 
   const filtered = doctors.filter((d: Doctor) => {
     const matchesSpec = selectedSpec
-      ? d.specialization.toLowerCase() === selectedSpec.toLowerCase()
+      ? d.specializationCode?.toLowerCase() === selectedSpec.toLowerCase()
       : true;
+    const q = search.toLowerCase();
     const matchesSearch =
-      d.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      d.specialization.toLowerCase().includes(search.toLowerCase());
+      d.fullName.toLowerCase().includes(q) ||
+      d.specialization.toLowerCase().includes(q) ||
+      (d.specializationCode?.toLowerCase().includes(q) ?? false);
     const matchesRating = d.averageRating >= minRating;
-    const matchesPrice =
-      d.consultationFee == null ? true : d.consultationFee <= maxPrice;
+    const matchesPrice = d.consultationFee == null ? true : d.consultationFee <= maxPrice;
     return matchesSpec && matchesSearch && matchesRating && matchesPrice;
   });
 
@@ -177,17 +181,17 @@ export function DoctorsPage() {
                 >
                   Все
                 </button>
-                {specializations.map((spec) => (
+                {specializations.map(([code, label]) => (
                   <button
-                    key={spec}
-                    onClick={() => setSelectedSpec(spec)}
+                    key={code}
+                    onClick={() => setSelectedSpec(code)}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
-                      selectedSpec === spec
+                      selectedSpec === code
                         ? "bg-teal-600 border-teal-600 text-white"
                         : "border-border text-foreground hover:border-teal-400"
                     }`}
                   >
-                    {spec}
+                    {label}
                   </button>
                 ))}
               </div>
