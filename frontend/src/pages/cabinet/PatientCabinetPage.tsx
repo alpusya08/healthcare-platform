@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   User, Calendar, Star, Activity, Clock, CheckCircle2,
@@ -11,6 +12,8 @@ import { Separator } from "@/shared/ui/separator";
 import { useAuthStore } from "@/features/auth/model/authStore";
 import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
 import { routes } from "@/shared/config/routes";
+import { AppointmentDetailModal } from "@/widgets/appointment-detail/AppointmentDetailModal";
+import type { Appointment } from "@/features/appointments/types";
 
 const STATUS_LABELS = {
   SCHEDULED: "Запланировано",
@@ -41,6 +44,7 @@ function formatTime(iso: string) {
 
 export function PatientCabinetPage() {
   const { user } = useAuthStore();
+  const [detailTarget, setDetailTarget] = useState<Appointment | null>(null);
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments"],
@@ -197,7 +201,7 @@ export function PatientCabinetPage() {
               ) : (
                 <div className="space-y-2">
                   {scheduled.slice(0, 4).map((appt) => (
-                    <div key={appt.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div key={appt.id} onClick={() => setDetailTarget(appt)} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer">
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-900 flex items-center justify-center shrink-0">
                           <User className="w-4 h-4 text-teal-600 dark:text-teal-400" />
@@ -236,7 +240,7 @@ export function PatientCabinetPage() {
               ) : (
                 <div className="divide-y divide-border">
                   {completed.map((appt) => (
-                    <div key={appt.id} className="py-3 first:pt-0 last:pb-0">
+                    <div key={appt.id} onClick={() => setDetailTarget(appt)} className="py-3 first:pt-0 last:pb-0 cursor-pointer hover:bg-muted/30 rounded-lg px-2 -mx-2 transition-colors">
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-start gap-3 min-w-0">
                           <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center shrink-0 mt-0.5">
@@ -265,6 +269,11 @@ export function PatientCabinetPage() {
           </Card>
         </div>
       </div>
+
+      <AppointmentDetailModal
+        appointment={detailTarget}
+        onClose={() => setDetailTarget(null)}
+      />
     </div>
   );
 }

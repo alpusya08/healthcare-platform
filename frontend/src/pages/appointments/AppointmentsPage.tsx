@@ -10,6 +10,7 @@ import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
 import type { Appointment, AppointmentStatus } from "@/features/appointments/types";
 import { routes } from "@/shared/config/routes";
 import { ReviewModal } from "@/widgets/review-modal/ReviewModal";
+import { AppointmentDetailModal } from "@/widgets/appointment-detail/AppointmentDetailModal";
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
   SCHEDULED: "Запланировано",
@@ -38,13 +39,18 @@ function AppointmentCard({
   appt,
   onCancel,
   onReview,
+  onOpen,
 }: {
   appt: Appointment;
   onCancel: (id: string) => void;
   onReview: (appt: Appointment) => void;
+  onOpen: (appt: Appointment) => void;
 }) {
   return (
-    <Card className="border-border">
+    <Card
+      className="border-border hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-sm transition-all duration-150 cursor-pointer"
+      onClick={() => onOpen(appt)}
+    >
       <CardContent className="pt-5 pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex gap-3 min-w-0">
@@ -75,7 +81,7 @@ function AppointmentCard({
             <Badge variant={STATUS_VARIANTS[appt.status]}>{STATUS_LABELS[appt.status]}</Badge>
             {appt.status === "SCHEDULED" && (
               <button
-                onClick={() => onCancel(appt.id)}
+                onClick={(e) => { e.stopPropagation(); onCancel(appt.id); }}
                 className="flex items-center gap-1 text-xs text-destructive hover:underline"
               >
                 <XCircle className="w-3.5 h-3.5" />
@@ -84,7 +90,7 @@ function AppointmentCard({
             )}
             {appt.status === "COMPLETED" && !appt.hasReview && (
               <button
-                onClick={() => onReview(appt)}
+                onClick={(e) => { e.stopPropagation(); onReview(appt); }}
                 className="flex items-center gap-1 text-xs text-teal-700 dark:text-teal-400 hover:underline font-medium"
               >
                 <Star className="w-3.5 h-3.5" />
@@ -107,6 +113,7 @@ function AppointmentCard({
 export function AppointmentsPage() {
   const queryClient = useQueryClient();
   const [reviewTarget, setReviewTarget] = useState<Appointment | null>(null);
+  const [detailTarget, setDetailTarget] = useState<Appointment | null>(null);
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments", "my"],
@@ -168,6 +175,7 @@ export function AppointmentsPage() {
                   appt={a}
                   onCancel={(id) => cancelMutation.mutate(id)}
                   onReview={setReviewTarget}
+                  onOpen={setDetailTarget}
                 />
               ))}
             </div>
@@ -183,6 +191,7 @@ export function AppointmentsPage() {
                   appt={a}
                   onCancel={(id) => cancelMutation.mutate(id)}
                   onReview={setReviewTarget}
+                  onOpen={setDetailTarget}
                 />
               ))}
             </div>
@@ -197,6 +206,13 @@ export function AppointmentsPage() {
           onClose={() => setReviewTarget(null)}
         />
       )}
+
+      <AppointmentDetailModal
+        appointment={detailTarget}
+        onClose={() => setDetailTarget(null)}
+        onCancel={(id) => { cancelMutation.mutate(id); setDetailTarget(null); }}
+        onReview={(appt) => { setReviewTarget(appt); setDetailTarget(null); }}
+      />
     </div>
   );
 }
