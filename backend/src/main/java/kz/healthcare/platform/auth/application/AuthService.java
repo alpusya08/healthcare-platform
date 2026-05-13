@@ -6,6 +6,7 @@ import kz.healthcare.platform.auth.domain.RefreshToken;
 import kz.healthcare.platform.auth.domain.exceptions.EmailAlreadyExistsException;
 import kz.healthcare.platform.auth.domain.exceptions.InvalidCredentialsException;
 import kz.healthcare.platform.auth.infrastructure.PasswordResetTokenRepository;
+import kz.healthcare.platform.shared.email.EmailService;
 import kz.healthcare.platform.users.domain.*;
 import kz.healthcare.platform.users.infrastructure.PatientRepository;
 import kz.healthcare.platform.users.infrastructure.UserRepository;
@@ -32,6 +33,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailService emailService;
 
     @Transactional
     public RegisterResponse registerPatient(RegisterPatientRequest request) {
@@ -133,6 +135,7 @@ public class AuthService {
             passwordResetTokenRepository.save(resetToken);
 
             log.info("password_reset.token_generated user={} token={}", email, rawToken);
+            emailService.sendPasswordReset(email, rawToken);
         });
     }
 

@@ -27,6 +27,19 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 60MB
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASS:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: false
 
 server:
   port: 8080
@@ -35,6 +48,10 @@ server:
     include-binding-errors: always
 
 app:
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  email:
+    from: ${SMTP_USER:noreply@healthcare.kz}
+    enabled: ${EMAIL_ENABLED:false}
   jwt:
     secret: ${JWT_SECRET:change-this-to-a-very-long-random-string-at-least-256-bits-for-hs512}
     access-token-ttl: ${JWT_ACCESS_TTL:PT15M}
