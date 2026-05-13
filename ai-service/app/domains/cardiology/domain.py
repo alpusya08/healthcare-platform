@@ -53,10 +53,22 @@ class CardiologyDomain(MedicalDomain):
         self._interviewer = LLMCardiologyInterviewer(llm)
 
     async def extract_features(self, session: AnalysisSession) -> MedicalFeatures:
-        if self._ai_mode == "claude_only":
-            # In claude_only mode use LLM extraction from the start
-            return await self._interviewer.extract_features(session)
-        return self._extract_from_answers(session)
+        # Always use LLM to capture features mentioned in the initial description
+        # (e.g. "мне 55 лет, мужчина" → age/sex skipped in questions)
+        # Fallback to answer-based extraction if LLM fails.
+        try:
+            llm_features = await self._interviewer.extract_features(session)
+        except Exception:
+            return self._extract_from_answers(session)
+
+        # Overlay: explicit Q&A answers take priority over LLM-inferred values
+        answer_features = self._extract_from_answers(session)
+        merged = {}
+        for k in CARDIOLOGY_FEATURES:
+            af = answer_features.get(k)
+            merged[k] = af if af is not None else llm_features.get(k)
+        merged["_raw_description"] = session.initial_description
+        return MedicalFeatures(values=merged)
 
     async def extract_features_for_prediction(self, session: AnalysisSession) -> MedicalFeatures:
         try:
@@ -66,25 +78,24 @@ class CardiologyDomain(MedicalDomain):
             return self._extract_from_answers(session)
 
     def _extract_from_answers(self, session: AnalysisSession) -> MedicalFeatures:
-        from app.domains.cardiology.static_questions import get_option_numeric_value
+        from app.domains.cardiology.static_questions import OPTION_VALUE_MAP, get_option_numeric_value
 
         values: dict = {k: None for k in CARDIOLOGY_FEATURES}
         values["_raw_description"] = session.initial_description
         for q in session.questions:
             if not (q.feature_name and q.answer and q.feature_name in CARDIOLOGY_FEATURES):
                 continue
-            # Try to resolve numeric value from radio-button options first
-            numeric = get_option_numeric_value(q.feature_name, q.answer)
-            if numeric is not None:
-                values[q.feature_name] = numeric
-            else:
-                # For number inputs or unknown answers, try to parse as float
-                try:
-                    values[q.feature_name] = float(
-                        q.answer.replace(",", ".").split("/")[0].split()[0]
-                    )
-                except (ValueError, AttributeError):
-                    values[q.feature_name] = q.answer
+            # Known radio-button option → use its numeric value (may be None = impute)
+            if q.feature_name in OPTION_VALUE_MAP and q.answer in OPTION_VALUE_MAP[q.feature_name]:
+                values[q.feature_name] = OPTION_VALUE_MAP[q.feature_name][q.answer]
+                continue
+            # Number input or free text → try to parse as float
+            try:
+                values[q.feature_name] = float(
+                    q.answer.replace(",", ".").split("/")[0].split()[0]
+                )
+            except (ValueError, AttributeError):
+                pass  # leave as None — will be imputed or overridden by LLM extraction
         return MedicalFeatures(values=values)
 
     async def generate_next_question(
@@ -137,10 +148,10 @@ class CardiologyDomain(MedicalDomain):
     async def _hybrid_predict(self, features: MedicalFeatures) -> Diagnosis:
         prediction = self._predictor.predict(features)
 
-        if prediction.confidence < 0.6:
+        if prediction.confidence < 0.50:
             explanation = (
-                "Недостаточно данных для уверенного диагноза. "
-                "Рекомендуется очная консультация кардиолога и дополнительные обследования (ЭКГ, ЭхоКГ)."
+                "Собранных данных недостаточно для однозначного вывода. "
+                "Рекомендуется очная консультация кардиолога с ЭКГ и общим осмотром."
             )
             return Diagnosis(
                 domain=self.code,

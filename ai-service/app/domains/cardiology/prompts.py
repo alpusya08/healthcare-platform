@@ -21,8 +21,8 @@ Extract numeric values for these features. Rules:
 - resting_ecg: 0=normal ECG or not done, 1=abnormality found on ECG.
 - max_heart_rate: integer bpm. "не учащается"→105, "заметно учащается"→140, "очень сильно"→165.
 - exercise_angina: 1=yes (боль/одышка при нагрузке), 0=no.
-- oldpeak: float 0-6. "нормальный тест"→0.5, "отклонения"→2.5, "не проходил"→0.0.
-- st_slope: 2=abnormality found or treatment prescribed, 0=normal or not checked.
+- oldpeak: float 0-6. "нормальный тест"→0.5, "отклонения"→2.5. If patient never had a stress test → null (do NOT default to 0).
+- st_slope: 2=abnormality or treatment prescribed, 0=explicitly told normal result. If never checked or no cardiologist visit → null (do NOT default to 0).
 
 Return ONLY valid JSON with these 11 keys. Use null only if information is completely absent.
 All values must be numeric (int or float) or null — never return strings."""

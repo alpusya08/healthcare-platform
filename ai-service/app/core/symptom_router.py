@@ -35,20 +35,26 @@ _NON_CARDIAC_PATTERNS = [
 ]
 
 _CARDIAC_PATTERNS = [
-    r"\bгруд",           # chest
+    r"\bгруд",           # chest — грудь, груди, грудная
     r"\bсердц",          # heart
     r"\bсердеч",         # cardiac
-    r"\bдавлени[ея]",    # blood pressure (not "давление" in "давление в голове"→ too broad)
+    r"\bдавлени[ея]",    # blood pressure
     r"\bодышк",          # shortness of breath
     r"\bинфаркт",        # heart attack
     r"\bсосуд",          # vessels
     r"\bаритм",          # arrhythmia
     r"\bтахикард",       # tachycardia
-    r"\bпульс\b",        # pulse — exact word, NOT пульсирует (pulsating pain)
+    r"\bпульс\b",        # pulse — exact word, NOT пульсирует
     r"\bпрерывани",      # heart skipping
     r"\bстенокард",      # angina
     r"\bкардио",         # cardio
-    r"\bсжима",          # chest squeezing
+    r"\bсжима",          # squeezing sensation
+    r"\bдавящ",          # давящая боль — classic angina descriptor
+    r"\bнагрузк",        # "при нагрузке" — exertional symptoms
+    r"\bпокое\b",        # "проходит в покое" — relieved at rest = angina pattern
+    r"\bхолодн.{1,10}пот",   # cold sweat — cardiac emergency sign
+    r"\bлевой? рук",     # pain radiating to left arm
+    r"\bлев.{1,5}плеч",  # left shoulder radiation
 ]
 
 # Non-cardiac symptoms that override cardiac keywords when present in head context

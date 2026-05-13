@@ -14,13 +14,13 @@ CARDIOLOGY_FEATURES = [
 
 # Feature priority ordered by typical XGBoost importance in cardiology models
 FEATURE_PRIORITY = [
-    "chest_pain_type",
-    "st_slope",
-    "exercise_angina",
-    "oldpeak",
-    "max_heart_rate",
-    "age",
-    "sex",
+    "chest_pain_type",   # most important symptom
+    "age",               # ask early — easy to answer, big impact on risk
+    "sex",               # ask early — easy to answer, big impact on risk
+    "exercise_angina",   # key symptom
+    "st_slope",          # cardiac test result
+    "oldpeak",           # cardiac test result
+    "max_heart_rate",    # exercise capacity
     "resting_blood_pressure",
     "cholesterol",
     "fasting_blood_sugar",
@@ -43,5 +43,5 @@ FEATURE_DESCRIPTIONS = {
 }
 
 MAX_QUESTIONS = 8
-TOLERATED_MISSING_THRESHOLD = 2
-CONFIDENCE_EARLY_STOP = 0.70
+TOLERATED_MISSING_THRESHOLD = 0  # ask until all features collected or MAX_QUESTIONS reached
+CONFIDENCE_EARLY_STOP = 0.75     # early stop when XGBoost is highly confident

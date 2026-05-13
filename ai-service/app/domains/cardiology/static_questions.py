@@ -111,7 +111,7 @@ _QUESTIONS = [
             "Да, нашли какие-то отклонения",
             "Не делал(а) или результат неизвестен",
         ],
-        "option_values": [0, 1, 0],
+        "option_values": [0, 1, None],  # None → impute to dataset median
         "hint": None,
     },
     {
@@ -123,7 +123,7 @@ _QUESTIONS = [
             "Да, нашли отклонения или тест пришлось прервать",
             "Нет, не проходил(а)",
         ],
-        "option_values": [0.5, 2.5, 0.0],
+        "option_values": [0.5, 2.5, None],  # None → impute to dataset median
         "hint": None,
     },
     {
@@ -135,7 +135,7 @@ _QUESTIONS = [
             "Нет, сказали что сердце работает нормально",
             "К кардиологу не обращался(лась)",
         ],
-        "option_values": [2, 0, 0],
+        "option_values": [2, 0, None],  # None → impute to dataset median
         "hint": None,
     },
 ]
