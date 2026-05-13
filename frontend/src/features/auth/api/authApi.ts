@@ -34,5 +34,11 @@ export const authApi = {
   updateProfile: (payload: { fullName: string; phone?: string }) =>
     apiClient.put<UserInfo>("/auth/me", payload).then((r) => r.data),
 
+  forgotPassword: (email: string) =>
+    apiClient.post("/auth/forgot-password", { email }),
+
+  resetPassword: (token: string, newPassword: string) =>
+    apiClient.post("/auth/reset-password", { token, newPassword }),
+
   logout: () => apiClient.post("/auth/logout"),
 };

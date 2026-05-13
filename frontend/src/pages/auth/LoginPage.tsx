@@ -20,15 +20,23 @@ export function LoginPage() {
           </CardHeader>
           <CardContent>
             <LoginForm />
-            <p className="mt-5 text-center text-sm text-muted-foreground">
-              Нет аккаунта?{" "}
+            <div className="mt-4 flex items-center justify-between text-sm">
               <Link
-                to={routes.register}
-                className="font-medium text-blue-600 dark:text-blue-400 hover:underline underline-offset-4"
+                to={routes.forgotPassword}
+                className="text-muted-foreground hover:text-foreground transition-colors"
               >
-                Зарегистрироваться
+                Забыли пароль?
               </Link>
-            </p>
+              <span className="text-muted-foreground">
+                Нет аккаунта?{" "}
+                <Link
+                  to={routes.register}
+                  className="font-medium text-blue-600 dark:text-blue-400 hover:underline underline-offset-4"
+                >
+                  Зарегистрироваться
+                </Link>
+              </span>
+            </div>
           </CardContent>
         </Card>
 

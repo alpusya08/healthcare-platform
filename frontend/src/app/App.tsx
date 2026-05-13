@@ -8,6 +8,8 @@ import { AppLayout } from "@/app/router/AppLayout";
 import { DoctorLayout } from "@/app/router/DoctorLayout";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { RegisterPage } from "@/pages/auth/RegisterPage";
+import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/pages/auth/ResetPasswordPage";
 import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 import { AnalysisPage } from "@/pages/analysis/AnalysisPage";
 import { AppointmentsPage } from "@/pages/appointments/AppointmentsPage";
@@ -41,6 +43,8 @@ export function App() {
             <Routes>
               <Route path={routes.login} element={<LoginPage />} />
               <Route path={routes.register} element={<RegisterPage />} />
+              <Route path={routes.forgotPassword} element={<ForgotPasswordPage />} />
+              <Route path={routes.resetPassword} element={<ResetPasswordPage />} />
 
               <Route element={<ProtectedRoute allowedRoles={["PATIENT"]} />}>
                 <Route element={<AppLayout />}>
