@@ -202,6 +202,20 @@ public class AppointmentService {
     }
 
     @Transactional
+    public DoctorProfileResponse updateDoctorProfile(UUID doctorId, UpdateDoctorProfileRequest request) {
+        Doctor doctor = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new NoSuchElementException("Врач не найден"));
+        if (request.bio() != null) {
+            doctor.setBio(request.bio().isBlank() ? null : request.bio().trim());
+        }
+        if (request.consultationFee() != null) {
+            doctor.setConsultationFee(request.consultationFee());
+        }
+        doctorRepository.save(doctor);
+        return getDoctorProfile(doctorId);
+    }
+
+    @Transactional
     public void submitFeedback(UUID doctorId, UUID appointmentId, DoctorFeedbackRequest request) {
         Appointment appt = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new NoSuchElementException("Запись не найдена"));

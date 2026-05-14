@@ -37,6 +37,15 @@ export type RetrainResult = {
   deployed: boolean;
 };
 
+export type AdminFeedback = {
+  id: string;
+  doctorName: string;
+  verdict: "APPROVED" | "REJECTED" | "PARTIAL";
+  comment: string;
+  correctedDiagnosis: string | null;
+  createdAt: string;
+};
+
 export const adminApi = {
   getStats: () => apiClient.get<AdminStats>("/admin/stats").then((r) => r.data),
   listUsers: () => apiClient.get<AdminUser[]>("/admin/users").then((r) => r.data),
@@ -44,4 +53,5 @@ export const adminApi = {
     apiClient.patch<AdminUser>(`/admin/users/${userId}/status`, { status }).then((r) => r.data),
   getMlStats: () => apiClient.get<MlStats>("/admin/ml-stats").then((r) => r.data),
   triggerRetrain: () => apiClient.post<RetrainResult>("/admin/ml-retrain").then((r) => r.data),
+  listFeedbacks: () => apiClient.get<AdminFeedback[]>("/admin/ai-feedbacks").then((r) => r.data),
 };

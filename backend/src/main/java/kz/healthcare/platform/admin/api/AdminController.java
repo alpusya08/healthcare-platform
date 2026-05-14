@@ -3,6 +3,7 @@ package kz.healthcare.platform.admin.api;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import kz.healthcare.platform.admin.api.dto.AdminStatsResponse;
 import kz.healthcare.platform.admin.api.dto.AdminUserResponse;
+import kz.healthcare.platform.admin.api.dto.AdminFeedbackResponse;
 import kz.healthcare.platform.admin.application.AdminService;
 import kz.healthcare.platform.ai.application.AiServiceClient;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,11 @@ public class AdminController {
             @RequestBody Map<String, String> body
     ) {
         return ResponseEntity.ok(adminService.setUserStatus(userId, body.get("status")));
+    }
+
+    @GetMapping("/ai-feedbacks")
+    public ResponseEntity<List<AdminFeedbackResponse>> listFeedbacks() {
+        return ResponseEntity.ok(adminService.listFeedbacks());
     }
 
     @GetMapping("/ml-stats")

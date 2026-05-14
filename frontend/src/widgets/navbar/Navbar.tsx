@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Moon, Sun, LogOut, User, ChevronDown, Activity, Calendar, Home, LayoutDashboard, Phone } from "lucide-react";
+import { Moon, Sun, LogOut, User, ChevronDown, Activity, Calendar, Home, LayoutDashboard, Phone, Stethoscope } from "lucide-react";
 import { Logo } from "@/shared/ui/Logo";
 import { Button } from "@/shared/ui/button";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
@@ -28,6 +28,7 @@ import { cn } from "@/shared/lib/utils";
 const NAV_LINKS = [
   { to: routes.patient.home, label: "Главная", icon: Home },
   { to: routes.patient.aiAnalysis, label: "Симптомы", icon: Activity },
+  { to: routes.patient.doctors, label: "Найти врача", icon: Stethoscope },
   { to: routes.patient.appointments, label: "Записи", icon: Calendar },
   { to: routes.patient.cabinet, label: "Кабинет", icon: LayoutDashboard },
 ];

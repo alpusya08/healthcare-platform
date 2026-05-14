@@ -2,8 +2,10 @@ package kz.healthcare.platform.admin.application;
 
 import kz.healthcare.platform.admin.api.dto.AdminStatsResponse;
 import kz.healthcare.platform.admin.api.dto.AdminUserResponse;
+import kz.healthcare.platform.admin.api.dto.AdminFeedbackResponse;
 import kz.healthcare.platform.appointments.domain.AppointmentStatus;
 import kz.healthcare.platform.appointments.infrastructure.AppointmentRepository;
+import kz.healthcare.platform.appointments.infrastructure.DoctorFeedbackRepository;
 import kz.healthcare.platform.users.domain.Role;
 import kz.healthcare.platform.users.domain.User;
 import kz.healthcare.platform.users.domain.UserStatus;
@@ -21,6 +23,7 @@ public class AdminService {
 
     private final UserRepository userRepository;
     private final AppointmentRepository appointmentRepository;
+    private final DoctorFeedbackRepository feedbackRepository;
 
     @Transactional(readOnly = true)
     public AdminStatsResponse getStats() {
@@ -45,6 +48,21 @@ public class AdminService {
                         u.getId(), u.getEmail(), u.getFullName(),
                         u.getRole().name(), u.getStatus().name(),
                         u.getCreatedAt(), u.getLastLoginAt()))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminFeedbackResponse> listFeedbacks() {
+        return feedbackRepository.findAll().stream()
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .map(fb -> new AdminFeedbackResponse(
+                        fb.getId(),
+                        fb.getDoctor().getUser().getFullName(),
+                        fb.getVerdict().name(),
+                        fb.getComment(),
+                        fb.getCorrectedDiagnosis(),
+                        fb.getCreatedAt()
+                ))
                 .toList();
     }
 

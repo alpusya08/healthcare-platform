@@ -5,6 +5,7 @@ import kz.healthcare.platform.appointments.application.AppointmentService;
 import kz.healthcare.platform.appointments.application.dto.DoctorAppointmentResponse;
 import kz.healthcare.platform.appointments.application.dto.DoctorFeedbackRequest;
 import kz.healthcare.platform.appointments.application.dto.DoctorProfileResponse;
+import kz.healthcare.platform.appointments.application.dto.UpdateDoctorProfileRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -55,5 +56,12 @@ public class DoctorPortalController {
     public ResponseEntity<DoctorProfileResponse> getProfile(
             @AuthenticationPrincipal UUID doctorId) {
         return ResponseEntity.ok(appointmentService.getDoctorProfile(doctorId));
+    }
+
+    @PatchMapping("/profile")
+    public ResponseEntity<DoctorProfileResponse> updateProfile(
+            @AuthenticationPrincipal UUID doctorId,
+            @Valid @RequestBody UpdateDoctorProfileRequest request) {
+        return ResponseEntity.ok(appointmentService.updateDoctorProfile(doctorId, request));
     }
 }
