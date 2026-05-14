@@ -80,6 +80,13 @@ public class AiAnalysisController {
         return ResponseEntity.ok(result);
     }
 
+    @GetMapping("/analysis/{sessionId}/report")
+    @Operation(summary = "Get cached AI report by session id")
+    public ResponseEntity<AiReportResponse> getReport(@PathVariable UUID sessionId) {
+        AiReportResponse response = aiServiceClient.getReport(sessionId);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/health")
     @Operation(summary = "Check AI service availability")
     public ResponseEntity<Map<String, Object>> aiServiceHealth() {

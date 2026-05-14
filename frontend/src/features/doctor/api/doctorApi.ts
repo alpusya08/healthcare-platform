@@ -53,7 +53,7 @@ export const doctorApi = {
 
   getAiReport: (sessionId: string) =>
     apiClient
-      .post<AnalysisReport>(`/ai/analysis/${sessionId}/finalize`)
+      .get<AnalysisReport>(`/ai/analysis/${sessionId}/report`)
       .then((r) => r.data),
 
   markCompleted: (appointmentId: string) =>

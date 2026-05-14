@@ -21,6 +21,7 @@ import { DoctorDashboard } from "@/pages/doctor/DoctorDashboard";
 import { AdminLayout } from "@/app/router/AdminLayout";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
+import { AdminMLDashboardPage } from "@/pages/admin/AdminMLDashboardPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { routes } from "@/shared/config/routes";
 
@@ -68,6 +69,7 @@ export function App() {
                 <Route element={<AdminLayout />}>
                   <Route path={routes.admin.dashboard} element={<AdminDashboardPage />} />
                   <Route path={routes.admin.users} element={<AdminUsersPage />} />
+                  <Route path={routes.admin.mlMonitoring} element={<AdminMLDashboardPage />} />
                 </Route>
               </Route>
 

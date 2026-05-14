@@ -71,6 +71,14 @@ public class AiServiceClient {
         }
     }
 
+    public AiReportResponse getReport(UUID sessionId) {
+        log.debug("ai_service.get_report session_id={}", sessionId);
+        return aiServiceRestClient.get()
+                .uri("/api/v1/analysis/{sessionId}/report", sessionId)
+                .retrieve()
+                .body(AiReportResponse.class);
+    }
+
     public void pushSessionFeedback(UUID sessionId, UUID appointmentId, String verdict, String correctedDiagnosis) {
         try {
             var body = new java.util.HashMap<String, Object>();
@@ -88,6 +96,24 @@ public class AiServiceClient {
         } catch (Exception e) {
             log.warn("ai_service.push_feedback_failed session_id={} error={}", sessionId, e.getMessage());
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getMlStats() {
+        log.debug("ai_service.get_ml_stats");
+        return aiServiceRestClient.get()
+                .uri("/api/v1/ml/stats")
+                .retrieve()
+                .body(Map.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> triggerRetrain() {
+        log.debug("ai_service.trigger_retrain");
+        return aiServiceRestClient.post()
+                .uri("/api/v1/ml/retrain/cardiology")
+                .retrieve()
+                .body(Map.class);
     }
 
     public boolean isHealthy() {

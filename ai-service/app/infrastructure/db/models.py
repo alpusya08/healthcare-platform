@@ -70,6 +70,23 @@ class GeneralAiSessionRecord(Base):
     )
 
 
+class SessionReportRecord(Base):
+    """Full finalized AI report cached for doctor portal retrieval."""
+    __tablename__ = "session_reports"
+
+    id: Mapped[UUID] = mapped_column(PG_UUID(as_uuid=True), primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("analysis_sessions.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
+    report: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_now
+    )
+
+
 class SessionDoctorFeedbackRecord(Base):
     """Doctor verdict pushed from backend for retraining loop."""
     __tablename__ = "session_doctor_feedback"

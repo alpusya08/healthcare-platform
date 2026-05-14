@@ -197,12 +197,11 @@ async def finalize_analysis(
     }
     await session_repo.save_report(session.id, report_data)
 
-    # Persist features + general dialogue to DB for the retraining loop
     await _persist_session_features(db, session, features, diagnosis)
     if session.domain_code == "general":
         await _persist_general_session(db, session, diagnosis)
 
-    return AnalysisReportResponse(
+    report = AnalysisReportResponse(
         session_id=session.id,
         triage_level=diagnosis.triage_level,
         primary_diagnosis=diagnosis.primary_diagnosis,
@@ -217,6 +216,27 @@ async def finalize_analysis(
         red_flags=diagnosis.red_flags,
         summary=diagnosis.summary,
     )
+    await _persist_session_report(db, session.id, report)
+    return report
+
+
+@router.get("/{session_id}/report", response_model=AnalysisReportResponse)
+async def get_cached_report(
+    session_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db_session),
+    _: None = Depends(verify_internal_token),
+) -> AnalysisReportResponse:
+    from app.infrastructure.db.models import SessionReportRecord
+    from sqlalchemy import select
+
+    row = (await db.execute(
+        select(SessionReportRecord).where(SessionReportRecord.session_id == session_id)
+    )).scalar_one_or_none()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    return AnalysisReportResponse(**row.report)
 
 
 # ── DB persistence helpers ────────────────────────────────────────────────────
@@ -235,6 +255,29 @@ async def _persist_session_record(db: AsyncSession, session: AnalysisSession) ->
         await db.commit()
     except Exception:
         logger.exception("analysis.persist_session_failed", session_id=str(session.id))
+        await db.rollback()
+
+
+async def _persist_session_report(db: AsyncSession, session_id: uuid.UUID, report: AnalysisReportResponse) -> None:
+    try:
+        from app.infrastructure.db.models import SessionReportRecord
+        from sqlalchemy import select
+
+        existing = (await db.execute(
+            select(SessionReportRecord).where(SessionReportRecord.session_id == session_id)
+        )).scalar_one_or_none()
+
+        if existing:
+            return
+
+        record = SessionReportRecord(
+            session_id=session_id,
+            report=report.model_dump(mode="json"),
+        )
+        db.add(record)
+        await db.commit()
+    except Exception:
+        logger.exception("analysis.persist_report_failed", session_id=str(session_id))
         await db.rollback()
 
 

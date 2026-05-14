@@ -30,6 +30,58 @@ class RetrainResponse(BaseModel):
     deployed: bool = False
 
 
+class MlStatsResponse(BaseModel):
+    total_analyses: int
+    total_with_feedback: int
+    approved: int
+    rejected: int
+    partial: int
+    model_version: str
+    champion_confidence_avg: float
+
+
+@router.get("/stats", response_model=MlStatsResponse)
+async def get_ml_stats(
+    db=Depends(get_db_session),
+    _: None = Depends(verify_internal_token),
+) -> MlStatsResponse:
+    from app.infrastructure.db.models import SessionFeaturesRecord, SessionDoctorFeedbackRecord
+    from sqlalchemy import select, func
+
+    total_analyses = (await db.execute(select(func.count(SessionFeaturesRecord.id)))).scalar_one()
+
+    feedback_rows = (await db.execute(select(SessionDoctorFeedbackRecord))).scalars().all()
+    total_with_feedback = len(feedback_rows)
+    approved = sum(1 for f in feedback_rows if f.verdict == "APPROVED")
+    rejected = sum(1 for f in feedback_rows if f.verdict == "REJECTED")
+    partial = sum(1 for f in feedback_rows if f.verdict == "PARTIAL")
+
+    avg_confidence_row = (await db.execute(
+        select(func.avg(SessionFeaturesRecord.prediction_confidence)).where(
+            SessionFeaturesRecord.prediction_confidence.is_not(None)
+        )
+    )).scalar_one()
+    avg_confidence = float(avg_confidence_row) if avg_confidence_row is not None else 0.0
+
+    latest_version_row = (await db.execute(
+        select(SessionFeaturesRecord.model_version)
+        .where(SessionFeaturesRecord.model_version.is_not(None))
+        .order_by(SessionFeaturesRecord.created_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+    model_version = latest_version_row or "cardiology_xgb_v1"
+
+    return MlStatsResponse(
+        total_analyses=total_analyses,
+        total_with_feedback=total_with_feedback,
+        approved=approved,
+        rejected=rejected,
+        partial=partial,
+        model_version=model_version,
+        champion_confidence_avg=round(avg_confidence, 4),
+    )
+
+
 @router.post("/session-feedback")
 async def push_session_feedback(
     request: SessionFeedbackRequest,

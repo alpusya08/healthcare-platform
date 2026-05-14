@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import kz.healthcare.platform.admin.api.dto.AdminStatsResponse;
 import kz.healthcare.platform.admin.api.dto.AdminUserResponse;
 import kz.healthcare.platform.admin.application.AdminService;
+import kz.healthcare.platform.ai.application.AiServiceClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class AdminController {
 
     private final AdminService adminService;
+    private final AiServiceClient aiServiceClient;
 
     @GetMapping("/stats")
     public ResponseEntity<AdminStatsResponse> getStats() {
@@ -38,5 +40,15 @@ public class AdminController {
             @RequestBody Map<String, String> body
     ) {
         return ResponseEntity.ok(adminService.setUserStatus(userId, body.get("status")));
+    }
+
+    @GetMapping("/ml-stats")
+    public ResponseEntity<Map<String, Object>> getMlStats() {
+        return ResponseEntity.ok(aiServiceClient.getMlStats());
+    }
+
+    @PostMapping("/ml-retrain")
+    public ResponseEntity<Map<String, Object>> triggerRetrain() {
+        return ResponseEntity.ok(aiServiceClient.triggerRetrain());
     }
 }

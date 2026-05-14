@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Users, LogOut, Shield } from "lucide-react";
+import { LayoutDashboard, Users, LogOut, Shield, Brain } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { useAuthStore } from "@/features/auth/model/authStore";
 import { authApi } from "@/features/auth/api/authApi";
@@ -8,6 +8,7 @@ import { routes } from "@/shared/config/routes";
 const NAV = [
   { to: routes.admin.dashboard, icon: LayoutDashboard, label: "Панель" },
   { to: routes.admin.users, icon: Users, label: "Пользователи" },
+  { to: routes.admin.mlMonitoring, icon: Brain, label: "ML-мониторинг" },
 ];
 
 export function AdminLayout() {
