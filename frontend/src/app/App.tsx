@@ -18,7 +18,7 @@ import { DoctorProfilePage } from "@/pages/appointments/DoctorProfilePage";
 import { BookAppointmentPage } from "@/pages/appointments/BookAppointmentPage";
 import { PatientCabinetPage } from "@/pages/cabinet/PatientCabinetPage";
 import { DoctorDashboard } from "@/pages/doctor/DoctorDashboard";
-import { DoctorProfilePage } from "@/pages/doctor/DoctorProfilePage";
+import { DoctorProfilePage as DoctorOwnProfilePage } from "@/pages/doctor/DoctorProfilePage";
 import { AdminLayout } from "@/app/router/AdminLayout";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
@@ -63,7 +63,7 @@ export function App() {
               <Route element={<ProtectedRoute allowedRoles={["DOCTOR"]} />}>
                 <Route element={<DoctorLayout />}>
                   <Route path={routes.doctor.dashboard} element={<DoctorDashboard />} />
-                  <Route path="/doctor/profile" element={<DoctorProfilePage />} />
+                  <Route path="/doctor/profile" element={<DoctorOwnProfilePage />} />
                   <Route path={routes.doctor.schedule} element={<DoctorDashboard />} />
                   <Route path="/doctor/ai-reports" element={<DoctorDashboard />} />
                 </Route>
