@@ -4,7 +4,7 @@ import {
   Stethoscope, Calendar, Clock, FileText, CheckCheck,
   Star, MessageSquare, LayoutGrid, UserCog, Phone, Mail,
   AlertCircle, TrendingUp, Users, Banknote, Shield,
-  ChevronRight, Filter,
+  ChevronRight, Filter, Video,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -127,7 +127,7 @@ function AppointmentCard({
                   </span>
                   <span className="flex items-center gap-1">
                     <Stethoscope className="w-3 h-3" />
-                    {appt.type === "ONLINE" ? "Онлайн" : "Очно"}
+                    {appt.type === "ONLINE" ? "Онлайн" : "Офлайн"}
                   </span>
                   {appt.aiSessionId && (
                     <span className="flex items-center gap-1 text-teal-600 dark:text-teal-400 font-medium">
@@ -148,7 +148,17 @@ function AppointmentCard({
             </div>
 
             {appt.status === "SCHEDULED" && (onComplete || onNoShow) && (
-              <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+              <div className="flex flex-wrap gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+                {appt.type === "ONLINE" && appt.meetingLink && (
+                  <Button
+                    size="sm"
+                    className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white"
+                    onClick={() => window.open(appt.meetingLink, "_blank", "noopener,noreferrer")}
+                  >
+                    <Video className="w-3 h-3 mr-1" />
+                    Подключиться
+                  </Button>
+                )}
                 {onComplete && (
                   <Button size="sm" variant="outline" className="h-7 text-xs flex-1 sm:flex-none"
                     onClick={onComplete} disabled={completing}>
@@ -259,6 +269,15 @@ function PatientDetailModal({
 
           {/* Actions */}
           <div className="flex flex-col gap-2">
+            {appt.status === "SCHEDULED" && appt.type === "ONLINE" && appt.meetingLink && (
+              <Button
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                onClick={() => window.open(appt.meetingLink, "_blank", "noopener,noreferrer")}
+              >
+                <Video className="w-4 h-4 mr-2" />
+                Подключиться к консультации
+              </Button>
+            )}
             {appt.status === "SCHEDULED" && (
               <>
                 <Button className="w-full" onClick={() => { onComplete(); onClose(); }}>
@@ -429,7 +448,7 @@ export function DoctorDashboard() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{a.patientName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {a.type === "ONLINE" ? "Онлайн" : "Очно"}
+                      {a.type === "ONLINE" ? "Онлайн" : "Офлайн"}
                       {a.complaint ? ` · ${a.complaint}` : ""}
                     </p>
                   </div>

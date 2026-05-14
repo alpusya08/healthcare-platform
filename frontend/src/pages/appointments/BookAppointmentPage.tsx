@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Calendar, Clock, ChevronLeft, Stethoscope } from "lucide-react";
+import { Calendar, Clock, ChevronLeft, Stethoscope, Video } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -70,9 +70,28 @@ export function BookAppointmentPage() {
 
   const bookMutation = useMutation({
     mutationFn: appointmentsApi.book,
-    onSuccess: () => {
+    onSuccess: (appt) => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
       toast.success("Запись успешно создана!");
+      if (appt.type === "ONLINE" && appt.meetingLink) {
+        toast(
+          <div className="flex items-center gap-2">
+            <Video className="w-4 h-4 text-teal-600 shrink-0" />
+            <span className="text-sm">
+              Ссылка на онлайн-консультацию:{" "}
+              <a
+                href={appt.meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-teal-600 underline"
+              >
+                Подключиться
+              </a>
+            </span>
+          </div>,
+          { duration: 10000 }
+        );
+      }
       navigate(routes.patient.appointments);
     },
     onError: (err: unknown) => {
@@ -186,7 +205,7 @@ export function BookAppointmentPage() {
                     : "border-border text-foreground hover:border-teal-400"
                 )}
               >
-                {t === "OFFLINE" ? "Очно" : "Онлайн"}
+                {t === "OFFLINE" ? "Офлайн" : "Онлайн"}
               </button>
             ))}
           </div>

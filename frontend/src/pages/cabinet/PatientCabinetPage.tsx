@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   User, Calendar, Star, Activity, Clock, CheckCircle2,
-  ArrowRight, Heart, Shield, ChevronRight, Phone, Mail, Pencil, X, Check,
+  ArrowRight, Heart, Shield, ChevronRight, Phone, Mail, Pencil, X, Check, Video,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -269,8 +269,11 @@ export function PatientCabinetPage() {
               ) : (
                 <div className="space-y-2">
                   {scheduled.slice(0, 4).map((appt) => (
-                    <div key={appt.id} onClick={() => setDetailTarget(appt)} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 hover:border-teal-300 dark:hover:border-teal-700 transition-colors cursor-pointer">
-                      <div className="flex items-center gap-3 min-w-0">
+                    <div key={appt.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 hover:border-teal-300 dark:hover:border-teal-700 transition-colors">
+                      <div
+                        className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
+                        onClick={() => setDetailTarget(appt)}
+                      >
                         <div className="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-900 flex items-center justify-center shrink-0">
                           <User className="w-4 h-4 text-teal-600 dark:text-teal-400" />
                         </div>
@@ -279,9 +282,21 @@ export function PatientCabinetPage() {
                           <p className="text-xs text-muted-foreground">{appt.specialization} · {formatDate(appt.startTime)}, {formatTime(appt.startTime)}</p>
                         </div>
                       </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${STATUS_COLORS[appt.status]}`}>
-                        {STATUS_LABELS[appt.status]}
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {appt.type === "ONLINE" && appt.meetingLink && (
+                          <Button
+                            size="sm"
+                            className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white px-2"
+                            onClick={() => window.open(appt.meetingLink, "_blank", "noopener,noreferrer")}
+                          >
+                            <Video className="w-3 h-3 mr-1" />
+                            Подключиться
+                          </Button>
+                        )}
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLORS[appt.status]}`}>
+                          {STATUS_LABELS[appt.status]}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>

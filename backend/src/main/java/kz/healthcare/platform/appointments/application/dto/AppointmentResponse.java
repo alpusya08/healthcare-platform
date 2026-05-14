@@ -16,5 +16,6 @@ public record AppointmentResponse(
         AppointmentStatus status,
         AppointmentType type,
         String complaint,
-        boolean hasReview
+        boolean hasReview,
+        String meetingLink
 ) {}

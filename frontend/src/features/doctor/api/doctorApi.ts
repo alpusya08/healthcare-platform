@@ -17,6 +17,7 @@ export interface DoctorAppointment {
   complaint: string | null;
   aiSessionId: string | null;
   hasFeedback: boolean;
+  meetingLink?: string;
 }
 
 export interface DoctorProfile {

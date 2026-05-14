@@ -101,6 +101,10 @@ public class AppointmentService {
         slot.setBooked(true);
         timeSlotRepository.save(slot);
 
+        String meetingLink = request.type() == kz.healthcare.platform.appointments.domain.AppointmentType.ONLINE
+                ? "https://meet.jit.si/medai-" + slot.getId().toString().replace("-", "").substring(0, 12)
+                : null;
+
         Appointment appointment = Appointment.builder()
                 .patient(patient)
                 .doctor(doctor)
@@ -108,6 +112,7 @@ public class AppointmentService {
                 .type(request.type())
                 .complaint(request.complaint())
                 .aiSessionId(request.aiSessionId())
+                .meetingLink(meetingLink)
                 .build();
 
         Appointment saved = appointmentRepository.save(appointment);
@@ -302,7 +307,8 @@ public class AppointmentService {
                 a.getType(),
                 a.getComplaint(),
                 a.getAiSessionId(),
-                hasFeedback
+                hasFeedback,
+                a.getMeetingLink()
         );
     }
 
@@ -332,7 +338,8 @@ public class AppointmentService {
                 a.getStatus(),
                 a.getType(),
                 a.getComplaint(),
-                hasReview
+                hasReview,
+                a.getMeetingLink()
         );
     }
 }

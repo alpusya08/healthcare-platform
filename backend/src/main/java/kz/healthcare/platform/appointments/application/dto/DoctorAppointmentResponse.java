@@ -17,5 +17,6 @@ public record DoctorAppointmentResponse(
         AppointmentType type,
         String complaint,
         UUID aiSessionId,
-        boolean hasFeedback
+        boolean hasFeedback,
+        String meetingLink
 ) {}

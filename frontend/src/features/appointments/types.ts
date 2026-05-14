@@ -29,6 +29,7 @@ export interface Appointment {
   type: AppointmentType;
   complaint: string | null;
   hasReview: boolean;
+  meetingLink?: string;
 }
 
 export interface DoctorReview {

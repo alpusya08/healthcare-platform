@@ -1,6 +1,6 @@
 import {
   Calendar, Clock, Stethoscope, User, FileText,
-  Monitor, MapPin, XCircle, Star, CheckCircle2, ChevronRight,
+  Monitor, MapPin, XCircle, Star, CheckCircle2, ChevronRight, Video,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -33,7 +33,7 @@ const STATUS_COLORS: Record<AppointmentStatus, string> = {
 
 const TYPE_LABELS: Record<AppointmentType, string> = {
   ONLINE: "Онлайн-консультация",
-  OFFLINE: "Очный приём",
+  OFFLINE: "Офлайн",
 };
 
 function formatDate(iso: string) {
@@ -151,6 +151,15 @@ export function AppointmentDetailModal({ appointment: appt, onClose, onCancel, o
 
           {/* Actions */}
           <div className="flex flex-col gap-2">
+            {appt.status === "SCHEDULED" && appt.type === "ONLINE" && appt.meetingLink && (
+              <Button
+                className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                onClick={() => window.open(appt.meetingLink, "_blank", "noopener,noreferrer")}
+              >
+                <Video className="w-4 h-4 mr-2" />
+                Подключиться к видеоконсультации
+              </Button>
+            )}
             {appt.status === "SCHEDULED" && onCancel && (
               <Button
                 variant="destructive"

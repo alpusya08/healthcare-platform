@@ -52,6 +52,9 @@ public class Appointment {
     @Column(name = "ai_session_id")
     private UUID aiSessionId;
 
+    @Column(name = "meeting_link")
+    private String meetingLink;
+
     private String notes;
 
     @Column(name = "created_at", nullable = false, updatable = false)

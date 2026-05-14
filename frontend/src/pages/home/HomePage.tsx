@@ -62,7 +62,7 @@ export function HomePage() {
             </CardHeader>
             <CardContent>
               <p className="mb-4 text-sm text-muted-foreground">
-                Запишитесь на приём онлайн или очно к специалисту
+                Запишитесь на приём онлайн или офлайн к специалисту
               </p>
               <Button variant="outline" className="w-full">
                 Выбрать врача
