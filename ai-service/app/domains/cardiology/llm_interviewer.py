@@ -1,7 +1,6 @@
 """LLM-driven interviewer that collects cardiology features through natural conversation."""
 from __future__ import annotations
 
-import json
 import uuid
 from typing import Optional
 
@@ -21,6 +20,10 @@ from app.domains.cardiology.prompts import EXTRACTION_PROMPT, INTERVIEWER_PROMPT
 
 logger = structlog.get_logger()
 
+# For these features the LLM can personalise based on what patient described;
+# for others always use the static question (more reliable).
+_LLM_PERSONALISE_FEATURES = {"chest_pain_type", "exercise_angina"}
+
 
 class LLMCardiologyInterviewer:
     def __init__(self, llm: LLMProvider) -> None:
@@ -34,7 +37,16 @@ class LLMCardiologyInterviewer:
                 file_summaries=session.format_files_summary(),
             )
             raw = await self._llm.complete_structured(prompt, schema={})
-            values = {k: raw.get(k) for k in CARDIOLOGY_FEATURES}
+            values: dict = {}
+            for k in CARDIOLOGY_FEATURES:
+                v = raw.get(k)
+                if v is not None:
+                    try:
+                        values[k] = float(v)
+                    except (TypeError, ValueError):
+                        values[k] = None
+                else:
+                    values[k] = None
             values["_raw_description"] = session.initial_description
             return MedicalFeatures(values=values)
         except Exception:
@@ -48,11 +60,14 @@ class LLMCardiologyInterviewer:
         if next_feature is None:
             return None
 
+        if next_feature not in _LLM_PERSONALISE_FEATURES:
+            return self._static_question(session, next_feature)
+
         try:
             return await self._ask_llm(session, features, next_feature)
         except Exception:
-            logger.exception("llm_interviewer.question_generation_failed_using_fallback")
-            return self._fallback_question(session, next_feature)
+            logger.warning("llm_interviewer.question_generation_failed", feature=next_feature)
+            return self._static_question(session, next_feature)
 
     def _pick_next_feature(
         self, session: AnalysisSession, features: MedicalFeatures
@@ -83,63 +98,66 @@ class LLMCardiologyInterviewer:
         )
 
         raw = await self._llm.complete_structured(prompt, schema={})
-
         question_text = raw.get("question_text", "").strip()
         if not question_text:
-            return self._fallback_question(session, next_feature)
+            return self._static_question(session, next_feature)
 
-        q_type_str = raw.get("type", "text")
         try:
-            q_type = QuestionType(q_type_str)
+            q_type = QuestionType(raw.get("type", "single_choice"))
         except ValueError:
-            q_type = QuestionType.TEXT
+            q_type = QuestionType.SINGLE_CHOICE
+
+        raw_options = raw.get("options")
+        if not raw_options or len(raw_options) < 2:
+            from app.domains.cardiology.static_questions import _QUESTION_MAP
+            raw_options = (_QUESTION_MAP.get(next_feature) or {}).get("options")
 
         return Question(
             id=uuid.uuid4(),
             session_id=session.id,
             question_text=question_text,
             question_type=q_type,
-            options=raw.get("options"),
+            options=raw_options,
             feature_name=next_feature,
             hint=None,
             order_index=session.questions_count,
         )
 
-    def _fallback_question(self, session: AnalysisSession, feature_name: str) -> Question:
+    def _static_question(self, session: AnalysisSession, feature_name: str) -> Optional[Question]:
         from app.domains.cardiology.static_questions import _QUESTION_MAP
         q_def = _QUESTION_MAP.get(feature_name)
-        if q_def:
-            try:
-                q_type = QuestionType(q_def["type"])
-            except ValueError:
-                q_type = QuestionType.TEXT
-            return Question(
-                id=uuid.uuid4(),
-                session_id=session.id,
-                question_text=q_def["question_text"],
-                question_type=q_type,
-                options=q_def.get("options"),
-                feature_name=feature_name,
-                hint=q_def.get("hint"),
-                order_index=session.questions_count,
-            )
-
-        description = FEATURE_DESCRIPTIONS.get(feature_name, feature_name)
+        if not q_def:
+            return None
+        try:
+            q_type = QuestionType(q_def["type"])
+        except ValueError:
+            q_type = QuestionType.TEXT
         return Question(
             id=uuid.uuid4(),
             session_id=session.id,
-            question_text=f"Уточните, пожалуйста: {description}",
-            question_type=QuestionType.TEXT,
-            options=None,
+            question_text=q_def["question_text"],
+            question_type=q_type,
+            options=q_def.get("options"),
             feature_name=feature_name,
-            hint=None,
+            hint=q_def.get("hint"),
             order_index=session.questions_count,
         )
 
     def _extract_from_answers(self, session: AnalysisSession) -> MedicalFeatures:
+        from app.domains.cardiology.static_questions import get_option_numeric_value
         values: dict = {k: None for k in CARDIOLOGY_FEATURES}
         values["_raw_description"] = session.initial_description
         for q in session.questions:
-            if q.feature_name and q.answer and q.feature_name in CARDIOLOGY_FEATURES:
-                values[q.feature_name] = q.answer
+            if not (q.feature_name and q.answer and q.feature_name in CARDIOLOGY_FEATURES):
+                continue
+            numeric = get_option_numeric_value(q.feature_name, q.answer)
+            if numeric is not None:
+                values[q.feature_name] = numeric
+            else:
+                try:
+                    values[q.feature_name] = float(
+                        q.answer.replace(",", ".").split("/")[0].split()[0]
+                    )
+                except (ValueError, AttributeError):
+                    values[q.feature_name] = q.answer
         return MedicalFeatures(values=values)

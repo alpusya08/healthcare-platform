@@ -1,4 +1,4 @@
-"""Fallback static questions used when LLM interviewer is unavailable."""
+"""Static questions for cardiology domain — simple conversational Russian, no medical jargon."""
 from __future__ import annotations
 
 import uuid
@@ -6,102 +6,160 @@ import uuid
 from app.core.entities.question import Question
 from app.core.enums import QuestionType
 
+# Each question has option_values aligned with options list.
+# None means "use median imputation" for that choice.
 _QUESTIONS = [
     {
         "feature_name": "chest_pain_type",
-        "question_text": "Как бы вы описали боль в груди?",
+        "question_text": "Как лучше всего описать то, что вы чувствуете в груди?",
         "type": "single_choice",
         "options": [
-            "Типичная стенокардия — давящая боль при нагрузке (3)",
-            "Атипичная стенокардия — боль без чёткой связи с нагрузкой (1)",
-            "Неангинозная боль — колющая или ситуационная (2)",
-            "Боли нет или бессимптомно (0)",
+            "Давящая или сжимающая боль — появляется при ходьбе или усилии, проходит в покое",
+            "Боль есть, но она непредсказуемая — бывает и в покое без видимой причины",
+            "Покалывание, жжение или резкая боль, не связанная с нагрузкой",
+            "Болей в груди нет",
         ],
-        "hint": "Выберите наиболее подходящее описание",
-    },
-    {
-        "feature_name": "st_slope",
-        "question_text": "Делали ли вам нагрузочный тест (ЭКГ при нагрузке)? Если да, каков результат ST-сегмента?",
-        "type": "single_choice",
-        "options": [
-            "Восходящий ST (норма) (0)",
-            "Плоский ST (1)",
-            "Нисходящий ST (2)",
-            "Тест не проводился (0)",
-        ],
+        "option_values": [3, 1, 2, 0],
         "hint": None,
     },
     {
         "feature_name": "exercise_angina",
-        "question_text": "Возникает ли боль в груди или одышка при физической нагрузке?",
+        "question_text": "Когда вы быстро идёте, поднимаетесь по лестнице или делаете физическую работу — появляется ли боль в груди или сильная одышка?",
         "type": "single_choice",
-        "options": ["Да (1)", "Нет (0)"],
+        "options": [
+            "Да, практически всегда",
+            "Иногда бывает",
+            "Нет, при нагрузке всё нормально",
+        ],
+        "option_values": [1, 1, 0],
         "hint": None,
     },
     {
-        "feature_name": "oldpeak",
-        "question_text": "Есть ли данные о депрессии ST-сегмента по результатам ЭКГ при нагрузке?",
-        "type": "number",
-        "options": None,
-        "hint": "Значение из нагрузочного теста. Если не знаете, введите 0.",
-    },
-    {
-        "feature_name": "max_heart_rate",
-        "question_text": "Какой максимальный пульс вы замечали при нагрузке (уд/мин)?",
-        "type": "number",
-        "options": None,
-        "hint": "Например: 150. Если не измеряли — введите 0.",
-    },
-    {
         "feature_name": "age",
-        "question_text": "Сколько вам лет?",
+        "question_text": "Сколько вам полных лет?",
         "type": "number",
         "options": None,
-        "hint": "Введите полных лет",
+        "option_values": None,
+        "hint": "Введите возраст цифрами, например: 48",
     },
     {
         "feature_name": "sex",
         "question_text": "Ваш пол?",
         "type": "single_choice",
-        "options": ["Мужской (1)", "Женский (0)"],
+        "options": ["Мужской", "Женский"],
+        "option_values": [1, 0],
         "hint": None,
     },
     {
         "feature_name": "resting_blood_pressure",
-        "question_text": "Каково ваше артериальное давление в покое (в мм рт. ст.)?",
-        "type": "number",
-        "options": None,
-        "hint": "Например: 130 (систолическое). Если не знаете — введите 0.",
+        "question_text": "Какое у вас обычно артериальное давление в спокойном состоянии?",
+        "type": "single_choice",
+        "options": [
+            "Нормальное — около 120/80",
+            "Немного повышено — 130–140 / 80–90",
+            "Повышенное — 140–160",
+            "Высокое — выше 160",
+            "Не знаю / не измерял(а)",
+        ],
+        "option_values": [115, 130, 145, 170, None],
+        "hint": None,
     },
     {
         "feature_name": "cholesterol",
-        "question_text": "Каков уровень холестерина в крови (мг/дл)?",
-        "type": "number",
-        "options": None,
-        "hint": "Из результатов анализа крови. Если не знаете — введите 0.",
+        "question_text": "Говорили ли вам, что у вас повышен холестерин?",
+        "type": "single_choice",
+        "options": [
+            "Нет, холестерин в норме",
+            "Да, немного повышен",
+            "Да, значительно повышен",
+            "Не проверялся(лась) / не знаю",
+        ],
+        "option_values": [185, 225, 275, None],
+        "hint": None,
+    },
+    {
+        "feature_name": "max_heart_rate",
+        "question_text": "Как ведёт себя ваш пульс при физической нагрузке?",
+        "type": "single_choice",
+        "options": [
+            "Почти не учащается, могу говорить при нагрузке",
+            "Заметно учащается, но быстро восстанавливается",
+            "Очень сильно учащается, долго восстанавливается",
+            "Избегаю нагрузок",
+        ],
+        "option_values": [105, 140, 165, None],
+        "hint": None,
     },
     {
         "feature_name": "fasting_blood_sugar",
-        "question_text": "Уровень сахара в крови натощак выше 120 мг/дл?",
+        "question_text": "Есть ли у вас сахарный диабет или вам говорили, что сахар в крови повышен?",
         "type": "single_choice",
-        "options": ["Да (1)", "Нет (0)", "Не знаю (0)"],
-        "hint": "Это данные из анализа крови",
+        "options": [
+            "Да, есть диабет или сахар повышен",
+            "Нет, всё в норме",
+            "Не знаю",
+        ],
+        "option_values": [1, 0, 0],
+        "hint": None,
     },
     {
         "feature_name": "resting_ecg",
-        "question_text": "Каковы результаты ЭКГ в покое?",
+        "question_text": "Делали ли вам ЭКГ (кардиограмму)? Если да — что сказали врачи?",
         "type": "single_choice",
         "options": [
-            "Норма (0)",
-            "Аномалия ST-T (1)",
-            "Гипертрофия левого желудочка (2)",
-            "ЭКГ не делал(а) (0)",
+            "Да, сказали что всё в норме",
+            "Да, нашли какие-то отклонения",
+            "Не делал(а) или результат неизвестен",
         ],
+        "option_values": [0, 1, 0],
+        "hint": None,
+    },
+    {
+        "feature_name": "oldpeak",
+        "question_text": "Проходили ли вы нагрузочный тест сердца (тредмил или велоэргометрия)?",
+        "type": "single_choice",
+        "options": [
+            "Да, результат был нормальный",
+            "Да, нашли отклонения или тест пришлось прервать",
+            "Нет, не проходил(а)",
+        ],
+        "option_values": [0.5, 2.5, 0.0],
+        "hint": None,
+    },
+    {
+        "feature_name": "st_slope",
+        "question_text": "Говорил ли вам кардиолог или терапевт об отклонениях в работе сердца или назначал ли лечение от сердца?",
+        "type": "single_choice",
+        "options": [
+            "Да, были отклонения или назначено лечение",
+            "Нет, сказали что сердце работает нормально",
+            "К кардиологу не обращался(лась)",
+        ],
+        "option_values": [2, 0, 0],
         "hint": None,
     },
 ]
 
-_QUESTION_MAP = {q["feature_name"]: q for q in _QUESTIONS}
+_QUESTION_MAP: dict[str, dict] = {q["feature_name"]: q for q in _QUESTIONS}
+
+# Lookup: feature → {option_text: numeric_value}
+OPTION_VALUE_MAP: dict[str, dict[str, float | None]] = {
+    q["feature_name"]: dict(zip(q["options"], q["option_values"]))
+    for q in _QUESTIONS
+    if q.get("options") and q.get("option_values")
+}
+
+
+def get_option_numeric_value(feature_name: str, answer_text: str) -> float | None:
+    """Return the numeric value for a radio-button answer, or None if unknown/median."""
+    mapping = OPTION_VALUE_MAP.get(feature_name, {})
+    # exact match first, then strip-match
+    if answer_text in mapping:
+        return mapping[answer_text]
+    for opt, val in mapping.items():
+        if answer_text.strip() == opt.strip():
+            return val
+    return None
 
 
 def get_next_static_question(session, partial_features) -> "Question | None":
@@ -110,6 +168,8 @@ def get_next_static_question(session, partial_features) -> "Question | None":
     asked = {q.feature_name for q in session.questions if q.feature_name}
     for feature in FEATURE_PRIORITY:
         if feature in asked:
+            continue
+        if partial_features.get(feature) is not None:
             continue
         q_def = _QUESTION_MAP.get(feature)
         if q_def is None:

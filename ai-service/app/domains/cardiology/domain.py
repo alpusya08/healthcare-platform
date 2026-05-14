@@ -66,11 +66,25 @@ class CardiologyDomain(MedicalDomain):
             return self._extract_from_answers(session)
 
     def _extract_from_answers(self, session: AnalysisSession) -> MedicalFeatures:
+        from app.domains.cardiology.static_questions import get_option_numeric_value
+
         values: dict = {k: None for k in CARDIOLOGY_FEATURES}
         values["_raw_description"] = session.initial_description
         for q in session.questions:
-            if q.feature_name and q.answer and q.feature_name in CARDIOLOGY_FEATURES:
-                values[q.feature_name] = q.answer
+            if not (q.feature_name and q.answer and q.feature_name in CARDIOLOGY_FEATURES):
+                continue
+            # Try to resolve numeric value from radio-button options first
+            numeric = get_option_numeric_value(q.feature_name, q.answer)
+            if numeric is not None:
+                values[q.feature_name] = numeric
+            else:
+                # For number inputs or unknown answers, try to parse as float
+                try:
+                    values[q.feature_name] = float(
+                        q.answer.replace(",", ".").split("/")[0].split()[0]
+                    )
+                except (ValueError, AttributeError):
+                    values[q.feature_name] = q.answer
         return MedicalFeatures(values=values)
 
     async def generate_next_question(

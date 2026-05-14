@@ -495,7 +495,10 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
         </CardHeader>
         <CardContent>
           <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">
-            {report.explanation}
+            {report.explanation
+              .split("\n")
+              .map((line) => line.replace(/^#{1,4}\s*/, "").replace(/\*\*/g, ""))
+              .join("\n")}
           </div>
         </CardContent>
       </Card>
