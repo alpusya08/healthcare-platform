@@ -87,3 +87,14 @@ healthcare-platform/
 | MinIO API   | 9000 |
 | MinIO UI    | 9001 |
 | MLflow      | 5000 |
+
+## Demo Accounts
+
+После запуска миграций автоматически создаются тестовые аккаунты:
+
+| Роль       | Email                | Пароль       |
+|------------|----------------------|--------------|
+| Пациент    | demo@patient.com     | Demo1234!    |
+| Врач       | demo@doctor.com      | Demo1234!    |
+| Врач (осн) | dr.seitkali@medai.kz | Doctor1234!  |
+| Админ      | admin@medai.kz       | Admin1234!   |
