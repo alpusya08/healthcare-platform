@@ -192,7 +192,7 @@ export function AnalysisPage() {
         </Button>
         <div>
           <h1 className="text-xl font-bold text-foreground">Проверка симптомов</h1>
-          <p className="text-sm text-muted-foreground">Кардиологический скрининг</p>
+          <p className="text-sm text-muted-foreground">AI-анализ симптомов</p>
         </div>
       </div>
 
@@ -352,11 +352,11 @@ export function AnalysisPage() {
                 {fileUploading ? (
                   <><Loader2 className="w-3 h-3 animate-spin" /> Загрузка...</>
                 ) : (
-                  "Прикрепить файл (рентген, ЭКГ, УЗИ, PDF)"
+                  "Прикрепить документы (заключения, снимки, анализы — PDF, JPG, PNG до 50 МБ)"
                 )}
                 <input
                   type="file"
-                  accept=".pdf,.jpg,.jpeg,.png,.txt"
+                  accept=".pdf,.jpg,.jpeg,.png"
                   className="hidden"
                   onChange={handleFileSelect}
                   disabled={fileUploading || !sessionId}

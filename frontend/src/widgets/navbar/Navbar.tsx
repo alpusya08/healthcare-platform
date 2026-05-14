@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Moon, Sun, LogOut, User, ChevronDown, Activity, Calendar, Home, LayoutDashboard } from "lucide-react";
+import { Moon, Sun, LogOut, User, ChevronDown, Activity, Calendar, Home, LayoutDashboard, Phone } from "lucide-react";
 import { Logo } from "@/shared/ui/Logo";
 import { Button } from "@/shared/ui/button";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
@@ -10,6 +11,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/shared/ui/dialog";
 import { useTheme } from "@/app/providers/ThemeProvider";
 import { useAuthStore } from "@/features/auth/model/authStore";
 import { authApi } from "@/features/auth/api/authApi";
@@ -28,6 +37,7 @@ export function Navbar() {
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const [emergencyOpen, setEmergencyOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -78,6 +88,15 @@ export function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          {/* Emergency 103 */}
+          <button
+            onClick={() => setEmergencyOpen(true)}
+            className="flex items-center gap-1 px-2 py-1 rounded-md bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors shrink-0"
+            aria-label="Экстренный вызов 103"
+          >
+            <Phone className="w-3 h-3" />
+            103
+          </button>
           {/* Theme toggle */}
           <Button
             variant="ghost"
@@ -129,5 +148,37 @@ export function Navbar() {
         </div>
       </div>
     </header>
+
+    <Dialog open={emergencyOpen} onOpenChange={setEmergencyOpen}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-red-600">
+            <Phone className="w-5 h-5" />
+            Вызов скорой помощи
+          </DialogTitle>
+          <DialogDescription>
+            Вы уверены, что хотите позвонить в скорую помощь?
+            <span className="block mt-2 font-semibold text-foreground">
+              103 — служба экстренной медицинской помощи Казахстана
+            </span>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" onClick={() => setEmergencyOpen(false)}>
+            Отмена
+          </Button>
+          <Button
+            variant="destructive"
+            asChild
+            onClick={() => setEmergencyOpen(false)}
+          >
+            <a href="tel:103">
+              <Phone className="w-4 h-4 mr-2" />
+              Позвонить 103
+            </a>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

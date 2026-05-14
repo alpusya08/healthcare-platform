@@ -75,7 +75,7 @@ export function App() {
 
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
-            <Toaster position="top-right" richColors />
+            <Toaster position="bottom-right" richColors duration={4000} toastOptions={{ className: "z-[9999]" }} />
           </AuthProvider>
         </BrowserRouter>
       </QueryClientProvider>

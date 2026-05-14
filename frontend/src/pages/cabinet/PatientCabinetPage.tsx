@@ -16,6 +16,7 @@ import { authApi } from "@/features/auth/api/authApi";
 import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
 import { routes } from "@/shared/config/routes";
 import { AppointmentDetailModal } from "@/widgets/appointment-detail/AppointmentDetailModal";
+import { ReviewModal } from "@/widgets/review-modal/ReviewModal";
 import type { Appointment } from "@/features/appointments/types";
 
 const STATUS_LABELS = {
@@ -48,6 +49,7 @@ function formatTime(iso: string) {
 export function PatientCabinetPage() {
   const { user, updateUser } = useAuthStore();
   const [detailTarget, setDetailTarget] = useState<Appointment | null>(null);
+  const [reviewTarget, setReviewTarget] = useState<Appointment | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState(user?.fullName ?? "");
   const [editPhone, setEditPhone] = useState(user?.phone ?? "");
@@ -323,9 +325,12 @@ export function PatientCabinetPage() {
               ) : (
                 <div className="divide-y divide-border">
                   {completed.map((appt) => (
-                    <div key={appt.id} onClick={() => setDetailTarget(appt)} className="py-3 first:pt-0 last:pb-0 cursor-pointer hover:bg-muted/30 rounded-lg px-2 -mx-2 transition-colors">
+                    <div key={appt.id} className="py-3 first:pt-0 last:pb-0 rounded-lg px-2 -mx-2">
                       <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-start gap-3 min-w-0">
+                        <div
+                          className="flex items-start gap-3 min-w-0 flex-1 cursor-pointer hover:bg-muted/30 rounded-lg transition-colors"
+                          onClick={() => setDetailTarget(appt)}
+                        >
                           <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-950 flex items-center justify-center shrink-0 mt-0.5">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                           </div>
@@ -337,12 +342,24 @@ export function PatientCabinetPage() {
                             )}
                           </div>
                         </div>
-                        {appt.hasReview && (
-                          <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 shrink-0">
-                            <Star className="w-3 h-3 fill-current" />
-                            Отзыв
-                          </span>
-                        )}
+                        <div className="shrink-0 flex items-center gap-2">
+                          {appt.hasReview ? (
+                            <span className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+                              <Star className="w-3 h-3 fill-current" />
+                              Отзыв
+                            </span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950"
+                              onClick={() => setReviewTarget(appt)}
+                            >
+                              <Star className="w-3 h-3 mr-1" />
+                              Оценить
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -357,6 +374,14 @@ export function PatientCabinetPage() {
         appointment={detailTarget}
         onClose={() => setDetailTarget(null)}
       />
+
+      {reviewTarget && (
+        <ReviewModal
+          appointmentId={reviewTarget.id}
+          doctorName={reviewTarget.doctorName}
+          onClose={() => setReviewTarget(null)}
+        />
+      )}
     </div>
   );
 }

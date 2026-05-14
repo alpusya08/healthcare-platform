@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -14,7 +15,8 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
 import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
-import type { DoctorReview } from "@/features/appointments/types";
+import type { DoctorReview, TimeSlot } from "@/features/appointments/types";
+import { cn } from "@/shared/lib/utils";
 import { routes } from "@/shared/config/routes";
 
 function StarRating({ value }: { value: number }) {
@@ -60,27 +62,44 @@ function ReviewCard({ review }: { review: DoctorReview }) {
   );
 }
 
-function SlotChip({ startTime, endTime }: { startTime: string; endTime: string }) {
+function SlotChip({
+  slot,
+  selected,
+  onClick,
+}: {
+  slot: TimeSlot;
+  selected: boolean;
+  onClick: () => void;
+}) {
   const fmt = (s: string) =>
     new Date(s).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-  const date = new Date(startTime).toLocaleDateString("ru-RU", {
+  const date = new Date(slot.startTime).toLocaleDateString("ru-RU", {
     weekday: "short",
     day: "numeric",
     month: "short",
   });
   return (
-    <div className="flex flex-col items-center px-3 py-2 rounded-lg border border-border text-center min-w-[80px]">
-      <span className="text-xs text-muted-foreground">{date}</span>
-      <span className="text-sm font-medium text-foreground mt-0.5">
-        {fmt(startTime)}–{fmt(endTime)}
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex flex-col items-center px-3 py-2 rounded-lg border text-center min-w-[80px] transition-all",
+        selected
+          ? "bg-teal-600 border-teal-600 text-white"
+          : "border-border text-foreground hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30"
+      )}
+    >
+      <span className={cn("text-xs", selected ? "text-teal-100" : "text-muted-foreground")}>{date}</span>
+      <span className="text-sm font-medium mt-0.5">
+        {fmt(slot.startTime)}–{fmt(slot.endTime)}
       </span>
-    </div>
+    </button>
   );
 }
 
 export function DoctorProfilePage() {
   const { doctorId } = useParams<{ doctorId: string }>();
   const navigate = useNavigate();
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
 
   const { data: doctors = [], isLoading: doctorsLoading } = useQuery({
     queryKey: ["doctors"],
@@ -198,15 +217,26 @@ export function DoctorProfilePage() {
           {nearestSlots.length === 0 ? (
             <p className="text-sm text-muted-foreground">Нет свободных слотов</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {nearestSlots.map((slot) => (
-                <SlotChip
-                  key={slot.id}
-                  startTime={slot.startTime}
-                  endTime={slot.endTime}
-                />
-              ))}
-            </div>
+            <>
+              <div className="flex flex-wrap gap-2">
+                {nearestSlots.map((slot) => (
+                  <SlotChip
+                    key={slot.id}
+                    slot={slot}
+                    selected={selectedSlot?.id === slot.id}
+                    onClick={() => setSelectedSlot(selectedSlot?.id === slot.id ? null : slot)}
+                  />
+                ))}
+              </div>
+              {slots.length > nearestSlots.length && (
+                <button
+                  className="mt-3 text-xs text-teal-600 dark:text-teal-400 hover:underline"
+                  onClick={() => navigate(`/book/${doctorId}`)}
+                >
+                  Показать все слоты →
+                </button>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -239,12 +269,34 @@ export function DoctorProfilePage() {
 
       <Separator />
 
-      <Button
-        className="w-full"
-        onClick={() => navigate(`/book/${doctorId}`)}
-      >
-        Записаться к врачу
-      </Button>
+      {selectedSlot ? (
+        <div className="sticky bottom-4 z-10">
+          <Button
+            className="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-lg"
+            onClick={() => navigate(`/book/${doctorId}?slotId=${selectedSlot.id}`)}
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Записаться на{" "}
+            {new Date(selectedSlot.startTime).toLocaleDateString("ru-RU", {
+              day: "numeric",
+              month: "long",
+            })}
+            ,{" "}
+            {new Date(selectedSlot.startTime).toLocaleTimeString("ru-RU", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Button>
+        </div>
+      ) : (
+        <Button
+          className="w-full"
+          variant="outline"
+          onClick={() => navigate(`/book/${doctorId}`)}
+        >
+          Выбрать другое время
+        </Button>
+      )}
     </div>
   );
 }
