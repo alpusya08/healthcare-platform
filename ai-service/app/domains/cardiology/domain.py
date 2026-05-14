@@ -85,8 +85,13 @@ class CardiologyDomain(MedicalDomain):
         if len(missing) <= TOLERATED_MISSING_THRESHOLD:
             return None
 
-        # Early stop if XGBoost is confident enough (hybrid mode only)
-        if self._ai_mode == "hybrid" and self._predictor is not None:
+        # Early stop if XGBoost is confident enough (hybrid mode only, after min questions)
+        MIN_QUESTIONS_BEFORE_EARLY_STOP = 3
+        if (
+            self._ai_mode == "hybrid"
+            and self._predictor is not None
+            and session.questions_count >= MIN_QUESTIONS_BEFORE_EARLY_STOP
+        ):
             try:
                 prediction = self._predictor.predict(partial_features)
                 if prediction.confidence >= CONFIDENCE_EARLY_STOP:
