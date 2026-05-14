@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -15,6 +16,7 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, UUID> {
             SELECT ts FROM TimeSlot ts
             WHERE ts.doctor.id = :doctorId
               AND ts.booked = false
+              AND ts.blocked = false
               AND ts.startTime > CURRENT_TIMESTAMP
             ORDER BY ts.startTime
             """)
@@ -31,4 +33,14 @@ public interface TimeSlotRepository extends JpaRepository<TimeSlot, UUID> {
     List<TimeSlot> findUpcomingBySpecialization(
             @Param("specCode") String specializationCode,
             Pageable pageable);
+
+    @Query("""
+            SELECT ts FROM TimeSlot ts
+            WHERE ts.doctor.id = :doctorId
+              AND ts.startTime > CURRENT_TIMESTAMP
+            ORDER BY ts.startTime
+            """)
+    List<TimeSlot> findByDoctorIdOrderByStartTime(@Param("doctorId") UUID doctorId);
+
+    boolean existsByDoctorIdAndStartTime(UUID doctorId, Instant startTime);
 }

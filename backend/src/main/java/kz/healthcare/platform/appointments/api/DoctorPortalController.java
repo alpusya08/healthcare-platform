@@ -2,16 +2,16 @@ package kz.healthcare.platform.appointments.api;
 
 import jakarta.validation.Valid;
 import kz.healthcare.platform.appointments.application.AppointmentService;
-import kz.healthcare.platform.appointments.application.dto.DoctorAppointmentResponse;
-import kz.healthcare.platform.appointments.application.dto.DoctorFeedbackRequest;
-import kz.healthcare.platform.appointments.application.dto.DoctorProfileResponse;
-import kz.healthcare.platform.appointments.application.dto.UpdateDoctorProfileRequest;
+import kz.healthcare.platform.appointments.application.ScheduleService;
+import kz.healthcare.platform.appointments.application.dto.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -20,6 +20,7 @@ import java.util.UUID;
 public class DoctorPortalController {
 
     private final AppointmentService appointmentService;
+    private final ScheduleService scheduleService;
 
     @GetMapping("/appointments")
     public List<DoctorAppointmentResponse> myAppointments(
@@ -63,5 +64,57 @@ public class DoctorPortalController {
             @AuthenticationPrincipal UUID doctorId,
             @Valid @RequestBody UpdateDoctorProfileRequest request) {
         return ResponseEntity.ok(appointmentService.updateDoctorProfile(doctorId, request));
+    }
+
+    // --- Schedule management ---
+
+    @GetMapping("/schedule/template")
+    public List<ScheduleTemplateResponse> getTemplate(@AuthenticationPrincipal UUID doctorId) {
+        return scheduleService.getTemplate(doctorId);
+    }
+
+    @PostMapping("/schedule/template")
+    public List<ScheduleTemplateResponse> saveTemplate(
+            @AuthenticationPrincipal UUID doctorId,
+            @Valid @RequestBody SaveTemplateRequest request) {
+        return scheduleService.saveTemplate(doctorId, request);
+    }
+
+    @PostMapping("/schedule/generate")
+    public ResponseEntity<Map<String, Object>> generateSlots(
+            @AuthenticationPrincipal UUID doctorId,
+            @Valid @RequestBody GenerateSlotsRequest request) {
+        int count = scheduleService.generateSlots(doctorId, request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(Map.of("created", count));
+    }
+
+    @GetMapping("/slots")
+    public List<DoctorSlotResponse> mySlots(@AuthenticationPrincipal UUID doctorId) {
+        return scheduleService.getDoctorSlots(doctorId);
+    }
+
+    @PatchMapping("/slots/{slotId}/block")
+    public ResponseEntity<Void> blockSlot(
+            @AuthenticationPrincipal UUID doctorId,
+            @PathVariable UUID slotId) {
+        scheduleService.blockSlot(doctorId, slotId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/slots/{slotId}/unblock")
+    public ResponseEntity<Void> unblockSlot(
+            @AuthenticationPrincipal UUID doctorId,
+            @PathVariable UUID slotId) {
+        scheduleService.unblockSlot(doctorId, slotId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/slots/{slotId}")
+    public ResponseEntity<Void> deleteSlot(
+            @AuthenticationPrincipal UUID doctorId,
+            @PathVariable UUID slotId) {
+        scheduleService.deleteSlot(doctorId, slotId);
+        return ResponseEntity.noContent().build();
     }
 }

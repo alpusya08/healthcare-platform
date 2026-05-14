@@ -8,13 +8,13 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "time_slots")
+@Table(name = "schedule_templates")
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class TimeSlot {
+public class ScheduleTemplate {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -24,19 +24,24 @@ public class TimeSlot {
     @JoinColumn(name = "doctor_id", nullable = false)
     private Doctor doctor;
 
-    @Column(name = "start_time", nullable = false)
-    private Instant startTime;
+    @Column(name = "day_of_week", nullable = false)
+    private int dayOfWeek;
 
-    @Column(name = "end_time", nullable = false)
-    private Instant endTime;
+    @Column(name = "start_hour", nullable = false)
+    private int startHour;
 
-    @Column(name = "is_booked", nullable = false)
+    @Column(name = "start_min", nullable = false)
+    private int startMin;
+
+    @Column(name = "end_hour", nullable = false)
+    private int endHour;
+
+    @Column(name = "end_min", nullable = false)
+    private int endMin;
+
+    @Column(name = "slot_duration_min", nullable = false)
     @Builder.Default
-    private boolean booked = false;
-
-    @Column(name = "is_blocked", nullable = false)
-    @Builder.Default
-    private boolean blocked = false;
+    private int slotDurationMin = 60;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "appointment_type", nullable = false, length = 20)

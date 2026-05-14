@@ -84,7 +84,8 @@ public class AppointmentService {
     @Transactional(readOnly = true)
     public List<TimeSlotResponse> listAvailableSlots(UUID doctorId) {
         return timeSlotRepository.findAvailableByDoctorId(doctorId).stream()
-                .map(ts -> new TimeSlotResponse(ts.getId(), ts.getStartTime(), ts.getEndTime()))
+                .map(ts -> new TimeSlotResponse(ts.getId(), ts.getStartTime(), ts.getEndTime(),
+                        ts.getAppointmentType().name()))
                 .toList();
     }
 
