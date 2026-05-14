@@ -53,6 +53,7 @@ export function DoctorFeedbackModal({
 }) {
   const [verdict, setVerdict] = useState<FeedbackVerdict | null>(null);
   const [comment, setComment] = useState("");
+  const [correctedDiagnosis, setCorrectedDiagnosis] = useState("");
   const [showReport, setShowReport] = useState(false);
 
   const { data: report, isLoading: reportLoading } = useQuery({
@@ -64,7 +65,11 @@ export function DoctorFeedbackModal({
 
   const feedbackMutation = useMutation({
     mutationFn: () =>
-      doctorApi.submitFeedback(appointment.id, { verdict: verdict!, comment }),
+      doctorApi.submitFeedback(appointment.id, {
+        verdict: verdict!,
+        comment,
+        correctedDiagnosis: verdict === "REJECTED" ? correctedDiagnosis : undefined,
+      }),
     onSuccess: () => {
       toast.success("Отзыв отправлен");
       onSuccess();
@@ -77,13 +82,19 @@ export function DoctorFeedbackModal({
     },
   });
 
+  const isSubmitDisabled =
+    !verdict ||
+    !comment.trim() ||
+    (verdict === "REJECTED" && !correctedDiagnosis.trim()) ||
+    feedbackMutation.isPending;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-background rounded-xl border border-border shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border sticky top-0 bg-background">
           <div>
-            <h2 className="font-semibold text-foreground">Запись пациента</h2>
+            <h2 className="font-semibold text-foreground">Оценка AI-анализа</h2>
             <p className="text-sm text-muted-foreground">{appointment.patientName}</p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -162,9 +173,9 @@ export function DoctorFeedbackModal({
             </div>
           )}
 
-          {/* Feedback form */}
+          {/* Verdict selection */}
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Оценка AI-анализа</Label>
+            <Label className="text-sm font-medium">Оценка AI-диагноза</Label>
             <div className="flex flex-col gap-2">
               {(Object.entries(VERDICT_CONFIG) as [FeedbackVerdict, typeof VERDICT_CONFIG[FeedbackVerdict]][]).map(
                 ([key, cfg]) => {
@@ -187,18 +198,39 @@ export function DoctorFeedbackModal({
                 }
               )}
             </div>
+          </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="comment" className="text-sm">Комментарий врача</Label>
+          {/* Corrected diagnosis (shown only when REJECTED) */}
+          {verdict === "REJECTED" && (
+            <div className="space-y-1.5 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
+              <Label htmlFor="correctedDiagnosis" className="text-sm font-medium text-red-700 dark:text-red-400">
+                Правильный диагноз <span className="font-normal">(обязательно при отклонении)</span>
+              </Label>
               <Textarea
-                id="comment"
-                placeholder="Опишите вашу оценку, уточнения или коррекции к AI-анализу..."
-                rows={4}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                className="resize-none"
+                id="correctedDiagnosis"
+                placeholder="Укажите ваш диагноз или правильное заключение..."
+                rows={3}
+                value={correctedDiagnosis}
+                onChange={(e) => setCorrectedDiagnosis(e.target.value)}
+                className="resize-none border-red-200 dark:border-red-800 focus-visible:ring-red-400"
               />
+              <p className="text-xs text-red-600 dark:text-red-400">
+                Этот диагноз будет использован для дообучения AI-модели
+              </p>
             </div>
+          )}
+
+          {/* General comment */}
+          <div className="space-y-1.5">
+            <Label htmlFor="comment" className="text-sm">Комментарий врача</Label>
+            <Textarea
+              id="comment"
+              placeholder="Опишите вашу оценку, уточнения или коррекции к AI-анализу..."
+              rows={3}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className="resize-none"
+            />
           </div>
 
           <div className="flex gap-3">
@@ -207,7 +239,7 @@ export function DoctorFeedbackModal({
             </Button>
             <Button
               className="flex-1"
-              disabled={!verdict || !comment.trim() || feedbackMutation.isPending}
+              disabled={isSubmitDisabled}
               onClick={() => feedbackMutation.mutate()}
             >
               {feedbackMutation.isPending ? "Отправляем..." : "Отправить отзыв"}

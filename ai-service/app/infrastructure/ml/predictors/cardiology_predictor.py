@@ -9,8 +9,11 @@ from app.core.interfaces.ml_predictor import MLPredictor
 
 logger = structlog.get_logger()
 
-_NUMERIC_FEATURES = ["age", "trestbps", "chol", "thalach", "oldpeak"]
-_CATEGORICAL_FEATURES = ["sex", "cp", "fbs", "restecg", "exang", "slope", "ca", "thal"]
+_NUMERIC_FEATURES = ["age", "resting_blood_pressure", "cholesterol", "max_heart_rate", "oldpeak"]
+_CATEGORICAL_FEATURES = [
+    "sex", "chest_pain_type", "fasting_blood_sugar",
+    "resting_ecg", "exercise_angina", "st_slope",
+]
 _ALL_MODEL_FEATURES = _NUMERIC_FEATURES + _CATEGORICAL_FEATURES
 
 _DIAGNOSIS_LABELS = {

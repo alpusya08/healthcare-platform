@@ -41,6 +41,9 @@ public class DoctorFeedback {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String comment;
 
+    @Column(name = "corrected_diagnosis", columnDefinition = "TEXT")
+    private String correctedDiagnosis;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private Instant createdAt = Instant.now();

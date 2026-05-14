@@ -28,6 +28,10 @@ class Settings(BaseSettings):
         alias="AI_SERVICE_INTERNAL_TOKEN",
     )
 
+    # hybrid: LLM interviewer + XGBoost for cardiology, LLM-only for general
+    # claude_only: LLM-only for all domains, XGBoost not used
+    ai_mode: Literal["hybrid", "claude_only"] = Field(default="hybrid", alias="AI_MODE")
+
     llm_provider: Literal["anthropic", "openai", "gemini", "ollama", "mock"] = "mock"
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-sonnet-4-6"

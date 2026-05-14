@@ -9,46 +9,51 @@ Q&A History:
 File summaries:
 {file_summaries}
 
-Extract the following features. If information is missing, return null for that field.
+Extract the following features. If information is missing or unclear, return null for that field.
 
 Required features:
-- age (integer, years)
+- age (integer, patient age in years)
 - sex (1 = male, 0 = female)
-- cp (chest pain type: 0=asymptomatic, 1=atypical_angina, 2=non_anginal, 3=typical_angina)
-- trestbps (resting blood pressure, integer, mmHg)
-- chol (serum cholesterol, integer, mg/dl)
-- fbs (fasting blood sugar > 120 mg/dl: 1=true, 0=false)
-- restecg (resting ECG: 0=normal, 1=ST-T abnormality, 2=left ventricular hypertrophy)
-- thalach (maximum heart rate achieved, integer)
-- exang (exercise induced angina: 1=yes, 0=no)
-- oldpeak (ST depression induced by exercise, float)
-- slope (slope of peak exercise ST segment: 0=upsloping, 1=flat, 2=downsloping)
-- ca (number of major vessels colored by fluoroscopy: 0-3)
-- thal (thalassemia: 1=normal, 2=fixed_defect, 3=reversible_defect)
+- chest_pain_type (0=asymptomatic/no pain, 1=atypical_angina, 2=non_anginal_pain, 3=typical_angina)
+- resting_blood_pressure (integer, mmHg, systolic pressure at rest)
+- cholesterol (integer, serum cholesterol in mg/dl)
+- fasting_blood_sugar (1 = blood sugar > 120 mg/dl fasting, 0 = normal/unknown)
+- resting_ecg (0=normal, 1=ST-T wave abnormality, 2=left ventricular hypertrophy)
+- max_heart_rate (integer, maximum heart rate achieved during exercise)
+- exercise_angina (1 = chest pain/angina during exercise, 0 = no)
+- oldpeak (float, ST depression induced by exercise relative to rest; 0 if unknown)
+- st_slope (0=upsloping, 1=flat, 2=downsloping; null if ECG not done)
 
-Return ONLY a valid JSON object with these keys. Use null for unknown values. Do not invent values."""
+Return ONLY a valid JSON object with these keys. Use null for unknown values. Do not invent values.
+Be conservative — only extract what is clearly stated."""
 
-QUESTION_GENERATION_PROMPT = """Ты — кардиолог-ассистент. Задай ОДИН следующий вопрос для кардиологического скрининга.
+INTERVIEWER_PROMPT = """Ты медицинский ассистент. Тебе нужно собрать данные для анализа сердечно-сосудистого риска.
 
-ВАЖНО: отвечай ТОЛЬКО на русском языке.
+Пациент написал: {initial_description}
 
-Описание пациента: {description}
-История Q&A: {qa_history}
-Уже задано: {asked_questions_count} вопросов
-Недостающие данные: {missing_features}
+История вопросов и ответов:
+{qa_history}
 
-Правила: один вопрос, профессиональный эмпатичный тон, не повторяй уже собранное.
-По возможности предлагай варианты ответов на русском.
+Уже известные данные пациента:
+{known_features}
+
+Необходимо выяснить следующий признак: {next_feature_description}
+
+Задай ОДИН естественный вопрос на русском языке, чтобы узнать эту информацию.
+Правила:
+- Говори как врач на приёме — тепло и профессионально
+- Не упоминай технические названия признаков (не говори "chest_pain_type", "feature" и т.д.)
+- Если уместно — предложи варианты ответа
+- Один вопрос, не больше
 
 Верни ТОЛЬКО JSON:
 {{
-  "question_text": "вопрос на русском",
+  "question_text": "вопрос на русском языке",
   "type": "single_choice" или "number" или "boolean" или "text",
-  "options": ["вариант 1", "вариант 2"] или null,
-  "feature_name": "целевая фича"
+  "options": ["вариант 1", "вариант 2"] или null
 }}"""
 
-EXPLANATION_PROMPT = """You are a medical AI assistant explaining a cardiology diagnosis to a patient.
+EXPLANATION_PROMPT = """You are a medical AI assistant explaining a cardiology risk assessment to a patient.
 
 Diagnosis: {diagnosis}
 Confidence: {confidence:.0%}
@@ -56,9 +61,24 @@ Key patient features: {features}
 Feature importances: {feature_importances}
 
 Write a clear, empathetic explanation in Russian for the patient:
-1. What the analysis found
-2. What features contributed most to this assessment
-3. What it means in simple terms
-4. Always emphasize this is a preliminary AI assessment, not a final diagnosis
+1. What the analysis found and what it means
+2. Which factors contributed most to this assessment (use plain language, not feature names)
+3. What the patient should do next
+4. Always end with: emphasize this is a preliminary AI assessment, not a final diagnosis
 
-Keep it under 200 words. Use professional but accessible language."""
+Keep it under 220 words. Professional but accessible language."""
+
+DOMAIN_ROUTER_PROMPT = """You are a medical triage assistant. Analyze the patient's complaint and determine the medical specialization.
+
+Patient complaint (in Russian):
+{description}
+
+Return ONLY a JSON object:
+{{"domain": "cardiology"}}
+or
+{{"domain": "general"}}
+
+Choose "cardiology" if the complaint mentions: chest pain, heart, palpitations, shortness of breath, blood pressure issues, heart rate abnormalities, angina, cardiac symptoms.
+Choose "general" for all other complaints.
+
+Return ONLY the JSON, nothing else."""

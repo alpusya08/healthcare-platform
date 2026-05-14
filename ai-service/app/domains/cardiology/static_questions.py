@@ -1,10 +1,57 @@
-from app.core.entities.question import Question
-from app.core.enums import QuestionType
-from app.domains.cardiology.features import CARDIOLOGY_FEATURES, FEATURE_PRIORITY
+"""Fallback static questions used when LLM interviewer is unavailable."""
+from __future__ import annotations
 
 import uuid
 
+from app.core.entities.question import Question
+from app.core.enums import QuestionType
+
 _QUESTIONS = [
+    {
+        "feature_name": "chest_pain_type",
+        "question_text": "Как бы вы описали боль в груди?",
+        "type": "single_choice",
+        "options": [
+            "Типичная стенокардия — давящая боль при нагрузке (3)",
+            "Атипичная стенокардия — боль без чёткой связи с нагрузкой (1)",
+            "Неангинозная боль — колющая или ситуационная (2)",
+            "Боли нет или бессимптомно (0)",
+        ],
+        "hint": "Выберите наиболее подходящее описание",
+    },
+    {
+        "feature_name": "st_slope",
+        "question_text": "Делали ли вам нагрузочный тест (ЭКГ при нагрузке)? Если да, каков результат ST-сегмента?",
+        "type": "single_choice",
+        "options": [
+            "Восходящий ST (норма) (0)",
+            "Плоский ST (1)",
+            "Нисходящий ST (2)",
+            "Тест не проводился (0)",
+        ],
+        "hint": None,
+    },
+    {
+        "feature_name": "exercise_angina",
+        "question_text": "Возникает ли боль в груди или одышка при физической нагрузке?",
+        "type": "single_choice",
+        "options": ["Да (1)", "Нет (0)"],
+        "hint": None,
+    },
+    {
+        "feature_name": "oldpeak",
+        "question_text": "Есть ли данные о депрессии ST-сегмента по результатам ЭКГ при нагрузке?",
+        "type": "number",
+        "options": None,
+        "hint": "Значение из нагрузочного теста. Если не знаете, введите 0.",
+    },
+    {
+        "feature_name": "max_heart_rate",
+        "question_text": "Какой максимальный пульс вы замечали при нагрузке (уд/мин)?",
+        "type": "number",
+        "options": None,
+        "hint": "Например: 150. Если не измеряли — введите 0.",
+    },
     {
         "feature_name": "age",
         "question_text": "Сколько вам лет?",
@@ -20,70 +67,37 @@ _QUESTIONS = [
         "hint": None,
     },
     {
-        "feature_name": "cp",
-        "question_text": "Как бы вы описали боль в груди?",
-        "type": "single_choice",
-        "options": [
-            "Типичная стенокардия — давящая боль при нагрузке (3)",
-            "Атипичная стенокардия — боль без чёткой связи с нагрузкой (1)",
-            "Неангинозная боль — колющая или ситуационная (2)",
-            "Боли нет или бессимптомно (0)",
-        ],
-        "hint": "Выберите наиболее подходящее описание",
-    },
-    {
-        "feature_name": "trestbps",
+        "feature_name": "resting_blood_pressure",
         "question_text": "Каково ваше артериальное давление в покое (в мм рт. ст.)?",
         "type": "number",
         "options": None,
-        "hint": "Например: 130 (систолическое давление). Если не знаете, введите 0.",
+        "hint": "Например: 130 (систолическое). Если не знаете — введите 0.",
     },
     {
-        "feature_name": "chol",
+        "feature_name": "cholesterol",
         "question_text": "Каков уровень холестерина в крови (мг/дл)?",
         "type": "number",
         "options": None,
-        "hint": "Посмотрите в результатах анализа крови. Если не знаете, введите 0.",
+        "hint": "Из результатов анализа крови. Если не знаете — введите 0.",
     },
     {
-        "feature_name": "thalach",
-        "question_text": "Какой максимальный пульс вы замечали при нагрузке (уд/мин)?",
-        "type": "number",
-        "options": None,
-        "hint": "Например: 150. Если не измеряли — введите 0.",
-    },
-    {
-        "feature_name": "exang",
-        "question_text": "Возникает ли боль в груди или одышка при физической нагрузке?",
-        "type": "single_choice",
-        "options": ["Да (1)", "Нет (0)"],
-        "hint": None,
-    },
-    {
-        "feature_name": "fbs",
+        "feature_name": "fasting_blood_sugar",
         "question_text": "Уровень сахара в крови натощак выше 120 мг/дл?",
         "type": "single_choice",
         "options": ["Да (1)", "Нет (0)", "Не знаю (0)"],
         "hint": "Это данные из анализа крови",
     },
     {
-        "feature_name": "restecg",
+        "feature_name": "resting_ecg",
         "question_text": "Каковы результаты ЭКГ в покое?",
         "type": "single_choice",
         "options": [
             "Норма (0)",
             "Аномалия ST-T (1)",
             "Гипертрофия левого желудочка (2)",
-            "ЭКГ не делал (0)",
+            "ЭКГ не делал(а) (0)",
         ],
         "hint": None,
-    },
-    {
-        "feature_name": "oldpeak",
-        "question_text": "Депрессия ST-сегмента при нагрузке (по данным ЭКГ)?",
-        "type": "number",
-        "options": None,
-        "hint": "Значение из нагрузочного теста. Если не знаете, введите 0.",
     },
 ]
 
@@ -91,7 +105,7 @@ _QUESTION_MAP = {q["feature_name"]: q for q in _QUESTIONS}
 
 
 def get_next_static_question(session, partial_features) -> "Question | None":
-    from app.domains.cardiology.features import FEATURE_PRIORITY, CARDIOLOGY_FEATURES
+    from app.domains.cardiology.features import FEATURE_PRIORITY
 
     asked = {q.feature_name for q in session.questions if q.feature_name}
     for feature in FEATURE_PRIORITY:

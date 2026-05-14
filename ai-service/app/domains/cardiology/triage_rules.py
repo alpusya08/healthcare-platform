@@ -19,7 +19,7 @@ def check_cardiology_emergency(features: MedicalFeatures) -> Optional[str]:
                 "НЕМЕДЛЕННО вызовите скорую помощь — 103."
             )
 
-    systolic = features.get("trestbps")
+    systolic = features.get("resting_blood_pressure")
     if systolic is not None and systolic >= 180:
         return (
             "Очень высокое артериальное давление требует "

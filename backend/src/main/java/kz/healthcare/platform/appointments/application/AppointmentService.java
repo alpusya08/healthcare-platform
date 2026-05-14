@@ -8,6 +8,7 @@ import kz.healthcare.platform.appointments.domain.DoctorReview;
 import kz.healthcare.platform.appointments.domain.TimeSlot;
 import kz.healthcare.platform.appointments.domain.exceptions.AppointmentNotCancellableException;
 import kz.healthcare.platform.appointments.domain.exceptions.SlotAlreadyBookedException;
+import kz.healthcare.platform.ai.application.AiServiceClient;
 import kz.healthcare.platform.appointments.infrastructure.AppointmentRepository;
 import kz.healthcare.platform.appointments.infrastructure.DoctorFeedbackRepository;
 import kz.healthcare.platform.appointments.infrastructure.DoctorReviewRepository;
@@ -44,6 +45,7 @@ public class AppointmentService {
     private final PatientRepository patientRepository;
     private final DoctorFeedbackRepository feedbackRepository;
     private final DoctorReviewRepository reviewRepository;
+    private final AiServiceClient aiServiceClient;
 
     @Transactional(readOnly = true)
     public List<DoctorSummaryResponse> listDoctors(String specializationCode) {
@@ -212,10 +214,20 @@ public class AppointmentService {
                 .aiSessionId(appt.getAiSessionId())
                 .verdict(DoctorFeedback.FeedbackVerdict.valueOf(request.verdict().name()))
                 .comment(request.comment())
+                .correctedDiagnosis(request.correctedDiagnosis())
                 .build();
 
         feedbackRepository.save(feedback);
         log.info("feedback.submitted doctor={} appointment={} verdict={}", doctorId, appointmentId, request.verdict());
+
+        if (appt.getAiSessionId() != null) {
+            aiServiceClient.pushSessionFeedback(
+                    appt.getAiSessionId(),
+                    appointmentId,
+                    request.verdict().name(),
+                    request.correctedDiagnosis()
+            );
+        }
     }
 
     @Transactional

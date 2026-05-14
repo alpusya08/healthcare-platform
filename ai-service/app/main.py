@@ -3,10 +3,8 @@ from datetime import datetime, timezone
 from typing import AsyncIterator
 
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-
-from fastapi import Request
 from fastapi.responses import JSONResponse
 
 from app.api.v1.router import api_v1_router
@@ -24,7 +22,18 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
-    logger.info("ai_service.startup", environment=settings.environment, llm=settings.llm_provider)
+    logger.info(
+        "ai_service.startup",
+        environment=settings.environment,
+        llm=settings.llm_provider,
+        ai_mode=settings.ai_mode,
+    )
+    try:
+        from app.infrastructure.db.session import init_db
+        await init_db()
+        logger.info("ai_service.db_initialized")
+    except Exception as exc:
+        logger.warning("ai_service.db_init_failed", error=str(exc))
     yield
     logger.info("ai_service.shutdown")
 
@@ -33,8 +42,11 @@ def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(
         title="Healthcare AI Service",
-        version="0.0.1",
-        description="Domain-agnostic AI engine for medical diagnostics (MVP: Cardiology).",
+        version="0.1.0",
+        description=(
+            "Domain-agnostic AI engine for medical diagnostics. "
+            "Cardiology: LLM interviewer + XGBoost. General: LLM-only."
+        ),
         lifespan=lifespan,
     )
 
@@ -70,6 +82,8 @@ def create_app() -> FastAPI:
         return {
             "service": settings.app_name,
             "status": "UP",
+            "ai_mode": settings.ai_mode,
+            "llm": settings.llm_provider,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 

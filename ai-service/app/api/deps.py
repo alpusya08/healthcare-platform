@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from typing import AsyncGenerator
+
 import structlog
 from fastapi import Depends, Header, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
 from app.core.interfaces.llm_provider import LLMProvider
@@ -25,6 +28,15 @@ def get_session_repo() -> AnalysisSessionRepository:
     return _session_repo
 
 
+async def get_db_session(
+    settings: Settings = Depends(get_settings),
+) -> AsyncGenerator[AsyncSession, None]:
+    from app.infrastructure.db.session import get_session_factory
+    factory = get_session_factory()
+    async with factory() as session:
+        yield session
+
+
 def _create_llm_provider(settings: Settings) -> LLMProvider:
     try:
         from app.infrastructure.llm.factory import create_llm_provider
@@ -36,6 +48,9 @@ def _create_llm_provider(settings: Settings) -> LLMProvider:
 
 
 def _create_ml_predictor(settings: Settings) -> MLPredictor | None:
+    if settings.ai_mode == "claude_only":
+        logger.info("ml_predictor.skipped", reason="ai_mode=claude_only")
+        return None
     try:
         import mlflow
         from app.infrastructure.ml.predictors.cardiology_predictor import MLflowCardiologyPredictor
@@ -54,12 +69,15 @@ def get_domain_registry(settings: Settings = Depends(get_settings)) -> DomainReg
         llm = _create_llm_provider(settings)
         predictor = _create_ml_predictor(settings)
         _domain_registry = DomainRegistry()
-        _domain_registry.register(CardiologyDomain(llm=llm, predictor=predictor))
+        _domain_registry.register(
+            CardiologyDomain(llm=llm, predictor=predictor, ai_mode=settings.ai_mode)
+        )
         _domain_registry.register(GeneralSymptomDomain(llm=llm))
         logger.info(
             "domain_registry.initialized",
             llm=type(llm).__name__,
             predictor=type(predictor).__name__ if predictor else "none",
+            ai_mode=settings.ai_mode,
         )
     return _domain_registry
 

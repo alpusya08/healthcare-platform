@@ -6,8 +6,9 @@ from datetime import datetime, timezone
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_domain_registry, get_session_repo, verify_internal_token
+from app.api.deps import get_db_session, get_domain_registry, get_session_repo, verify_internal_token
 from app.api.v1.schemas.analysis import (
     AnalysisReportResponse,
     AnswerQuestionRequest,
@@ -48,22 +49,26 @@ async def start_analysis(
     user_id: str | None = None,
     registry: DomainRegistry = Depends(get_domain_registry),
     session_repo: AnalysisSessionRepository = Depends(get_session_repo),
+    db: AsyncSession = Depends(get_db_session),
     _: None = Depends(verify_internal_token),
 ) -> StartAnalysisResponse:
-    # Route to the correct domain based on symptom content, ignoring client-sent domain_code
     symptom_area = detect_symptom_area(request.initial_description)
     actual_domain_code = "cardiology" if symptom_area == "cardiology" else "general"
 
     domain = registry.get(actual_domain_code)
 
+    session_id = uuid.uuid4()
+    resolved_user_id = uuid.UUID(user_id) if user_id else uuid.uuid4()
+
     session = AnalysisSession(
-        id=uuid.uuid4(),
-        user_id=uuid.UUID(user_id) if user_id else uuid.uuid4(),
+        id=session_id,
+        user_id=resolved_user_id,
         domain_code=actual_domain_code,
         initial_description=request.initial_description,
         status=AnalysisStatus.STARTED,
     )
     await session_repo.create(session)
+    await _persist_session_record(db, session)
 
     logger.info(
         "analysis.started",
@@ -146,35 +151,12 @@ async def upload_file(
     return {"ok": True, "summary": summary}
 
 
-def _extract_file_summary(raw: bytes, content_type: str, filename: str) -> str:
-    if "pdf" in content_type or filename.lower().endswith(".pdf"):
-        try:
-            from pypdf import PdfReader
-            reader = PdfReader(io.BytesIO(raw))
-            pages_text = " ".join(
-                (page.extract_text() or "") for page in reader.pages[:5]
-            ).strip()
-            if pages_text:
-                truncated = pages_text[:2000]
-                return f"[PDF: {filename}] {truncated}"
-        except Exception:
-            pass
-    if content_type.startswith("image/"):
-        return f"[Изображение: {filename}] Медицинский документ — изображение предоставлено пациентом (рентген/ЭКГ/УЗИ)."
-    if content_type.startswith("text/"):
-        try:
-            text = raw.decode("utf-8", errors="replace")[:2000]
-            return f"[Текстовый файл: {filename}] {text}"
-        except Exception:
-            pass
-    return f"[Файл: {filename}] Документ предоставлен пациентом (тип: {content_type})."
-
-
 @router.post("/{session_id}/finalize", response_model=AnalysisReportResponse)
 async def finalize_analysis(
     session_id: uuid.UUID,
     registry: DomainRegistry = Depends(get_domain_registry),
     session_repo: AnalysisSessionRepository = Depends(get_session_repo),
+    db: AsyncSession = Depends(get_db_session),
     _: None = Depends(verify_internal_token),
 ) -> AnalysisReportResponse:
     session = await session_repo.get(session_id)
@@ -184,8 +166,6 @@ async def finalize_analysis(
     await session_repo.update_status(session.id, AnalysisStatus.ANALYZING.value)
 
     domain = registry.get(session.domain_code)
-
-    # Use LLM-based extraction only at prediction time (not during Q&A loop)
     extract_fn = getattr(domain, "extract_features_for_prediction", domain.extract_features)
     features = await extract_fn(session)
 
@@ -207,14 +187,20 @@ async def finalize_analysis(
     diagnosis = await domain.predict(features)
     await session_repo.update_status(session.id, AnalysisStatus.COMPLETED.value)
 
-    await session_repo.save_report(session.id, {
+    report_data = {
         "triage_level": diagnosis.triage_level.value,
         "primary_diagnosis": diagnosis.primary_diagnosis,
         "confidence": diagnosis.confidence,
         "explanation": diagnosis.explanation,
         "recommendations": diagnosis.recommendations,
         "model_version": diagnosis.model_version,
-    })
+    }
+    await session_repo.save_report(session.id, report_data)
+
+    # Persist features + general dialogue to DB for the retraining loop
+    await _persist_session_features(db, session, features, diagnosis)
+    if session.domain_code == "general":
+        await _persist_general_session(db, session, diagnosis)
 
     return AnalysisReportResponse(
         session_id=session.id,
@@ -231,3 +217,112 @@ async def finalize_analysis(
         red_flags=diagnosis.red_flags,
         summary=diagnosis.summary,
     )
+
+
+# ── DB persistence helpers ────────────────────────────────────────────────────
+
+async def _persist_session_record(db: AsyncSession, session: AnalysisSession) -> None:
+    try:
+        from app.infrastructure.db.models import AnalysisSessionRecord
+        record = AnalysisSessionRecord(
+            id=session.id,
+            user_id=session.user_id,
+            domain_code=session.domain_code,
+            initial_description=session.initial_description,
+            status=session.status.value,
+        )
+        db.add(record)
+        await db.commit()
+    except Exception:
+        logger.exception("analysis.persist_session_failed", session_id=str(session.id))
+        await db.rollback()
+
+
+async def _persist_session_features(db: AsyncSession, session, features, diagnosis) -> None:
+    try:
+        from app.infrastructure.db.models import SessionFeaturesRecord
+        from sqlalchemy import select
+
+        existing = (await db.execute(
+            select(SessionFeaturesRecord).where(SessionFeaturesRecord.session_id == session.id)
+        )).scalar_one_or_none()
+
+        if existing:
+            return
+
+        clean_features = {
+            k: v for k, v in features.to_dict().items()
+            if not k.startswith("_") and v is not None
+        }
+        record = SessionFeaturesRecord(
+            session_id=session.id,
+            domain_code=session.domain_code,
+            features=clean_features,
+            model_version=diagnosis.model_version,
+            prediction_class=getattr(diagnosis, "_class_id", None),
+            prediction_confidence=diagnosis.confidence,
+        )
+        db.add(record)
+        await db.commit()
+    except Exception:
+        logger.exception("analysis.persist_features_failed", session_id=str(session.id))
+        await db.rollback()
+
+
+async def _persist_general_session(db: AsyncSession, session, diagnosis) -> None:
+    try:
+        from app.infrastructure.db.models import GeneralAiSessionRecord
+        from sqlalchemy import select
+
+        existing = (await db.execute(
+            select(GeneralAiSessionRecord).where(GeneralAiSessionRecord.session_id == session.id)
+        )).scalar_one_or_none()
+
+        if existing:
+            return
+
+        dialogue = [
+            {"role": "patient_initial", "text": session.initial_description},
+        ]
+        for q in session.questions:
+            dialogue.append({"role": "assistant", "text": q.question_text, "feature": q.feature_name})
+            if q.answer:
+                dialogue.append({"role": "patient", "text": q.answer, "feature": q.feature_name})
+
+        record = GeneralAiSessionRecord(
+            session_id=session.id,
+            patient_id=session.user_id,
+            detected_domain=session.domain_code,
+            full_dialogue=dialogue,
+            llm_recommendation=diagnosis.explanation,
+        )
+        db.add(record)
+        await db.commit()
+    except Exception:
+        logger.exception("analysis.persist_general_session_failed", session_id=str(session.id))
+        await db.rollback()
+
+
+# ── File extraction ───────────────────────────────────────────────────────────
+
+def _extract_file_summary(raw: bytes, content_type: str, filename: str) -> str:
+    if "pdf" in content_type or filename.lower().endswith(".pdf"):
+        try:
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(raw))
+            pages_text = " ".join(
+                (page.extract_text() or "") for page in reader.pages[:5]
+            ).strip()
+            if pages_text:
+                return f"[PDF: {filename}] {pages_text[:2000]}"
+        except Exception:
+            pass
+    if content_type.startswith("image/"):
+        return f"[Изображение: {filename}] Медицинский документ — изображение предоставлено пациентом (рентген/ЭКГ/УЗИ)."
+    if content_type.startswith("text/"):
+        try:
+            text = raw.decode("utf-8", errors="replace")[:2000]
+            return f"[Текстовый файл: {filename}] {text}"
+        except Exception:
+            pass
+    return f"[Файл: {filename}] Документ предоставлен пациентом (тип: {content_type})."

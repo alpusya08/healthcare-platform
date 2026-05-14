@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import uuid
 from typing import Optional
 
 import structlog
@@ -16,15 +15,13 @@ from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.ml_predictor import MLPredictor
 from app.domains.cardiology.features import (
     CARDIOLOGY_FEATURES,
+    CONFIDENCE_EARLY_STOP,
     FEATURE_PRIORITY,
     MAX_QUESTIONS,
     TOLERATED_MISSING_THRESHOLD,
 )
-from app.domains.cardiology.prompts import (
-    EXPLANATION_PROMPT,
-    EXTRACTION_PROMPT,
-    QUESTION_GENERATION_PROMPT,
-)
+from app.domains.cardiology.llm_interviewer import LLMCardiologyInterviewer
+from app.domains.cardiology.prompts import EXPLANATION_PROMPT
 from app.domains.cardiology.static_questions import get_next_static_question
 from app.domains.cardiology.triage_rules import check_cardiology_emergency
 
@@ -44,24 +41,26 @@ class CardiologyDomain(MedicalDomain):
     def required_features(self) -> list[str]:
         return list(CARDIOLOGY_FEATURES)
 
-    def __init__(self, llm: LLMProvider, predictor: Optional[MLPredictor] = None) -> None:
+    def __init__(
+        self,
+        llm: LLMProvider,
+        predictor: Optional[MLPredictor] = None,
+        ai_mode: str = "hybrid",
+    ) -> None:
         self._llm = llm
         self._predictor = predictor
+        self._ai_mode = ai_mode
+        self._interviewer = LLMCardiologyInterviewer(llm)
 
     async def extract_features(self, session: AnalysisSession) -> MedicalFeatures:
+        if self._ai_mode == "claude_only":
+            # In claude_only mode use LLM extraction from the start
+            return await self._interviewer.extract_features(session)
         return self._extract_from_answers(session)
 
     async def extract_features_for_prediction(self, session: AnalysisSession) -> MedicalFeatures:
         try:
-            prompt = EXTRACTION_PROMPT.format(
-                description=session.initial_description,
-                qa_history=session.format_qa_history(),
-                file_summaries=session.format_files_summary(),
-            )
-            raw = await self._llm.complete_structured(prompt, schema={})
-            values = {k: raw.get(k) for k in CARDIOLOGY_FEATURES}
-            values["_raw_description"] = session.initial_description
-            return MedicalFeatures(values=values)
+            return await self._interviewer.extract_features(session)
         except Exception:
             logger.exception("cardiology_llm_extraction_failed_using_answers")
             return self._extract_from_answers(session)
@@ -86,15 +85,37 @@ class CardiologyDomain(MedicalDomain):
         if len(missing) <= TOLERATED_MISSING_THRESHOLD:
             return None
 
-        return get_next_static_question(session, partial_features)
+        # Early stop if XGBoost is confident enough (hybrid mode only)
+        if self._ai_mode == "hybrid" and self._predictor is not None:
+            try:
+                prediction = self._predictor.predict(partial_features)
+                if prediction.confidence >= CONFIDENCE_EARLY_STOP:
+                    logger.info(
+                        "cardiology.early_stop_confident",
+                        confidence=prediction.confidence,
+                        questions_asked=session.questions_count,
+                    )
+                    return None
+            except Exception:
+                pass
+
+        # Use LLM interviewer in hybrid/claude_only, fallback to static
+        try:
+            return await self._interviewer.generate_next_question(session, partial_features)
+        except Exception:
+            logger.exception("llm_interviewer_failed_using_static_fallback")
+            return get_next_static_question(session, partial_features)
 
     async def check_emergency(self, features: MedicalFeatures) -> Optional[str]:
         return check_cardiology_emergency(features)
 
     async def predict(self, features: MedicalFeatures) -> Diagnosis:
-        if self._predictor is None:
-            return self._fallback_prediction(features)
+        if self._ai_mode == "claude_only" or self._predictor is None:
+            return await self._llm_only_predict(features)
 
+        return await self._hybrid_predict(features)
+
+    async def _hybrid_predict(self, features: MedicalFeatures) -> Diagnosis:
         prediction = self._predictor.predict(features)
 
         if prediction.confidence < 0.6:
@@ -107,7 +128,7 @@ class CardiologyDomain(MedicalDomain):
                 primary_diagnosis="Недостаточно данных для уверенного диагноза",
                 confidence=prediction.confidence,
                 explanation=explanation,
-                recommendations=["Запишитесь на очный прием к кардиологу"],
+                recommendations=["Запишитесь на очный приём к кардиологу"],
                 triage_level=TriageLevel.INSUFFICIENT_DATA,
                 model_version=self.get_model_version(),
                 recommended_specialization="cardiology",
@@ -130,7 +151,37 @@ class CardiologyDomain(MedicalDomain):
             recommended_specialization="cardiology",
         )
 
+    async def _llm_only_predict(self, features: MedicalFeatures) -> Diagnosis:
+        from app.domains.cardiology.prompts import EXPLANATION_PROMPT
+        try:
+            prompt = (
+                "Ты кардиолог. На основе данных пациента дай предварительную оценку риска ССЗ.\n\n"
+                f"Данные пациента: {json.dumps({k: v for k, v in features.to_dict().items() if not k.startswith('_')}, ensure_ascii=False)}\n\n"
+                "Верни JSON: {\"diagnosis\": \"...\", \"confidence\": 0.0-1.0, \"explanation\": \"...\", "
+                "\"recommendations\": [\"...\"], \"triage\": \"ROUTINE|URGENT|EMERGENCY\"}"
+            )
+            raw = await self._llm.complete_structured(prompt, {})
+            triage_map = {
+                "EMERGENCY": TriageLevel.EMERGENCY,
+                "URGENT": TriageLevel.URGENT,
+                "ROUTINE": TriageLevel.ROUTINE,
+            }
+            return Diagnosis(
+                domain=self.code,
+                primary_diagnosis=raw.get("diagnosis", "Предварительная оценка кардиолога"),
+                confidence=float(raw.get("confidence", 0.0)),
+                explanation=raw.get("explanation", ""),
+                recommendations=raw.get("recommendations", []),
+                triage_level=triage_map.get(raw.get("triage", "ROUTINE"), TriageLevel.ROUTINE),
+                model_version="claude_only",
+                recommended_specialization="cardiology",
+            )
+        except Exception:
+            return self._fallback_prediction(features)
+
     def get_model_version(self) -> str:
+        if self._ai_mode == "claude_only":
+            return "claude_only"
         if self._predictor is not None:
             return self._predictor.model_version
         return "no-ml-model"
@@ -152,7 +203,7 @@ class CardiologyDomain(MedicalDomain):
             return f"Предварительный анализ: {prediction.diagnosis} (уверенность: {prediction.confidence:.0%})."
 
     def _build_recommendations(self, prediction) -> list[str]:
-        recs = ["Запишитесь на прием к кардиологу для подтверждения диагноза"]
+        recs = ["Запишитесь на приём к кардиологу для подтверждения диагноза"]
         if prediction.class_id == 1:
             recs.append("Рекомендуется ЭКГ и ЭхоКГ")
             recs.append("Контроль артериального давления и холестерина")
@@ -164,7 +215,7 @@ class CardiologyDomain(MedicalDomain):
             primary_diagnosis="Предварительный анализ (без ML-модели)",
             confidence=0.0,
             explanation="ML-модель не загружена. Для получения предсказания необходимо обучить модель.",
-            recommendations=["Запишитесь на прием к кардиологу"],
+            recommendations=["Запишитесь на приём к кардиологу"],
             triage_level=TriageLevel.INSUFFICIENT_DATA,
             model_version="no-ml-model",
             recommended_specialization="cardiology",

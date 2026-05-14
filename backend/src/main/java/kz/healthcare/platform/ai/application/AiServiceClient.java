@@ -71,10 +71,29 @@ public class AiServiceClient {
         }
     }
 
+    public void pushSessionFeedback(UUID sessionId, UUID appointmentId, String verdict, String correctedDiagnosis) {
+        try {
+            var body = new java.util.HashMap<String, Object>();
+            body.put("session_id", sessionId.toString());
+            if (appointmentId != null) body.put("appointment_id", appointmentId.toString());
+            body.put("verdict", verdict);
+            if (correctedDiagnosis != null) body.put("corrected_diagnosis", correctedDiagnosis);
+
+            aiServiceRestClient.post()
+                    .uri("/api/v1/ml/session-feedback")
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
+            log.info("ai_service.feedback_pushed session_id={} verdict={}", sessionId, verdict);
+        } catch (Exception e) {
+            log.warn("ai_service.push_feedback_failed session_id={} error={}", sessionId, e.getMessage());
+        }
+    }
+
     public boolean isHealthy() {
         try {
             var response = aiServiceRestClient.get()
-                    .uri("/api/v1/internal/health")
+                    .uri("/health")
                     .retrieve()
                     .toBodilessEntity();
             return response.getStatusCode().is2xxSuccessful();

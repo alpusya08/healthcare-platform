@@ -5,7 +5,8 @@ import jakarta.validation.constraints.NotNull;
 
 public record DoctorFeedbackRequest(
         @NotNull FeedbackVerdict verdict,
-        @NotBlank String comment
+        @NotBlank String comment,
+        String correctedDiagnosis
 ) {
     public enum FeedbackVerdict {
         APPROVED,

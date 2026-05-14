@@ -36,6 +36,7 @@ export interface DoctorProfile {
 export interface FeedbackRequest {
   verdict: FeedbackVerdict;
   comment: string;
+  correctedDiagnosis?: string;
 }
 
 export const doctorApi = {
