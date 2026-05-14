@@ -1,40 +1,38 @@
 # Healthcare Platform
 
-AI-Powered Healthcare Web Platform — дипломный MVP.
+AI-Powered Healthcare Web Platform — дипломный проект.
 
-3 сервиса в монорепо:
-- **`backend/`** — Java 21 + Spring Boot 3.3 + Spring Modulith (REST API gateway, auth, бизнес-логика)
-- **`ai-service/`** — Python 3.11 + FastAPI (domain-agnostic AI engine, ML, LLM)
-- **`frontend/`** — React 18 + TypeScript + Vite + Tailwind + shadcn/ui (3 портала: Patient/Doctor/Admin)
-
-См. `SPECIFICATION.md` (источник истины) и `CLAUDE.md` (правила работы).
+Три сервиса в монорепо:
+- **`backend/`** — Java 21 + Spring Boot 3.3 + PostgreSQL (REST API, авторизация, бизнес-логика)
+- **`ai-service/`** — Python 3.11 + FastAPI (AI-движок, ML-модели, LLM)
+- **`frontend/`** — React 18 + TypeScript + Vite + Tailwind + shadcn/ui (порталы: Пациент / Врач / Админ)
 
 ---
 
 ## Быстрый старт
 
 ```bash
-# 1. Скопируй переменные окружения
+# 1. Создай .env файл на основе примера
 cp .env.example .env
-# (отредактируй .env при необходимости — JWT_SECRET, ANTHROPIC_API_KEY)
+# Заполни JWT_SECRET и ANTHROPIC_API_KEY
 
-# 2. Подними всё через Docker Compose
+# 2. Подними все сервисы через Docker Compose
 docker compose up -d
 
-# 3. Проверь что сервисы живы
+# 3. Проверь работу
 curl http://localhost:8080/api/v1/health    # backend
 curl http://localhost:8000/health           # ai-service
 open http://localhost:5173                  # frontend
-open http://localhost:9001                  # MinIO console (minioadmin / minioadmin_secret)
-open http://localhost:5000                  # MLflow UI
+open http://localhost:9001                  # MinIO (minioadmin / minioadmin_secret)
+open http://localhost:5000                  # MLflow
 ```
 
-## Локальная разработка по сервисам
+## Разработка
 
 ### Backend
 ```bash
 cd backend
-./mvnw spring-boot:run             # требует postgres+redis запущенные через docker compose
+./mvnw spring-boot:run
 ./mvnw test
 ```
 
@@ -42,7 +40,7 @@ cd backend
 ```bash
 cd ai-service
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt -e .[dev]
+pip install -r requirements.txt
 uvicorn app.main:app --reload
 pytest
 ```
@@ -53,29 +51,21 @@ cd frontend
 npm install
 npm run dev
 npm run build
-npm test
 ```
 
 ---
 
-## Структура
+## Структура проекта
 
 ```
 healthcare-platform/
-├── SPECIFICATION.md      ← полное ТЗ, источник истины
-├── CLAUDE.md             ← правила работы для Claude Code
-├── KICKOFF_PROMPT.md     ← как стартовать проект с Claude Code
 ├── docker-compose.yml
-├── .env.example
-│
-├── backend/              ← Java + Spring Boot + Modulith
+├── backend/              ← Java + Spring Boot
 ├── ai-service/           ← Python + FastAPI + ML
-├── frontend/             ← React + TypeScript + Vite
-│
-└── infra/                ← инфраструктурные скрипты (init.sh для postgres, ...)
+└── frontend/             ← React + TypeScript
 ```
 
-## Порты по умолчанию
+## Порты
 
 | Сервис      | Порт |
 |-------------|------|
@@ -88,13 +78,13 @@ healthcare-platform/
 | MinIO UI    | 9001 |
 | MLflow      | 5000 |
 
-## Demo Accounts
+## Тестовые аккаунты
 
-После запуска миграций автоматически создаются тестовые аккаунты:
+После запуска автоматически создаются демо-аккаунты:
 
-| Роль       | Email                | Пароль       |
-|------------|----------------------|--------------|
-| Пациент    | demo@patient.com     | Demo1234!    |
-| Врач       | demo@doctor.com      | Demo1234!    |
-| Врач (осн) | dr.seitkali@medai.kz | Doctor1234!  |
-| Админ      | admin@medai.kz       | Admin1234!   |
+| Роль    | Email                | Пароль       |
+|---------|----------------------|--------------|
+| Пациент | demo@patient.com     | Demo1234!    |
+| Врач    | demo@doctor.com      | Demo1234!    |
+| Врач    | dr.seitkali@medai.kz | Doctor1234!  |
+| Админ   | admin@medai.kz       | Admin1234!   |
