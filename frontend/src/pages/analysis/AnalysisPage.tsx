@@ -22,7 +22,7 @@ import { UpcomingSlotsCard } from "@/widgets/upcoming-slots/UpcomingSlotsCard";
 
 type Step = "describe" | "questions" | "report";
 
-const MAX_QUESTIONS = 7;
+const MAX_QUESTIONS = 8;
 
 const TRIAGE_CONFIG: Record<TriageLevel, {
   label: string;
@@ -281,10 +281,10 @@ export function AnalysisPage() {
                 Вопрос {questionNumber} из {MAX_QUESTIONS}
               </span>
               <Badge variant="outline" className="text-xs">
-                {Math.round((questionNumber / MAX_QUESTIONS) * 100)}%
+                {Math.min(Math.round((questionNumber / MAX_QUESTIONS) * 100), 100)}%
               </Badge>
             </div>
-            <Progress value={(questionNumber / MAX_QUESTIONS) * 100} className="h-1.5" />
+            <Progress value={Math.min((questionNumber / MAX_QUESTIONS) * 100, 100)} className="h-1.5" />
             <CardTitle className="text-base mt-4 leading-relaxed">
               {currentQuestion.question_text}
             </CardTitle>

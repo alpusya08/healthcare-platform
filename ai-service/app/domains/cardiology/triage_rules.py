@@ -20,10 +20,16 @@ def check_cardiology_emergency(features: MedicalFeatures) -> Optional[str]:
             )
 
     systolic = features.get("resting_blood_pressure")
-    if systolic is not None and systolic >= 180:
-        return (
-            "Очень высокое артериальное давление требует "
-            "немедленной медицинской помощи. Вызовите скорую — 103."
-        )
+    if systolic is not None:
+        try:
+            # Handle string answers like "140/90", "145 мм рт.ст.", "145"
+            systolic_val = float(str(systolic).split("/")[0].split()[0])
+            if systolic_val >= 180:
+                return (
+                    "Очень высокое артериальное давление требует "
+                    "немедленной медицинской помощи. Вызовите скорую — 103."
+                )
+        except (ValueError, IndexError):
+            pass
 
     return None
