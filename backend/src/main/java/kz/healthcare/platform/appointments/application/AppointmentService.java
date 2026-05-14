@@ -28,7 +28,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import kz.healthcare.platform.users.infrastructure.DoctorSpecifications;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.time.Instant;
 import java.util.List;
@@ -54,6 +58,27 @@ public class AppointmentService {
         return doctorRepository.findVerified(specializationCode).stream()
                 .map(this::toDoctorSummary)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public Page<DoctorSummaryResponse> listDoctorsFiltered(DoctorFilterRequest filter) {
+        Sort sort = switch (filter.sort() == null ? "rating_desc" : filter.sort()) {
+            case "price_asc" -> Sort.by("consultationFee").ascending();
+            case "price_desc" -> Sort.by("consultationFee").descending();
+            case "experience_desc" -> Sort.by("yearsExperience").descending();
+            default -> Sort.by("averageRating").descending();
+        };
+
+        Specification<Doctor> spec = DoctorSpecifications.combined(
+                filter.specialization(),
+                filter.minRating(),
+                filter.maxPrice(),
+                filter.query(),
+                filter.minExperience()
+        );
+
+        return doctorRepository.findAll(spec, PageRequest.of(filter.page(), filter.size(), sort))
+                .map(this::toDoctorSummary);
     }
 
     @Transactional(readOnly = true)

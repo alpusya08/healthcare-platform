@@ -4,11 +4,13 @@ import jakarta.validation.Valid;
 import kz.healthcare.platform.appointments.application.AppointmentService;
 import kz.healthcare.platform.appointments.application.dto.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +25,21 @@ public class AppointmentController {
     public List<DoctorSummaryResponse> listDoctors(
             @RequestParam(required = false) String specialization) {
         return appointmentService.listDoctors(specialization);
+    }
+
+    @GetMapping("/doctors/search")
+    public Page<DoctorSummaryResponse> searchDoctors(
+            @RequestParam(required = false) String specialization,
+            @RequestParam(required = false) BigDecimal minRating,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) Integer minExperience,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return appointmentService.listDoctorsFiltered(
+                new DoctorFilterRequest(specialization, minRating, maxPrice, minExperience, query, sort, page, size)
+        );
     }
 
     @GetMapping("/doctors/{doctorId}/slots")

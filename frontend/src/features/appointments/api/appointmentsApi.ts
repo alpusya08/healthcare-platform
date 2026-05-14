@@ -5,6 +5,8 @@ import type {
   CreateReviewRequest,
   Doctor,
   DoctorReview,
+  DoctorSearchParams,
+  SpringPage,
   TimeSlot,
   UpcomingSlot,
 } from "../types";
@@ -13,6 +15,11 @@ export const appointmentsApi = {
   listDoctors: (specialization?: string) =>
     apiClient
       .get<Doctor[]>("/appointments/doctors", { params: { specialization } })
+      .then((r) => r.data),
+
+  searchDoctors: (params: DoctorSearchParams) =>
+    apiClient
+      .get<SpringPage<Doctor>>("/appointments/doctors/search", { params })
       .then((r) => r.data),
 
   listSlots: (doctorId: string) =>
