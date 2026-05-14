@@ -15,6 +15,7 @@ import { useAuthStore } from "@/features/auth/model/authStore";
 import { authApi } from "@/features/auth/api/authApi";
 import { routes } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/utils";
+import { NotificationBell } from "@/widgets/notification-bell/NotificationBell";
 
 const NAV_LINKS = [
   { to: routes.doctor.dashboard, label: "Главная", icon: LayoutDashboard, exact: true },
@@ -70,6 +71,7 @@ export function DoctorNavbar() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <NotificationBell />
           <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-muted-foreground hover:text-foreground" aria-label="Переключить тему">
             {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>

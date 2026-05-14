@@ -24,6 +24,7 @@ import { useAuthStore } from "@/features/auth/model/authStore";
 import { authApi } from "@/features/auth/api/authApi";
 import { routes } from "@/shared/config/routes";
 import { cn } from "@/shared/lib/utils";
+import { NotificationBell } from "@/widgets/notification-bell/NotificationBell";
 
 const NAV_LINKS = [
   { to: routes.patient.home, label: "Главная", icon: Home },
@@ -99,6 +100,9 @@ export function Navbar() {
             <Phone className="w-3 h-3" />
             103
           </button>
+          {/* Notifications */}
+          <NotificationBell />
+
           {/* Theme toggle */}
           <Button
             variant="ghost"

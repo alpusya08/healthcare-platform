@@ -15,6 +15,7 @@ import kz.healthcare.platform.appointments.infrastructure.DoctorReviewRepository
 import kz.healthcare.platform.appointments.infrastructure.TimeSlotRepository;
 import kz.healthcare.platform.users.domain.Doctor;
 import kz.healthcare.platform.users.domain.Patient;
+import kz.healthcare.platform.notifications.application.NotificationService;
 import kz.healthcare.platform.users.infrastructure.DoctorRepository;
 import kz.healthcare.platform.users.infrastructure.PatientRepository;
 
@@ -42,6 +43,7 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final TimeSlotRepository timeSlotRepository;
     private final DoctorRepository doctorRepository;
+    private final NotificationService notificationService;
     private final PatientRepository patientRepository;
     private final DoctorFeedbackRepository feedbackRepository;
     private final DoctorReviewRepository reviewRepository;
@@ -117,6 +119,20 @@ public class AppointmentService {
 
         Appointment saved = appointmentRepository.save(appointment);
         log.info("appointment.created patient={} doctor={} slot={}", patientId, doctor.getId(), slot.getId());
+
+        String slotTime = slot.getStartTime().atZone(java.time.ZoneId.of("Asia/Almaty"))
+                .format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
+        notificationService.create(doctor.getId(),
+                "NEW_APPOINTMENT",
+                "Новая запись на приём",
+                "Пациент " + patient.getUser().getFullName() + " записался к вам на " + slotTime,
+                "/doctor");
+        notificationService.create(patientId,
+                "APPOINTMENT_CONFIRMED",
+                "Запись подтверждена",
+                "Вы записаны к " + doctor.getUser().getFullName() + " на " + slotTime,
+                "/appointments");
+
         return toResponse(saved);
     }
 
@@ -157,6 +173,12 @@ public class AppointmentService {
         appt.setUpdatedAt(Instant.now());
         appointmentRepository.save(appt);
         log.info("appointment.completed doctor={} appointment={}", doctorId, appointmentId);
+
+        notificationService.create(appt.getPatient().getId(),
+                "LEAVE_REVIEW",
+                "Оставьте отзыв о приёме",
+                "Как прошёл ваш приём у " + appt.getDoctor().getUser().getFullName() + "? Поделитесь впечатлением!",
+                "/appointments");
     }
 
     @Transactional(readOnly = true)
