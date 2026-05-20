@@ -54,12 +54,12 @@ export function DoctorFeedbackModal({
   const [verdict, setVerdict] = useState<FeedbackVerdict | null>(null);
   const [comment, setComment] = useState("");
   const [correctedDiagnosis, setCorrectedDiagnosis] = useState("");
-  const [showReport, setShowReport] = useState(false);
+  const [showReport, setShowReport] = useState(true);
 
   const { data: report, isLoading: reportLoading } = useQuery({
     queryKey: ["ai-report", appointment.aiSessionId],
     queryFn: () => doctorApi.getAiReport(appointment.aiSessionId!),
-    enabled: !!appointment.aiSessionId && showReport,
+    enabled: !!appointment.aiSessionId,
     retry: false,
   });
 

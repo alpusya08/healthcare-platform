@@ -10,7 +10,6 @@ from app.config import Settings, get_settings
 from app.core.interfaces.llm_provider import LLMProvider
 from app.core.interfaces.ml_predictor import MLPredictor
 from app.core.interfaces.session_repository import AnalysisSessionRepository
-from app.domains.cardiology.domain import CardiologyDomain
 from app.domains.general.domain import GeneralSymptomDomain
 from app.domains.registry import DomainRegistry
 from app.infrastructure.persistence.in_memory_session_repo import InMemorySessionRepository
@@ -47,19 +46,19 @@ def _create_llm_provider(settings: Settings) -> LLMProvider:
         return MockLLMProvider()
 
 
-def _create_ml_predictor(settings: Settings) -> MLPredictor | None:
+def _create_triage_predictor(settings: Settings) -> MLPredictor | None:
     if settings.ai_mode == "claude_only":
-        logger.info("ml_predictor.skipped", reason="ai_mode=claude_only")
+        logger.info("triage_predictor.skipped", reason="ai_mode=claude_only")
         return None
     try:
         import mlflow
-        from app.infrastructure.ml.predictors.cardiology_predictor import MLflowCardiologyPredictor
+        from app.infrastructure.ml.predictors.triage_predictor import MLflowTriagePredictor
 
         mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
         model_uri = f"models:/{settings.mlflow_model_name}@{settings.mlflow_model_alias}"
-        return MLflowCardiologyPredictor(model_uri=model_uri, version=settings.mlflow_model_alias)
+        return MLflowTriagePredictor(model_uri=model_uri, version=settings.mlflow_model_alias)
     except Exception as e:
-        logger.warning("ml_predictor_not_loaded", error=str(e))
+        logger.warning("triage_predictor_not_loaded", error=str(e))
         return None
 
 
@@ -67,12 +66,9 @@ def get_domain_registry(settings: Settings = Depends(get_settings)) -> DomainReg
     global _domain_registry
     if _domain_registry is None:
         llm = _create_llm_provider(settings)
-        predictor = _create_ml_predictor(settings)
+        predictor = _create_triage_predictor(settings)
         _domain_registry = DomainRegistry()
-        _domain_registry.register(
-            CardiologyDomain(llm=llm, predictor=predictor, ai_mode=settings.ai_mode)
-        )
-        _domain_registry.register(GeneralSymptomDomain(llm=llm))
+        _domain_registry.register(GeneralSymptomDomain(llm=llm, predictor=predictor))
         logger.info(
             "domain_registry.initialized",
             llm=type(llm).__name__,

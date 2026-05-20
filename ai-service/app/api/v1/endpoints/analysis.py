@@ -20,7 +20,6 @@ from app.api.v1.schemas.analysis import (
 from app.core.entities.analysis_session import AnalysisSession
 from app.core.enums import AnalysisStatus
 from app.core.interfaces.session_repository import AnalysisSessionRepository
-from app.core.symptom_router import detect_symptom_area
 from app.domains.registry import DomainRegistry
 
 logger = structlog.get_logger()
@@ -52,9 +51,7 @@ async def start_analysis(
     db: AsyncSession = Depends(get_db_session),
     _: None = Depends(verify_internal_token),
 ) -> StartAnalysisResponse:
-    symptom_area = detect_symptom_area(request.initial_description)
-    actual_domain_code = "cardiology" if symptom_area == "cardiology" else "general"
-
+    actual_domain_code = "general"
     domain = registry.get(actual_domain_code)
 
     session_id = uuid.uuid4()
@@ -74,7 +71,6 @@ async def start_analysis(
         "analysis.started",
         session_id=str(session.id),
         domain=actual_domain_code,
-        symptom_area=symptom_area,
     )
 
     features = await domain.extract_features(session)
@@ -197,9 +193,17 @@ async def finalize_analysis(
     }
     await session_repo.save_report(session.id, report_data)
 
-    await _persist_session_features(db, session, features, diagnosis)
-    if session.domain_code == "general":
-        await _persist_general_session(db, session, diagnosis)
+    # Extract 12 ML triage features and persist for future retraining
+    triage_features = features
+    extract_triage_fn = getattr(domain, "extract_triage_features", None)
+    if extract_triage_fn is not None:
+        try:
+            triage_features = await extract_triage_fn(session)
+        except Exception:
+            logger.warning("analysis.triage_feature_extraction_failed", session_id=str(session.id))
+
+    await _persist_session_features(db, session, triage_features, diagnosis)
+    await _persist_general_session(db, session, diagnosis)
 
     report = AnalysisReportResponse(
         session_id=session.id,

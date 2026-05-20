@@ -28,8 +28,8 @@ class Settings(BaseSettings):
         alias="AI_SERVICE_INTERNAL_TOKEN",
     )
 
-    # hybrid: LLM interviewer + XGBoost for cardiology, LLM-only for general
-    # claude_only: LLM-only for all domains, XGBoost not used
+    # hybrid: Claude interviews + XGBoost triage classifier
+    # claude_only: Claude-only, XGBoost not used
     ai_mode: Literal["hybrid", "claude_only"] = Field(default="hybrid", alias="AI_MODE")
 
     llm_provider: Literal["anthropic", "openai", "gemini", "ollama", "mock"] = "mock"
@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.2:3b"
 
     mlflow_tracking_uri: str = "http://localhost:5000"
-    mlflow_model_name: str = "cardiology-diagnosis"
+    mlflow_model_name: str = "triage-classifier"
     mlflow_model_alias: str = "champion"
 
     cors_allowed_origins: str = "http://localhost:5173,http://localhost:8080"

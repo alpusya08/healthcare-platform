@@ -10,7 +10,7 @@ from app.core.enums import QuestionType, TriageLevel
 
 
 class StartAnalysisRequest(BaseModel):
-    domain_code: str = Field(default="cardiology")
+    domain_code: str = Field(default="general")
     initial_description: str = Field(min_length=10, max_length=5000)
     consent_given: bool
 

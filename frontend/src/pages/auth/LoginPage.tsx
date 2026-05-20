@@ -10,7 +10,7 @@ export function LoginPage() {
       <div className="w-full max-w-md space-y-6">
         <div className="flex flex-col items-center gap-3">
           <Logo size={40} />
-          <p className="text-sm text-muted-foreground">AI-Powered Healthcare Platform</p>
+          <p className="text-sm text-muted-foreground">Медицинская платформа с поддержкой ИИ</p>
         </div>
 
         <Card className="shadow-lg border-border/60">

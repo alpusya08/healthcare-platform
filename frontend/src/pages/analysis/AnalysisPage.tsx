@@ -22,7 +22,6 @@ import { UpcomingSlotsCard } from "@/widgets/upcoming-slots/UpcomingSlotsCard";
 
 type Step = "describe" | "questions" | "report";
 
-const MAX_QUESTIONS = 8;
 
 const TRIAGE_CONFIG: Record<TriageLevel, {
   label: string;
@@ -77,7 +76,7 @@ export function AnalysisPage() {
 
   const [sessionId, setSessionId] = useState<string>("");
   const [currentQuestion, setCurrentQuestion] = useState<QuestionDto | null>(null);
-  const [questionNumber, setQuestionNumber] = useState(1);
+  const [, setQuestionNumber] = useState(1);
   const [currentAnswer, setCurrentAnswer] = useState("");
 
   const [report, setReport] = useState<AnalysisReport | null>(null);
@@ -114,7 +113,7 @@ export function AnalysisPage() {
     setLoading(true);
     try {
       const res = await analysisApi.start({
-        domainCode: "cardiology",
+        domainCode: "general",
         initialDescription: description,
         consentGiven: true,
       });
@@ -233,7 +232,7 @@ export function AnalysisPage() {
           </CardHeader>
           <CardContent className="space-y-5">
             <Textarea
-              placeholder="Например: болит или давит в груди при ходьбе, иногда бывает одышка. Мне 55 лет, курю, давление обычно 150/90..."
+              placeholder="Например: три дня болит горло и температура 38, трудно глотать. Или: сильно болит голова в висках с утра, стало хуже за последние два дня..."
               className="min-h-[140px] resize-none text-sm"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -276,16 +275,7 @@ export function AnalysisPage() {
       {step === "questions" && currentQuestion && (
         <Card>
           <CardHeader className="pb-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground font-medium">
-                Вопрос {questionNumber} из {MAX_QUESTIONS}
-              </span>
-              <Badge variant="outline" className="text-xs">
-                {Math.min(Math.round((questionNumber / MAX_QUESTIONS) * 100), 100)}%
-              </Badge>
-            </div>
-            <Progress value={Math.min((questionNumber / MAX_QUESTIONS) * 100, 100)} className="h-1.5" />
-            <CardTitle className="text-base mt-4 leading-relaxed">
+            <CardTitle className="text-base leading-relaxed">
               {currentQuestion.question_text}
             </CardTitle>
 
@@ -405,6 +395,27 @@ export function AnalysisPage() {
   );
 }
 
+function ExplanationBlock({ explanation }: { explanation: string }) {
+  const clean = explanation
+    .replace(/^#{1,4}\s*/gm, "")
+    .replace(/\*\*/g, "")
+    .trim();
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          Что это означает
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">{clean}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () => void }) {
   const navigate = useNavigate();
   const cfg = TRIAGE_CONFIG[report.triage_level];
@@ -486,22 +497,7 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
       )}
 
       {/* Explanation */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-teal-600 dark:text-teal-400" />
-            Что это означает
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">
-            {report.explanation
-              .split("\n")
-              .map((line) => line.replace(/^#{1,4}\s*/, "").replace(/\*\*/g, ""))
-              .join("\n")}
-          </div>
-        </CardContent>
-      </Card>
+      <ExplanationBlock explanation={report.explanation} />
 
       {/* Possible causes */}
       {report.possible_causes && report.possible_causes.length > 0 && (

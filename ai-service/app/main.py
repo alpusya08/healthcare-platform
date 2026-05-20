@@ -44,8 +44,9 @@ def create_app() -> FastAPI:
         title="Healthcare AI Service",
         version="0.1.0",
         description=(
-            "Domain-agnostic AI engine for medical diagnostics. "
-            "Cardiology: LLM interviewer + XGBoost. General: LLM-only."
+            "AI engine for medical triage and diagnostics. "
+            "Claude conducts symptom intake, XGBoost classifies triage level. "
+            "Doctor feedback drives continuous model retraining."
         ),
         lifespan=lifespan,
     )

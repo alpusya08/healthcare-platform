@@ -14,6 +14,7 @@ from app.core.entities.question import Question
 from app.core.enums import QuestionType, TriageLevel
 from app.core.interfaces.domain_strategy import MedicalDomain
 from app.core.interfaces.llm_provider import LLMProvider
+from app.core.interfaces.ml_predictor import MLPredictor
 from app.infrastructure.llm.general_questions import (
     AREA_DISPLAY_NAMES,
     detect_general_area,
@@ -23,7 +24,25 @@ from app.infrastructure.llm.general_questions import (
 logger = structlog.get_logger()
 
 MAX_QUESTIONS = 8
+ML_CONFIDENCE_THRESHOLD = 0.65  # use ML triage if confidence >= this
 
+# 12 general features used by the triage ML model
+TRIAGE_FEATURES = [
+    "age",
+    "sex",
+    "symptom_duration_days",
+    "pain_severity",
+    "onset_type",
+    "is_worsening",
+    "affects_daily_activity",
+    "has_chronic_conditions",
+    "takes_medications",
+    "prior_similar_episode",
+    "associated_symptoms_count",
+    "red_flag_present",
+]
+
+# All symptom detail features stored for full context
 GENERAL_FEATURES = [
     "duration_days", "pain_severity", "pain_character", "pain_location",
     "associated_symptoms", "fever", "food_relation", "radiation",
@@ -52,6 +71,7 @@ Rules:
 - Focus on what is most clinically relevant given the specific complaint
 - Never repeat information already provided
 - Never suggest a diagnosis
+- Never recommend specific medications or dosages
 
 If you already have enough information to proceed (4+ answered questions), return: {"done": true}
 
@@ -65,7 +85,13 @@ feature_name must be one of: duration_days, pain_severity, pain_character, pain_
 _REPORT_SYSTEM_PROMPT = """\
 You are an experienced general practitioner. Based on the patient's reported symptoms, produce a brief clinical assessment.
 
-All output fields must be in RUSSIAN. Return a single JSON object:
+IMPORTANT RULES:
+- All output fields must be in RUSSIAN
+- Never name specific medications or dosages
+- This is a preliminary AI assessment — always end explanation with the disclaimer
+- Be honest about uncertainty
+
+Return a single JSON object:
 {"primary_diagnosis":"1-sentence working diagnosis in Russian","summary":"1-2 sentence summary in Russian","explanation":"2-3 sentence explanation in Russian ending with: Важно: данная оценка носит информационный характер и не является диагнозом.","possible_causes":["cause1","cause2","cause3"],"red_flags":[],"recommendations":["rec1","rec2","rec3"],"triage_level":"ROUTINE","recommended_specialization":"therapy","confidence":0.6}
 
 triage_level: EMERGENCY (call ambulance now) / URGENT (see doctor today) / ROUTINE (schedule appointment).
@@ -74,12 +100,38 @@ confidence: 0.0–1.0 reflecting how certain the assessment is given available d
 red_flags: list serious warning signs if any, empty array otherwise.
 """
 
+_TRIAGE_FEATURE_EXTRACTION_PROMPT = """\
+Extract 12 structured features from this patient intake for ML triage classification.
+Return ONLY valid JSON with exactly these keys (all numeric, use null if truly unknown):
+
+{{
+  "age": int or null,
+  "sex": 0 or 1 (1=male, 0=female) or null,
+  "symptom_duration_days": int (0 if started today) or null,
+  "pain_severity": int 0-10 or null,
+  "onset_type": 0 or 1 (0=gradual, 1=sudden) or null,
+  "is_worsening": 0 or 1 or null,
+  "affects_daily_activity": 0 or 1 or null,
+  "has_chronic_conditions": 0 or 1 or null,
+  "takes_medications": 0 or 1 or null,
+  "prior_similar_episode": 0 or 1 or null,
+  "associated_symptoms_count": int (how many different symptoms mentioned) or null,
+  "red_flag_present": 0 or 1 (1 if any: loss of consciousness, paralysis, severe chest pain, blood in stool/vomit, sudden severe headache)
+}}
+
+Patient complaint: {description}
+
+Q&A History:
+{qa_history}
+"""
+
 
 class GeneralSymptomDomain(MedicalDomain):
-    """Universal symptom intake domain using LLM for dynamic Q&A and personalized reports."""
+    """Universal symptom intake. Claude interviews, extracts features, ML classifies triage."""
 
-    def __init__(self, llm: LLMProvider) -> None:
+    def __init__(self, llm: LLMProvider, predictor: Optional[MLPredictor] = None) -> None:
         self._llm = llm
+        self._predictor = predictor
 
     @property
     def code(self) -> str:
@@ -93,9 +145,14 @@ class GeneralSymptomDomain(MedicalDomain):
     def required_features(self) -> list[str]:
         return GENERAL_FEATURES
 
+    def get_model_version(self) -> str:
+        if self._predictor is not None:
+            return f"hybrid-{self._predictor.model_version}"
+        return "general-llm-v1"
+
     async def extract_features(self, session: AnalysisSession) -> MedicalFeatures:
         area = detect_general_area(session.initial_description)
-        answered: dict[str, str] = {
+        answered: dict[str, Any] = {
             q.feature_name: q.answer
             for q in session.questions
             if q.feature_name and q.answer
@@ -112,6 +169,37 @@ class GeneralSymptomDomain(MedicalDomain):
             values["_file_summaries"] = session.file_summaries
 
         return MedicalFeatures(values=values)
+
+    async def extract_triage_features(self, session: AnalysisSession) -> MedicalFeatures:
+        """Extract the 12 ML triage features from the full dialogue."""
+        try:
+            qa_history = "\n".join(
+                f"Q: {q.question_text}\nA: {q.answer}"
+                for q in session.questions
+                if q.answer
+            )
+            prompt = _TRIAGE_FEATURE_EXTRACTION_PROMPT.format(
+                description=session.initial_description,
+                qa_history=qa_history or "Нет ответов на вопросы",
+            )
+            raw = await self._llm.complete_structured(prompt, {})
+
+            values: dict[str, Any] = {}
+            for k in TRIAGE_FEATURES:
+                v = raw.get(k)
+                if v is not None:
+                    try:
+                        values[k] = float(v)
+                    except (TypeError, ValueError):
+                        values[k] = None
+                else:
+                    values[k] = None
+
+            values["_raw_description"] = session.initial_description
+            return MedicalFeatures(values=values)
+        except Exception:
+            logger.exception("general_domain.triage_feature_extraction_failed")
+            return MedicalFeatures(values={"_raw_description": session.initial_description})
 
     async def generate_next_question(
         self, session: AnalysisSession, partial_features: MedicalFeatures
@@ -132,12 +220,74 @@ class GeneralSymptomDomain(MedicalDomain):
 
     async def predict(self, features: MedicalFeatures) -> Diagnosis:
         try:
-            return await self._llm_predict(features)
+            return await self._hybrid_predict(features)
         except Exception:
+            logger.exception("general_domain.predict_failed_using_fallback")
             return self._smart_diagnosis(features)
 
-    def get_model_version(self) -> str:
-        return "general-llm-v1"
+    async def _hybrid_predict(self, features: MedicalFeatures) -> Diagnosis:
+        # Always get Claude's full report (diagnosis text, recommendations, etc.)
+        llm_diagnosis = await self._llm_predict(features)
+
+        # If ML predictor available and confident — use its triage classification
+        if self._predictor is not None:
+            try:
+                ml_prediction = self._predictor.predict(features)
+                if ml_prediction.confidence >= ML_CONFIDENCE_THRESHOLD:
+                    triage_map = {
+                        "ROUTINE": TriageLevel.ROUTINE,
+                        "URGENT": TriageLevel.URGENT,
+                        "EMERGENCY": TriageLevel.EMERGENCY,
+                    }
+                    ml_triage = triage_map.get(ml_prediction.triage_code, TriageLevel.ROUTINE)
+                    logger.info(
+                        "general_domain.ml_triage_used",
+                        ml_triage=ml_prediction.triage_code,
+                        confidence=ml_prediction.confidence,
+                        llm_triage=llm_diagnosis.triage_level.value,
+                    )
+                    return Diagnosis(
+                        domain=self.code,
+                        primary_diagnosis=llm_diagnosis.primary_diagnosis,
+                        confidence=ml_prediction.confidence,
+                        explanation=llm_diagnosis.explanation,
+                        recommendations=llm_diagnosis.recommendations,
+                        triage_level=ml_triage,
+                        model_version=self.get_model_version(),
+                        recommended_specialization=llm_diagnosis.recommended_specialization,
+                        possible_causes=llm_diagnosis.possible_causes,
+                        red_flags=llm_diagnosis.red_flags,
+                        summary=llm_diagnosis.summary,
+                    )
+            except Exception:
+                logger.warning("general_domain.ml_prediction_failed_using_llm_triage")
+
+        return llm_diagnosis
+
+    async def _llm_predict(self, features: MedicalFeatures) -> Diagnosis:
+        prompt = self._build_report_prompt(features)
+        raw = await self._llm.complete_structured(prompt, {})
+
+        triage_map = {
+            "EMERGENCY": TriageLevel.EMERGENCY,
+            "URGENT": TriageLevel.URGENT,
+            "ROUTINE": TriageLevel.ROUTINE,
+        }
+        triage = triage_map.get(str(raw.get("triage_level", "ROUTINE")).upper(), TriageLevel.ROUTINE)
+
+        return Diagnosis(
+            domain=self.code,
+            primary_diagnosis=raw.get("primary_diagnosis", "Жалобы требуют уточнения"),
+            confidence=float(raw.get("confidence", 0.0)),
+            explanation=raw.get("explanation", ""),
+            recommendations=raw.get("recommendations", []),
+            triage_level=triage,
+            model_version=self.get_model_version(),
+            recommended_specialization=raw.get("recommended_specialization", "therapy"),
+            possible_causes=raw.get("possible_causes", []),
+            red_flags=raw.get("red_flags", []),
+            summary=raw.get("summary", ""),
+        )
 
     async def _llm_next_question(
         self, session: AnalysisSession, partial_features: MedicalFeatures
@@ -168,31 +318,6 @@ class GeneralSymptomDomain(MedicalDomain):
             feature_name=feature_name,
             hint=raw.get("hint"),
             order_index=session.questions_count,
-        )
-
-    async def _llm_predict(self, features: MedicalFeatures) -> Diagnosis:
-        prompt = self._build_report_prompt(features)
-        raw = await self._llm.complete_structured(prompt, {})
-
-        triage_map = {
-            "EMERGENCY": TriageLevel.EMERGENCY,
-            "URGENT": TriageLevel.URGENT,
-            "ROUTINE": TriageLevel.ROUTINE,
-        }
-        triage = triage_map.get(str(raw.get("triage_level", "ROUTINE")).upper(), TriageLevel.ROUTINE)
-
-        return Diagnosis(
-            domain=self.code,
-            primary_diagnosis=raw.get("primary_diagnosis", "Жалобы требуют уточнения"),
-            confidence=float(raw.get("confidence", 0.0)),
-            explanation=raw.get("explanation", ""),
-            recommendations=raw.get("recommendations", []),
-            triage_level=triage,
-            model_version=self.get_model_version(),
-            recommended_specialization=raw.get("recommended_specialization", "therapy"),
-            possible_causes=raw.get("possible_causes", []),
-            red_flags=raw.get("red_flags", []),
-            summary=raw.get("summary", ""),
         )
 
     def _build_question_prompt(
@@ -270,13 +395,11 @@ class GeneralSymptomDomain(MedicalDomain):
     def _smart_diagnosis(self, features: MedicalFeatures) -> Diagnosis:
         area = features.get("symptom_area") or "general"
         area_name = AREA_DISPLAY_NAMES.get(area, "симптомы")
-        desc = features.get("_raw_description") or ""
         severity = str(features.get("pain_severity") or "")
         duration = str(features.get("duration_days") or "")
         character = str(features.get("pain_character") or "")
-        location = str(features.get("pain_location") or "")
-        fever = str(features.get("fever") or "")
         onset = str(features.get("onset") or "")
+        fever = str(features.get("fever") or "")
 
         is_severe = any(w in severity.lower() for w in ["7", "8", "9", "10", "сильн", "невынос"])
         is_long = any(w in duration.lower() for w in ["недел", "месяц", "давно"])
@@ -293,28 +416,14 @@ class GeneralSymptomDomain(MedicalDomain):
             "skin": "дерматологу",
         }
         causes_map = {
-            "head": ["Головная боль напряжения (стресс, переутомление)", "Мигрень", "Повышение артериального давления", "Шейный остеохондроз"],
-            "back": ["Мышечный спазм или остеохондроз", "Протрузия или грыжа межпозвонкового диска", "Перенапряжение мышц спины"],
-            "abdomen": ["Гастрит или язвенная болезнь", "Кишечная колика или СРК", "Панкреатит"],
-            "throat": ["ОРВИ (вирусная инфекция)", "Ангина (бактериальная инфекция)", "Фарингит или ларингит"],
-            "limbs": ["Артроз или артрит сустава", "Растяжение связок или мышц", "Тендинит после нагрузки"],
-            "skin": ["Контактный дерматит", "Аллергическая реакция", "Атопический дерматит"],
+            "head": ["Головная боль напряжения (стресс, переутомление)", "Мигрень", "Повышение артериального давления"],
+            "back": ["Мышечный спазм или остеохондроз", "Протрузия или грыжа межпозвонкового диска"],
+            "abdomen": ["Гастрит или язвенная болезнь", "Кишечная колика или СРК"],
+            "throat": ["ОРВИ (вирусная инфекция)", "Ангина (бактериальная инфекция)"],
+            "limbs": ["Артроз или артрит сустава", "Растяжение связок или мышц"],
+            "skin": ["Контактный дерматит", "Аллергическая реакция"],
         }
 
-        # Build personalized summary
-        summary_parts = [f"Основная жалоба: {area_name}."]
-        if duration:
-            summary_parts.append(f"Длительность: {duration}.")
-        if severity:
-            summary_parts.append(f"Интенсивность: {severity}.")
-        if character:
-            summary_parts.append(f"Характер: {character}.")
-        if location:
-            summary_parts.append(f"Локализация: {location}.")
-        if has_fever:
-            summary_parts.append(f"Температура: {fever}.")
-
-        # Build explanation
         explanation_parts = [f"По вашим симптомам наиболее вероятна патология в области «{area_name}»."]
         if is_severe:
             explanation_parts.append("Интенсивность жалоб высокая — рекомендуем не откладывать визит к врачу.")
@@ -326,14 +435,10 @@ class GeneralSymptomDomain(MedicalDomain):
             explanation_parts.append("Наличие температуры может указывать на воспалительный процесс.")
         explanation_parts.append("Важно: данная оценка носит информационный характер и не является диагнозом.")
 
-        # Red flags
         red_flags = []
         if is_severe and is_sudden and area == "head":
             red_flags.append("Внезапная сильная головная боль требует исключения сосудистой катастрофы")
-        if is_severe and area == "abdomen":
-            red_flags.append("Выраженная боль в животе — исключить хирургическую патологию")
 
-        # Recommendations
         specialist = specialist_ru.get(area, "терапевту")
         recs = [f"Запишитесь на консультацию к {specialist}"]
         if is_severe or is_long:
@@ -353,8 +458,5 @@ class GeneralSymptomDomain(MedicalDomain):
             recommended_specialization=spec_map.get(area, "therapy"),
             possible_causes=(causes_map.get(area) or ["Требуется уточнение после осмотра врача"])[:3],
             red_flags=red_flags,
-            summary=" ".join(summary_parts),
+            summary=f"Основная жалоба: {area_name}.",
         )
-
-    def _fallback_diagnosis(self, features: MedicalFeatures) -> Diagnosis:
-        return self._smart_diagnosis(features)

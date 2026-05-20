@@ -1,11 +1,11 @@
-"""ML management endpoints: push doctor feedback and trigger retraining."""
+"""ML management endpoints: push doctor feedback and trigger triage model retraining."""
 from __future__ import annotations
 
 import uuid
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.api.deps import verify_internal_token, get_db_session
@@ -20,6 +20,8 @@ class SessionFeedbackRequest(BaseModel):
     appointment_id: Optional[uuid.UUID] = None
     verdict: str  # APPROVED | REJECTED | PARTIAL
     corrected_diagnosis: Optional[str] = None
+    # True triage label from doctor (overrides ML prediction for retraining)
+    true_triage_level: Optional[str] = None  # ROUTINE | URGENT | EMERGENCY
 
 
 class RetrainResponse(BaseModel):
@@ -69,7 +71,7 @@ async def get_ml_stats(
         .order_by(SessionFeaturesRecord.created_at.desc())
         .limit(1)
     )).scalar_one_or_none()
-    model_version = latest_version_row or "cardiology_xgb_v1"
+    model_version = latest_version_row or "triage_xgb_v1"
 
     return MlStatsResponse(
         total_analyses=total_analyses,
@@ -99,7 +101,7 @@ async def push_session_feedback(
     )
     if existing.scalar_one_or_none():
         logger.info("ml.feedback_already_exists", session_id=str(request.session_id))
-        return
+        return {"ok": True, "skipped": True}
 
     record = SessionDoctorFeedbackRecord(
         session_id=request.session_id,
@@ -117,21 +119,29 @@ async def push_session_feedback(
     return {"ok": True}
 
 
-@router.post("/retrain/cardiology", response_model=RetrainResponse)
-async def retrain_cardiology(
-    background_tasks: BackgroundTasks,
+@router.post("/retrain/triage", response_model=RetrainResponse)
+async def retrain_triage(
     db=Depends(get_db_session),
     _: None = Depends(verify_internal_token),
 ) -> RetrainResponse:
     """
-    Collect all cardiology sessions with doctor feedback, combine with original dataset,
-    retrain XGBoost. If new model beats champion by F1 — deploy automatically.
+    Collect all sessions with doctor feedback, build labeled triage dataset,
+    retrain XGBoost. If new model beats champion F1-macro — deploy automatically.
+
+    Feedback → triage label mapping:
+    - APPROVED: use ML's predicted triage_level as ground truth
+    - REJECTED + true_triage_level provided: use doctor's label
+    - REJECTED without label: invert predicted triage (ROUTINE↔URGENT)
+    - PARTIAL: skip (uncertain label)
     """
     from app.infrastructure.db.models import SessionFeaturesRecord, SessionDoctorFeedbackRecord
     from sqlalchemy import select
 
+    _TRIAGE_CODE_TO_INT = {"ROUTINE": 0, "URGENT": 1, "EMERGENCY": 2}
+    _INT_TO_TRIAGE = {0: "ROUTINE", 1: "URGENT", 2: "EMERGENCY"}
+
     features_rows = (await db.execute(
-        select(SessionFeaturesRecord).where(SessionFeaturesRecord.domain_code == "cardiology")
+        select(SessionFeaturesRecord)
     )).scalars().all()
 
     feedback_rows = (await db.execute(
@@ -145,13 +155,31 @@ async def retrain_cardiology(
         feedback = feedback_by_session.get(str(feat_row.session_id))
         if feedback is None:
             continue
+        if feedback.verdict == "PARTIAL":
+            continue  # skip uncertain feedback
+
+        features = feat_row.features or {}
+
         if feedback.verdict == "APPROVED":
-            label = feat_row.prediction_class if feat_row.prediction_class is not None else 1
+            # Doctor confirmed — use the predicted triage class
+            pred_class = feat_row.prediction_class
+            if pred_class is None:
+                continue
+            triage_label = pred_class
         elif feedback.verdict == "REJECTED":
-            label = 1 - (feat_row.prediction_class or 0)
+            # Doctor corrected — check if true_triage_level was stored in corrected_diagnosis
+            if feedback.corrected_diagnosis and feedback.corrected_diagnosis.upper() in _TRIAGE_CODE_TO_INT:
+                triage_label = _TRIAGE_CODE_TO_INT[feedback.corrected_diagnosis.upper()]
+            else:
+                # Invert: ROUTINE↔URGENT, EMERGENCY stays
+                pred = feat_row.prediction_class or 0
+                triage_label = 1 - pred if pred < 2 else 1
         else:
             continue
-        labeled_samples.append({**feat_row.features, "target": label, "source": "feedback"})
+
+        sample = {k: v for k, v in features.items() if not k.startswith("_")}
+        sample["triage_level"] = triage_label
+        labeled_samples.append(sample)
 
     logger.info("ml.retrain_started", feedback_samples=len(labeled_samples))
 
@@ -165,10 +193,9 @@ async def retrain_cardiology(
 
 
 def _run_retrain(mlflow_uri: str, extra_samples: list[dict]) -> dict:
-    """Run retraining synchronously (called from endpoint — not background for demo clarity)."""
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[5]))
 
-    from app.ml.train_cardiology import retrain_with_feedback
+    from app.ml.train_triage import retrain_with_feedback
     return retrain_with_feedback(mlflow_uri=mlflow_uri, extra_samples=extra_samples)

@@ -231,7 +231,7 @@ export function AdminMLDashboardPage() {
 
           {stats && (
             <div className="text-sm text-muted-foreground">
-              Текущая модель: <span className="font-mono text-foreground">cardiology_v{stats.model_version}</span>
+              Текущая модель: <span className="font-mono text-foreground">{stats.model_version}</span>
             </div>
           )}
 

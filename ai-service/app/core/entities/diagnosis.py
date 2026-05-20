@@ -28,3 +28,4 @@ class ModelPrediction:
     confidence: float
     raw_probability: float
     feature_importances: Optional[dict[str, float]] = None
+    triage_code: str = "ROUTINE"

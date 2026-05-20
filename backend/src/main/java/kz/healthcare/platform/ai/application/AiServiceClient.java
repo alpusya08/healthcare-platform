@@ -111,7 +111,7 @@ public class AiServiceClient {
     public Map<String, Object> triggerRetrain() {
         log.debug("ai_service.trigger_retrain");
         return aiServiceRestClient.post()
-                .uri("/api/v1/ml/retrain/cardiology")
+                .uri("/api/v1/ml/retrain/triage")
                 .retrieve()
                 .body(Map.class);
     }
