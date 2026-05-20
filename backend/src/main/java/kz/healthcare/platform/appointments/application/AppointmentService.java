@@ -326,6 +326,7 @@ public class AppointmentService {
         return toReviewResponse(review);
     }
 
+    @Transactional(readOnly = true)
     public List<ReviewResponse> listReviewsForDoctor(UUID doctorId) {
         return reviewRepository.findByDoctorId(doctorId).stream()
                 .map(this::toReviewResponse)

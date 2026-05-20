@@ -17,6 +17,8 @@ public interface DoctorReviewRepository extends JpaRepository<DoctorReview, UUID
 
     @Query("""
             SELECT r FROM DoctorReview r
+            JOIN FETCH r.patient p
+            JOIN FETCH p.user
             WHERE r.doctor.id = :doctorId
             ORDER BY r.createdAt DESC
             """)
