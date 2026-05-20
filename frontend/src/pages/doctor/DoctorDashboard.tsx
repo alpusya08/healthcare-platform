@@ -4,7 +4,8 @@ import {
   Stethoscope, Calendar, Clock, FileText, CheckCheck,
   Star, MessageSquare, LayoutGrid, UserCog, Phone, Mail,
   AlertCircle, TrendingUp, Users, Banknote, Shield,
-  ChevronRight, Filter, Video,
+  ChevronRight, Filter, Video, Brain, ChevronDown, ChevronUp,
+  ListOrdered, X as XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -16,6 +17,7 @@ import { useAuthStore } from "@/features/auth/model/authStore";
 import { doctorApi, type DoctorAppointment } from "@/features/doctor/api/doctorApi";
 import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
 import { DoctorFeedbackModal } from "./DoctorFeedbackModal";
+import type { AnalysisReport } from "@/features/analysis/types";
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 
@@ -60,7 +62,7 @@ const STATUS_LABELS = {
 } as const;
 
 const STATUS_COLORS = {
-  SCHEDULED: "bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border-teal-200",
+  SCHEDULED: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200",
   COMPLETED: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200",
   CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300 border-red-200",
   NO_SHOW: "bg-muted text-muted-foreground border-border",
@@ -106,12 +108,12 @@ function AppointmentCard({
 
   return (
     <Card
-      className="border-border hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-sm transition-all duration-150 cursor-pointer"
+      className="border-border hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm transition-all duration-150 cursor-pointer"
       onClick={onOpen}
     >
       <CardContent className="pt-4 pb-4">
         <div className="flex items-start gap-4">
-          <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center shrink-0 font-bold text-teal-700 dark:text-teal-300 text-sm">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center shrink-0 font-bold text-blue-700 dark:text-blue-300 text-sm">
             {appt.patientName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
           </div>
 
@@ -130,7 +132,7 @@ function AppointmentCard({
                     {appt.type === "ONLINE" ? "Онлайн" : "Офлайн"}
                   </span>
                   {appt.aiSessionId && (
-                    <span className="flex items-center gap-1 text-teal-600 dark:text-teal-400 font-medium">
+                    <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
                       <FileText className="w-3 h-3" />
                       AI-анализ
                     </span>
@@ -152,7 +154,7 @@ function AppointmentCard({
                 {appt.type === "ONLINE" && appt.meetingLink && (
                   <Button
                     size="sm"
-                    className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white"
+                    className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white"
                     onClick={() => window.open(appt.meetingLink, "_blank", "noopener,noreferrer")}
                   >
                     <Video className="w-3 h-3 mr-1" />
@@ -182,6 +184,22 @@ function AppointmentCard({
   );
 }
 
+/* ─── triage badge helper ──────────────────────────────────────── */
+
+const TRIAGE_BADGE: Record<string, string> = {
+  EMERGENCY: "bg-red-100 text-red-700 border-red-300 dark:bg-red-950/40 dark:text-red-400 dark:border-red-700",
+  URGENT: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700",
+  ROUTINE: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-700",
+  INSUFFICIENT_DATA: "bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700",
+};
+
+const TRIAGE_LABELS_MODAL: Record<string, string> = {
+  EMERGENCY: "Экстренный",
+  URGENT: "Срочный",
+  ROUTINE: "Плановый",
+  INSUFFICIENT_DATA: "Недостаточно данных",
+};
+
 /* ─── patient detail modal ─────────────────────────────────────── */
 
 function PatientDetailModal({
@@ -197,13 +215,36 @@ function PatientDetailModal({
   onNoShow: () => void;
   onFeedback: () => void;
 }) {
+  const [aiReport, setAiReport] = useState<AnalysisReport | null>(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [aiError, setAiError] = useState(false);
+  const [showAi, setShowAi] = useState(false);
+
   const durationMin = Math.round(
     (new Date(appt.endTime).getTime() - new Date(appt.startTime).getTime()) / 60000
   );
 
+  async function handleOpenAi() {
+    if (aiReport) { setShowAi(true); return; }
+    setLoadingAi(true);
+    setAiError(false);
+    try {
+      const data = await doctorApi.getAiReport(appt.aiSessionId!);
+      setAiReport(data);
+      setShowAi(true);
+    } catch {
+      setAiError(true);
+    } finally {
+      setLoadingAi(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="bg-background rounded-2xl shadow-xl w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="bg-background rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h2 className="font-bold text-lg text-foreground">Карточка приёма</h2>
@@ -212,7 +253,7 @@ function PatientDetailModal({
 
           {/* Patient */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-teal-100 dark:bg-teal-900 flex items-center justify-center font-bold text-teal-700 dark:text-teal-300 shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center font-bold text-blue-700 dark:text-blue-300 shrink-0">
               {appt.patientName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
             </div>
             <div>
@@ -257,10 +298,96 @@ function PatientDetailModal({
                 </div>
               </div>
             )}
+
+            {/* AI analysis section */}
             {appt.aiSessionId && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-sm text-teal-700 dark:text-teal-300">
-                <FileText className="w-4 h-4 shrink-0" />
-                У пациента есть AI-анализ симптомов
+              <div className="rounded-lg border border-blue-200 dark:border-blue-800 overflow-hidden">
+                <div className="flex items-center justify-between px-3 py-2 bg-blue-50 dark:bg-blue-950/40">
+                  <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300 font-medium">
+                    <Brain className="w-4 h-4 shrink-0" />
+                    AI-анализ симптомов
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!showAi ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900"
+                        onClick={handleOpenAi}
+                        disabled={loadingAi}
+                      >
+                        {loadingAi ? "Загрузка..." : "Открыть AI-анализ"}
+                        {!loadingAi && <ChevronDown className="w-3 h-3 ml-1" />}
+                      </Button>
+                    ) : (
+                      <button
+                        onClick={() => setShowAi(false)}
+                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {aiError && (
+                  <div className="px-3 py-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border-t border-red-200 dark:border-red-800">
+                    Не удалось загрузить анализ
+                  </div>
+                )}
+
+                {showAi && aiReport && (
+                  <div className="px-3 py-3 border-t border-blue-200 dark:border-blue-800 space-y-3">
+                    {/* Triage badge */}
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${TRIAGE_BADGE[aiReport.triage_level] ?? TRIAGE_BADGE.INSUFFICIENT_DATA}`}>
+                        {TRIAGE_LABELS_MODAL[aiReport.triage_level] ?? aiReport.triage_level}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Уверенность: {Math.round(aiReport.confidence * 100)}%
+                      </span>
+                    </div>
+
+                    {/* Primary diagnosis */}
+                    <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900">
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-0.5">Диагноз</p>
+                      <p className="text-sm font-semibold text-foreground">{aiReport.primary_diagnosis}</p>
+                    </div>
+
+                    {/* Recommendations (max 4) */}
+                    {aiReport.recommendations.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1.5">
+                          <ListOrdered className="w-3.5 h-3.5" />
+                          Рекомендации
+                        </p>
+                        <ol className="space-y-1">
+                          {aiReport.recommendations.slice(0, 4).map((rec, i) => (
+                            <li key={i} className="flex gap-2 text-xs text-muted-foreground">
+                              <span className="shrink-0 w-4 h-4 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px] font-bold flex items-center justify-center">
+                                {i + 1}
+                              </span>
+                              {rec}
+                            </li>
+                          ))}
+                          {aiReport.recommendations.length > 4 && (
+                            <li className="text-xs text-muted-foreground/60 pl-6">
+                              +{aiReport.recommendations.length - 4} ещё...
+                            </li>
+                          )}
+                        </ol>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => setShowAi(false)}
+                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 flex items-center gap-1"
+                    >
+                      <XIcon className="w-3 h-3" />
+                      Свернуть
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -271,7 +398,7 @@ function PatientDetailModal({
           <div className="flex flex-col gap-2">
             {appt.status === "SCHEDULED" && appt.type === "ONLINE" && appt.meetingLink && (
               <Button
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => window.open(appt.meetingLink, "_blank", "noopener,noreferrer")}
               >
                 <Video className="w-4 h-4 mr-2" />
@@ -284,11 +411,11 @@ function PatientDetailModal({
                   <CheckCheck className="w-4 h-4 mr-2" />
                   Завершить приём
                 </Button>
-                {!appt.hasFeedback && (
-                  <Button variant="outline" className="w-full" onClick={() => { onFeedback(); onClose(); }}>
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Оставить комментарий к AI-отчёту
-                  </Button>
+                {appt.aiSessionId && (
+                  <p className="text-xs text-muted-foreground text-center py-1">
+                    <MessageSquare className="w-3 h-3 inline mr-1" />
+                    Обратная связь будет доступна после завершения приёма
+                  </p>
                 )}
                 <Button variant="ghost" className="w-full text-muted-foreground hover:text-destructive"
                   onClick={() => { onNoShow(); onClose(); }}>
@@ -393,7 +520,7 @@ export function DoctorDashboard() {
           </p>
         </div>
         {todayAppts.length > 0 && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-sm text-teal-700 dark:text-teal-300">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-300">
             <Clock className="w-4 h-4 shrink-0" />
             Сегодня: <strong>{todayAppts.length}</strong> {todayAppts.length === 1 ? "приём" : "приёма"}
           </div>
@@ -403,7 +530,7 @@ export function DoctorDashboard() {
       {/* ── Stats row ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { icon: Calendar,    label: "Сегодня",         value: todayAppts.length,   color: "text-teal-600",    bg: "bg-teal-50 dark:bg-teal-950/40" },
+          { icon: Calendar,    label: "Сегодня",         value: todayAppts.length,   color: "text-blue-600",    bg: "bg-blue-50 dark:bg-blue-950/40" },
           { icon: CheckCheck,  label: "Завершено",        value: totalCompleted,      color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
           { icon: Users,       label: "Всего записей",   value: appointments.length, color: "text-violet-600",  bg: "bg-violet-50 dark:bg-violet-950/40" },
           { icon: FileText,    label: "С AI-анализом",   value: withAi,              color: "text-blue-600",    bg: "bg-blue-50 dark:bg-blue-950/40" },
@@ -426,9 +553,9 @@ export function DoctorDashboard() {
 
       {/* ── Today's schedule ── */}
       {todayAppts.length > 0 && activeTab === "appointments" && (
-        <Card className="border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-950/20">
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2 text-teal-700 dark:text-teal-300">
+            <CardTitle className="text-sm flex items-center gap-2 text-blue-700 dark:text-blue-300">
               <Clock className="w-4 h-4" />
               Расписание на сегодня
             </CardTitle>
@@ -439,12 +566,12 @@ export function DoctorDashboard() {
                 <div
                   key={a.id}
                   onClick={() => setSelectedAppt(a)}
-                  className="flex items-center gap-3 p-3 rounded-lg bg-background border border-border hover:border-teal-300 cursor-pointer transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-lg bg-background border border-border hover:border-blue-300 cursor-pointer transition-colors"
                 >
-                  <div className="text-sm font-mono font-bold text-teal-700 dark:text-teal-300 shrink-0 w-12 text-center">
+                  <div className="text-sm font-mono font-bold text-blue-700 dark:text-blue-300 shrink-0 w-12 text-center">
                     {fmtTime(a.startTime)}
                   </div>
-                  <div className="w-px h-8 bg-teal-200 dark:bg-teal-800 shrink-0" />
+                  <div className="w-px h-8 bg-blue-200 dark:bg-blue-800 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{a.patientName}</p>
                     <p className="text-xs text-muted-foreground">
@@ -452,7 +579,7 @@ export function DoctorDashboard() {
                       {a.complaint ? ` · ${a.complaint}` : ""}
                     </p>
                   </div>
-                  {a.aiSessionId && <FileText className="w-3.5 h-3.5 text-teal-500 shrink-0" />}
+                  {a.aiSessionId && <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
                   <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                 </div>
               ))}
@@ -477,7 +604,7 @@ export function DoctorDashboard() {
             <Icon className="w-4 h-4" />
             {label}
             {id === "appointments" && appointments.length > 0 && (
-              <span className="ml-1 text-xs bg-teal-100 dark:bg-teal-900 text-teal-700 dark:text-teal-300 px-1.5 rounded-full">
+              <span className="ml-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-1.5 rounded-full">
                 {appointments.length}
               </span>
             )}
@@ -499,8 +626,8 @@ export function DoctorDashboard() {
                   className={cn(
                     "px-3 py-1 rounded-lg text-xs font-medium border transition-all",
                     dateFilter === id
-                      ? "bg-teal-600 border-teal-600 text-white"
-                      : "border-border text-muted-foreground hover:border-teal-400 hover:text-foreground"
+                      ? "bg-blue-600 border-blue-600 text-white"
+                      : "border-border text-muted-foreground hover:border-blue-400 hover:text-foreground"
                   )}
                 >
                   {label}
@@ -594,7 +721,7 @@ export function DoctorDashboard() {
                   <div key={review.id} className="py-4 first:pt-0 last:pb-0">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-900 flex items-center justify-center text-sm font-bold text-teal-700 dark:text-teal-300">
+                        <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-sm font-bold text-blue-700 dark:text-blue-300">
                           {review.patientName.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -628,7 +755,7 @@ export function DoctorDashboard() {
           <Card className="border-border">
             <CardContent className="pt-6 pb-5">
               <div className="flex flex-col items-center text-center gap-3">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-3xl font-bold text-white shadow-md">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-3xl font-bold text-white shadow-md">
                   {initials}
                 </div>
                 <div>
@@ -640,7 +767,7 @@ export function DoctorDashboard() {
                     </Badge>
                   )}
                   {doctorProfile?.verified && (
-                    <div className="flex items-center justify-center gap-1 mt-2 text-xs text-teal-600 dark:text-teal-400">
+                    <div className="flex items-center justify-center gap-1 mt-2 text-xs text-blue-600 dark:text-blue-400">
                       <Shield className="w-3 h-3" />
                       Верифицирован
                     </div>
@@ -701,7 +828,7 @@ export function DoctorDashboard() {
                 <Card className="border-border">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-teal-600" />
+                      <TrendingUp className="w-4 h-4 text-blue-600" />
                       Статистика
                     </CardTitle>
                   </CardHeader>

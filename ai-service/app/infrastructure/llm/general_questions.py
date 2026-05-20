@@ -1,4 +1,4 @@
-"""Keyword-based question banks for general (non-cardiology) symptom areas."""
+"""Keyword-based question banks for general symptom areas."""
 from __future__ import annotations
 
 import re

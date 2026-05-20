@@ -130,7 +130,7 @@ export function DoctorFeedbackModal({
                 className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium hover:bg-accent transition-colors"
               >
                 <span className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                  <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   AI-анализ симптомов
                 </span>
                 {showReport ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -158,7 +158,7 @@ export function DoctorFeedbackModal({
                         <ul className="text-xs text-muted-foreground space-y-1">
                           {report.recommendations.map((r, i) => (
                             <li key={i} className="flex gap-1.5">
-                              <span className="text-teal-500 shrink-0">•</span>
+                              <span className="text-blue-500 shrink-0">•</span>
                               {r}
                             </li>
                           ))}

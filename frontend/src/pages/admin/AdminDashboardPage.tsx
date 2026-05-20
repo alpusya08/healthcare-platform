@@ -123,7 +123,7 @@ export function AdminDashboardPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-        <StatCard icon={Users}        label="Пользователей"  value={stats.totalUsers}             color="text-teal-600"    bg="bg-teal-50 dark:bg-teal-950/40" />
+        <StatCard icon={Users}        label="Пользователей"  value={stats.totalUsers}             color="text-blue-600"    bg="bg-blue-50 dark:bg-blue-950/40" />
         <StatCard icon={Stethoscope}  label="Врачей"         value={stats.totalDoctors}           color="text-violet-600"  bg="bg-violet-50 dark:bg-violet-950/40" />
         <StatCard icon={UserCircle}   label="Пациентов"      value={stats.totalPatients}          color="text-sky-600"     bg="bg-sky-50 dark:bg-sky-950/40" />
         <StatCard icon={Calendar}     label="Всего записей"  value={stats.totalAppointments}      color="text-amber-600"   bg="bg-amber-50 dark:bg-amber-950/40" />
@@ -137,7 +137,7 @@ export function AdminDashboardPage() {
         <Card className="border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Activity className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               Статусы записей
             </CardTitle>
           </CardHeader>
@@ -234,7 +234,7 @@ export function AdminDashboardPage() {
       <Card className="border-border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             Общая статистика платформы
           </CardTitle>
         </CardHeader>
@@ -265,16 +265,16 @@ export function AdminDashboardPage() {
       {/* Quick links */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          { label: "Управление пользователями", href: "/admin/users", icon: Users, color: "text-teal-600" },
+          { label: "Управление пользователями", href: "/admin/users", icon: Users, color: "text-blue-600" },
           { label: "ML Мониторинг", href: "/admin/ml", icon: Brain, color: "text-violet-600" },
           { label: "Системная статистика", href: "#", icon: Activity, color: "text-amber-600" },
         ].map(({ label, href, icon: Icon, color }) => (
           <a key={label} href={href} className="group">
-            <Card className="border-border hover:border-teal-300 dark:hover:border-teal-700 transition-colors">
+            <Card className="border-border hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
               <CardContent className="pt-4 pb-4">
                 <div className="flex items-center gap-3">
                   <Icon className={`w-5 h-5 ${color} shrink-0`} />
-                  <span className="text-sm font-medium text-foreground group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">{label}</span>
+                  <span className="text-sm font-medium text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{label}</span>
                 </div>
               </CardContent>
             </Card>

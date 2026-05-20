@@ -56,7 +56,7 @@ public class AuthController {
             @Valid @RequestBody UpdateProfileRequest request,
             @AuthenticationPrincipal UUID userId
     ) {
-        return ResponseEntity.ok(authService.updateProfile(userId, request.fullName(), request.phone()));
+        return ResponseEntity.ok(authService.updateProfile(userId, request));
     }
 
     @PostMapping("/forgot-password")

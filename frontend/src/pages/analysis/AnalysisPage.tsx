@@ -58,10 +58,10 @@ const TRIAGE_CONFIG: Record<TriageLevel, {
   },
   INSUFFICIENT_DATA: {
     label: "НЕДОСТАТОЧНО ДАННЫХ",
-    color: "text-teal-700 dark:text-teal-400",
+    color: "text-blue-700 dark:text-blue-400",
     badgeVariant: "secondary",
-    bg: "bg-teal-50 dark:bg-teal-950/40",
-    border: "border-teal-300 dark:border-teal-800",
+    bg: "bg-blue-50 dark:bg-blue-950/40",
+    border: "border-blue-300 dark:border-blue-800",
     icon: Info,
   },
 };
@@ -121,7 +121,10 @@ export function AnalysisPage() {
 
       setSessionId(res.session_id);
 
-      if (res.first_question === null) {
+      if (res.is_non_medical) {
+        setReport({ triage_level: "INSUFFICIENT_DATA", confidence: 0 } as AnalysisReport);
+        setStep("report");
+      } else if (res.first_question === null) {
         const finalReport = await analysisApi.finalize(res.session_id);
         setReport(finalReport);
         setStep("report");
@@ -282,9 +285,9 @@ export function AnalysisPage() {
 
             {/* Hint block */}
             {currentQuestion.hint && (
-              <div className="mt-2 flex items-start gap-2 rounded-lg bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 p-3">
-                <HelpCircle className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-teal-800 dark:text-teal-300 leading-relaxed">
+              <div className="mt-2 flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3">
+                <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
                   {currentQuestion.hint}
                 </p>
               </div>
@@ -302,8 +305,8 @@ export function AnalysisPage() {
                       onClick={() => setCurrentAnswer(opt)}
                       className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                         currentAnswer === opt
-                          ? "border-teal-500 bg-teal-50 dark:bg-teal-950/50"
-                          : "border-border hover:border-teal-300 dark:hover:border-teal-700 hover:bg-accent"
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50"
+                          : "border-border hover:border-blue-300 dark:hover:border-blue-700 hover:bg-accent"
                       }`}
                     >
                       <RadioGroupItem value={opt} id={opt} />
@@ -434,7 +437,7 @@ function ExplanationBlock({ explanation }: { explanation: string }) {
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+          <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           Что это означает
         </CardTitle>
       </CardHeader>
@@ -513,7 +516,7 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Info className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               Что мы выяснили
             </CardTitle>
           </CardHeader>
@@ -533,7 +536,7 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               Возможные причины
             </CardTitle>
             <CardDescription className="text-xs">
@@ -544,7 +547,7 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
             <ul className="space-y-2.5">
               {report.possible_causes.map((cause, i) => (
                 <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/90">
-                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0" />
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
                   <span>{cause}</span>
                 </li>
               ))}
@@ -583,7 +586,7 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               Что делать дальше
             </CardTitle>
           </CardHeader>
@@ -591,7 +594,7 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
             <ul className="space-y-3">
               {report.recommendations.map((rec, i) => (
                 <li key={i} className="flex items-start gap-3 text-sm text-foreground/90">
-                  <span className="mt-0.5 w-5 h-5 rounded-full bg-teal-100 dark:bg-teal-900/50 flex items-center justify-center text-teal-700 dark:text-teal-400 text-xs font-semibold shrink-0">
+                  <span className="mt-0.5 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-700 dark:text-blue-400 text-xs font-semibold shrink-0">
                     {i + 1}
                   </span>
                   {rec}

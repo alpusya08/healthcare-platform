@@ -11,6 +11,8 @@ import kz.healthcare.platform.ai.application.dto.AiAnswerResponse;
 import kz.healthcare.platform.ai.application.dto.AiReportResponse;
 import kz.healthcare.platform.ai.application.dto.AiStartRequest;
 import kz.healthcare.platform.ai.application.dto.AiStartResponse;
+import kz.healthcare.platform.users.domain.Gender;
+import kz.healthcare.platform.users.infrastructure.PatientRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDate;
 import java.util.Map;
 import java.util.UUID;
 
@@ -36,6 +39,7 @@ import java.util.UUID;
 public class AiAnalysisController {
 
     private final AiServiceClient aiServiceClient;
+    private final PatientRepository patientRepository;
 
     @PostMapping("/analysis/start")
     @Operation(summary = "Start a new AI analysis session")
@@ -43,13 +47,41 @@ public class AiAnalysisController {
             @Valid @RequestBody StartAnalysisRequest request,
             @AuthenticationPrincipal UUID userId
     ) {
+        String description = request.initialDescription();
+        if (userId != null) {
+            description = enrichWithPatientProfile(userId, description);
+        }
         var aiRequest = new AiStartRequest(
                 request.domainCode(),
-                request.initialDescription(),
+                description,
                 request.consentGiven()
         );
         AiStartResponse response = aiServiceClient.startAnalysis(aiRequest, userId);
         return ResponseEntity.ok(response);
+    }
+
+    private String enrichWithPatientProfile(UUID userId, String description) {
+        return patientRepository.findById(userId).map(patient -> {
+            StringBuilder prefix = new StringBuilder("[Пациент: ");
+            LocalDate birthDate = patient.getBirthDate();
+            if (birthDate != null) {
+                int age = LocalDate.now().getYear() - birthDate.getYear();
+                if (LocalDate.now().getDayOfYear() < birthDate.getDayOfYear()) {
+                    age--;
+                }
+                prefix.append("возраст ").append(age).append(" лет, ");
+            }
+            Gender gender = patient.getGender();
+            if (gender == Gender.MALE) {
+                prefix.append("пол М");
+            } else if (gender == Gender.FEMALE) {
+                prefix.append("пол Ж");
+            } else {
+                prefix.append("пол не указан");
+            }
+            prefix.append("]\n");
+            return prefix + description;
+        }).orElse(description);
     }
 
     @PostMapping("/analysis/{sessionId}/answer")

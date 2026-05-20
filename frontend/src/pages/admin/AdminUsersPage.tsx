@@ -16,7 +16,7 @@ const ROLE_LABELS: Record<string, string> = {
 const ROLE_COLORS: Record<string, string> = {
   PATIENT: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
   DOCTOR: "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300",
-  ADMIN: "bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300",
+  ADMIN: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
 };
 
 function formatDate(iso: string | null) {

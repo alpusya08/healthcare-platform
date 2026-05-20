@@ -15,7 +15,7 @@ import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
 import { routes } from "@/shared/config/routes";
 
 const SPECIALIZATIONS = [
-  { code: "therapy",          label: "Терапия",           icon: Stethoscope, color: "text-teal-600",    bg: "bg-teal-50 dark:bg-teal-950/40",     border: "hover:border-teal-300 dark:hover:border-teal-700" },
+  { code: "therapy",          label: "Терапия",           icon: Stethoscope, color: "text-blue-600",    bg: "bg-blue-50 dark:bg-blue-950/40",     border: "hover:border-blue-300 dark:hover:border-blue-700" },
   { code: "cardiology",       label: "Кардиология",       icon: Heart,       color: "text-rose-500",    bg: "bg-rose-50 dark:bg-rose-950/40",      border: "hover:border-rose-300 dark:hover:border-rose-700",   badge: "AI" },
   { code: "neurology",        label: "Неврология",        icon: Brain,       color: "text-violet-600",  bg: "bg-violet-50 dark:bg-violet-950/40",  border: "hover:border-violet-300 dark:hover:border-violet-700" },
   { code: "gastroenterology", label: "Гастроэнтерология", icon: Pill,        color: "text-amber-600",   bg: "bg-amber-50 dark:bg-amber-950/40",    border: "hover:border-amber-300 dark:hover:border-amber-700"  },
@@ -75,28 +75,28 @@ export function DashboardPage() {
     <div className="space-y-10">
 
       {/* ── Hero ──────────────────────────────────────────────────── */}
-      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-teal-600 via-teal-500 to-emerald-500 p-8 text-white">
+      <div className="relative rounded-2xl overflow-hidden bg-gradient-to-br from-blue-800 via-blue-700 to-blue-600 p-8 text-white">
         <div className="relative z-10">
-          <p className="text-teal-100 text-sm font-medium mb-1">
+          <p className="text-blue-100 text-sm font-medium mb-1">
             {greeting()}, {user?.fullName.split(" ")[0] ?? "Пациент"}
           </p>
           <h1 className="text-3xl font-bold mb-2">
             Ваше здоровье —<br />наш приоритет
           </h1>
-          <p className="text-teal-100 text-sm mb-6 max-w-sm">
+          <p className="text-blue-100 text-sm mb-6 max-w-sm">
             AI-анализ симптомов, запись к специалистам и история визитов в одном месте
           </p>
           <form onSubmit={handleSearch} className="flex gap-2 max-w-md">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-300" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-300" />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Найти врача или специализацию..."
-                className="pl-9 bg-white/20 border-white/30 text-white placeholder:text-teal-200 focus:bg-white/25 focus-visible:ring-white/40"
+                className="pl-9 bg-white/20 border-white/30 text-white placeholder:text-blue-200 focus:bg-white/25 focus-visible:ring-white/40"
               />
             </div>
-            <Button type="submit" variant="secondary" className="shrink-0 bg-white text-teal-700 hover:bg-teal-50">
+            <Button type="submit" variant="secondary" className="shrink-0 bg-white text-blue-700 hover:bg-blue-50">
               Найти
             </Button>
           </form>
@@ -107,20 +107,20 @@ export function DashboardPage() {
 
       {/* ── Next appointment banner ────────────────────────────────── */}
       {nextAppointment && (
-        <Card className="border-teal-200 dark:border-teal-800 bg-teal-50/60 dark:bg-teal-950/30">
+        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/30">
           <CardContent className="pt-4 pb-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-teal-100 dark:bg-teal-900">
-                  <Clock className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
+                  <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wide">Ближайшая запись</p>
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Ближайшая запись</p>
                   <p className="text-sm font-semibold text-foreground mt-0.5">{nextAppointment.doctorName}</p>
                   <p className="text-xs text-muted-foreground">{nextAppointment.specialization} · {formatDateTime(nextAppointment.startTime)}</p>
                 </div>
               </div>
-              <Button asChild size="sm" variant="outline" className="border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-400">
+              <Button asChild size="sm" variant="outline" className="border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400">
                 <Link to={routes.patient.appointments}>Перейти</Link>
               </Button>
             </div>
@@ -131,11 +131,11 @@ export function DashboardPage() {
       {/* ── Quick actions ─────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Link to={routes.patient.aiAnalysis} className="group">
-          <Card className="h-full border-border hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-md transition-all duration-200 cursor-pointer">
+          <Card className="h-full border-border hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all duration-200 cursor-pointer">
             <CardContent className="pt-5 pb-5">
               <div className="flex items-start gap-4">
-                <div className="p-3 rounded-xl bg-teal-50 dark:bg-teal-950/50 shrink-0">
-                  <Activity className="w-6 h-6 text-teal-600 dark:text-teal-400" />
+                <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/50 shrink-0">
+                  <Activity className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -175,7 +175,7 @@ export function DashboardPage() {
       {/* ── Stats ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { icon: Users,    value: allDoctors.length || "13", label: "Врачей в системе", color: "text-teal-600"   },
+          { icon: Users,    value: allDoctors.length || "13", label: "Врачей в системе", color: "text-blue-600"   },
           { icon: Star,     value: "4.8",                     label: "Средний рейтинг",  color: "text-amber-500"  },
           { icon: Activity, value: "10",                      label: "Специализаций",    color: "text-violet-600" },
         ].map(({ icon: Icon, value, label, color }) => (
@@ -193,7 +193,7 @@ export function DashboardPage() {
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">Специализации</h2>
-          <Link to={routes.patient.doctors} className="text-sm text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1">
+          <Link to={routes.patient.doctors} className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
             Все врачи <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -207,7 +207,7 @@ export function DashboardPage() {
               <div className={`p-2.5 rounded-xl ${bg} relative`}>
                 <Icon className={`w-5 h-5 ${color}`} />
                 {badge && (
-                  <span className="absolute -top-1.5 -right-1.5 text-[9px] font-bold bg-teal-500 text-white px-1 rounded-full leading-4">
+                  <span className="absolute -top-1.5 -right-1.5 text-[9px] font-bold bg-blue-500 text-white px-1 rounded-full leading-4">
                     {badge}
                   </span>
                 )}
@@ -236,7 +236,7 @@ export function DashboardPage() {
               <span className="text-5xl font-black text-muted-foreground/8 absolute top-2 right-3 select-none leading-none pointer-events-none">
                 {step}
               </span>
-              <p className="text-xs font-bold text-teal-600 dark:text-teal-400 mb-1.5 uppercase tracking-wider">{step}</p>
+              <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-1.5 uppercase tracking-wider">{step}</p>
               <p className="text-sm font-semibold text-foreground mb-1">{title}</p>
               <p className="text-xs text-muted-foreground leading-relaxed">{desc}</p>
             </div>

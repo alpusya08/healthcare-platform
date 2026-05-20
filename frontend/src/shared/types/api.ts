@@ -10,6 +10,8 @@ export type UserInfo = {
   fullName: string;
   role: "PATIENT" | "DOCTOR" | "ADMIN";
   phone?: string | null;
+  birthDate?: string | null;
+  gender?: "MALE" | "FEMALE" | "OTHER" | null;
 };
 
 export type TokenResponse = {

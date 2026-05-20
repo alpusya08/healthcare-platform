@@ -99,7 +99,7 @@ export function NotificationBell() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 text-xs text-teal-600 dark:text-teal-400 hover:bg-transparent"
+              className="h-6 text-xs text-blue-600 dark:text-blue-400 hover:bg-transparent"
               onClick={() => markAllMutation.mutate()}
               disabled={markAllMutation.isPending}
             >
@@ -122,7 +122,7 @@ export function NotificationBell() {
                 onClick={() => handleClick(n)}
                 className={cn(
                   "flex gap-3 px-4 py-3 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors last:border-0",
-                  !n.read && "bg-teal-50/50 dark:bg-teal-950/20"
+                  !n.read && "bg-blue-50/50 dark:bg-blue-950/20"
                 )}
               >
                 <span className="text-lg shrink-0 mt-0.5">
@@ -136,7 +136,7 @@ export function NotificationBell() {
                   <p className="text-xs text-muted-foreground/60 mt-1">{timeAgo(n.createdAt)}</p>
                 </div>
                 {!n.read && (
-                  <div className="w-2 h-2 bg-teal-500 rounded-full shrink-0 mt-2" />
+                  <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-2" />
                 )}
               </div>
             ))

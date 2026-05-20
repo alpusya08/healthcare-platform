@@ -316,6 +316,7 @@ public class AppointmentService {
                 .patient(appt.getPatient())
                 .rating(request.rating().shortValue())
                 .comment(request.comment())
+                .anonymous(request.anonymous())
                 .build();
 
         reviewRepository.save(review);
@@ -344,13 +345,15 @@ public class AppointmentService {
     }
 
     private ReviewResponse toReviewResponse(DoctorReview r) {
+        String displayName = r.isAnonymous() ? "Анонимный пациент" : r.getPatient().getUser().getFullName();
         return new ReviewResponse(
                 r.getId(),
                 r.getDoctor().getId(),
                 r.getPatient().getId(),
-                r.getPatient().getUser().getFullName(),
+                displayName,
                 r.getRating(),
                 r.getComment(),
+                r.isAnonymous(),
                 r.getCreatedAt()
         );
     }

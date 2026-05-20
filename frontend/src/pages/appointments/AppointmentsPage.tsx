@@ -48,14 +48,14 @@ function AppointmentCard({
 }) {
   return (
     <Card
-      className="border-border hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-sm transition-all duration-150 cursor-pointer"
+      className="border-border hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm transition-all duration-150 cursor-pointer"
       onClick={() => onOpen(appt)}
     >
       <CardContent className="pt-5 pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex gap-3 min-w-0">
-            <div className="p-2 rounded-lg bg-teal-50 dark:bg-teal-950/50 shrink-0">
-              <Stethoscope className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+            <div className="p-2 rounded-lg bg-blue-50 dark:bg-blue-950/50 shrink-0">
+              <Stethoscope className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-foreground truncate">{appt.doctorName}</p>
@@ -91,7 +91,7 @@ function AppointmentCard({
             {appt.status === "COMPLETED" && !appt.hasReview && (
               <button
                 onClick={(e) => { e.stopPropagation(); onReview(appt); }}
-                className="flex items-center gap-1 text-xs text-teal-700 dark:text-teal-400 hover:underline font-medium"
+                className="flex items-center gap-1 text-xs text-blue-700 dark:text-blue-400 hover:underline font-medium"
               >
                 <Star className="w-3.5 h-3.5" />
                 Оставить отзыв

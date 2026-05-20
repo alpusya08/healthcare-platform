@@ -114,8 +114,11 @@ public class AuthService {
     public UserInfoResponse getCurrentUser(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(InvalidCredentialsException::new);
-        String phone = patientRepository.findById(userId).map(Patient::getPhone).orElse(null);
-        return new UserInfoResponse(user.getId(), user.getEmail(), user.getFullName(), user.getRole().name(), phone);
+        Patient patient = patientRepository.findById(userId).orElse(null);
+        String phone = patient != null ? patient.getPhone() : null;
+        java.time.LocalDate birthDate = patient != null ? patient.getBirthDate() : null;
+        String gender = patient != null && patient.getGender() != null ? patient.getGender().name() : null;
+        return new UserInfoResponse(user.getId(), user.getEmail(), user.getFullName(), user.getRole().name(), phone, birthDate, gender);
     }
 
     @Transactional
@@ -163,18 +166,29 @@ public class AuthService {
     }
 
     @Transactional
-    public UserInfoResponse updateProfile(UUID userId, String fullName, String phone) {
+    public UserInfoResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(InvalidCredentialsException::new);
-        user.setFullName(fullName);
+        user.setFullName(request.fullName());
         userRepository.save(user);
 
-        patientRepository.findById(userId).ifPresent(patient -> {
-            patient.setPhone(phone);
+        Patient patient = patientRepository.findById(userId).orElse(null);
+        if (patient != null) {
+            patient.setPhone(request.phone());
+            if (request.birthDate() != null) {
+                patient.setBirthDate(request.birthDate());
+            }
+            if (request.gender() != null && !request.gender().isBlank()) {
+                try {
+                    patient.setGender(kz.healthcare.platform.users.domain.Gender.valueOf(request.gender()));
+                } catch (IllegalArgumentException ignored) {}
+            }
             patientRepository.save(patient);
-        });
+        }
 
         log.info("Profile updated for user: {}", userId);
-        return new UserInfoResponse(user.getId(), user.getEmail(), user.getFullName(), user.getRole().name(), phone);
+        java.time.LocalDate birthDate = patient != null ? patient.getBirthDate() : null;
+        String gender = patient != null && patient.getGender() != null ? patient.getGender().name() : null;
+        return new UserInfoResponse(user.getId(), user.getEmail(), user.getFullName(), user.getRole().name(), request.phone(), birthDate, gender);
     }
 }

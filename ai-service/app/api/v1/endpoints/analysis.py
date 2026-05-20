@@ -8,7 +8,8 @@ import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_db_session, get_domain_registry, get_session_repo, verify_internal_token
+from app.api.deps import get_db_session, get_domain_registry, get_llm_provider, get_session_repo, verify_internal_token
+from app.core.interfaces.llm_provider import LLMProvider
 from app.api.v1.schemas.analysis import (
     AnalysisReportResponse,
     AnswerQuestionRequest,
@@ -73,6 +74,16 @@ async def start_analysis(
         domain=actual_domain_code,
     )
 
+    from app.domains.general.domain import _is_non_medical_query
+    if _is_non_medical_query(request.initial_description):
+        await session_repo.update_status(session.id, AnalysisStatus.COMPLETED.value)
+        return StartAnalysisResponse(
+            session_id=session.id,
+            first_question=None,
+            disclaimer=DISCLAIMER,
+            is_non_medical=True,
+        )
+
     features = await domain.extract_features(session)
     emergency = await domain.check_emergency(features)
     if emergency:
@@ -133,6 +144,7 @@ async def upload_file(
     session_id: uuid.UUID,
     file: UploadFile = File(...),
     session_repo: AnalysisSessionRepository = Depends(get_session_repo),
+    llm: LLMProvider = Depends(get_llm_provider),
     _: None = Depends(verify_internal_token),
 ) -> dict:
     session = await session_repo.get(session_id)
@@ -141,7 +153,7 @@ async def upload_file(
 
     content_type = file.content_type or ""
     raw = await file.read()
-    summary = _extract_file_summary(raw, content_type, file.filename or "")
+    summary = await _extract_file_summary(raw, content_type, file.filename or "", llm)
     await session_repo.add_file_summary(session_id, summary)
     logger.info("analysis.file_uploaded", session_id=str(session_id), filename=file.filename)
     return {"ok": True, "summary": summary}
@@ -352,7 +364,7 @@ async def _persist_general_session(db: AsyncSession, session, diagnosis) -> None
 
 # ── File extraction ───────────────────────────────────────────────────────────
 
-def _extract_file_summary(raw: bytes, content_type: str, filename: str) -> str:
+async def _extract_file_summary(raw: bytes, content_type: str, filename: str, llm: LLMProvider) -> str:
     if "pdf" in content_type or filename.lower().endswith(".pdf"):
         try:
             from pypdf import PdfReader
@@ -365,7 +377,8 @@ def _extract_file_summary(raw: bytes, content_type: str, filename: str) -> str:
         except Exception:
             pass
     if content_type.startswith("image/"):
-        return f"[Изображение: {filename}] Медицинский документ — изображение предоставлено пациентом (рентген/ЭКГ/УЗИ)."
+        vision_result = await llm.analyze_image(raw, content_type)
+        return f"[Изображение: {filename}] {vision_result}"
     if content_type.startswith("text/"):
         try:
             text = raw.decode("utf-8", errors="replace")[:2000]

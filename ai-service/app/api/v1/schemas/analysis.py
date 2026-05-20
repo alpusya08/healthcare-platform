@@ -32,6 +32,7 @@ class StartAnalysisResponse(BaseModel):
     session_id: UUID
     first_question: Optional[QuestionDto] = None
     disclaimer: str
+    is_non_medical: bool = False
 
 
 class AnswerQuestionRequest(BaseModel):

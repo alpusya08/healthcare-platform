@@ -14,6 +14,7 @@ export interface StartAnalysisResponse {
   session_id: string;
   first_question: QuestionDto | null;
   disclaimer: string;
+  is_non_medical?: boolean;
 }
 
 export interface AnswerResponse {

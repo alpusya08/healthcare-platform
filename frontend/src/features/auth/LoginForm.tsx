@@ -25,7 +25,7 @@ const loginSchema = z.object({
 type LoginValues = z.infer<typeof loginSchema>;
 
 const DEMO_ACCOUNTS = [
-  { label: "Пациент", email: "demo@patient.com", password: "Demo1234!", color: "text-teal-600" },
+  { label: "Пациент", email: "demo@patient.com", password: "Demo1234!", color: "text-blue-600" },
   { label: "Врач", email: "demo@doctor.com", password: "Demo1234!", color: "text-violet-600" },
   { label: "Админ", email: "admin@medai.kz", password: "Admin1234!", color: "text-amber-600" },
 ];

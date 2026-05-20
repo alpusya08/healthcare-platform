@@ -31,7 +31,7 @@ export const authApi = {
 
   me: () => apiClient.get<UserInfo>("/auth/me").then((r) => r.data),
 
-  updateProfile: (payload: { fullName: string; phone?: string }) =>
+  updateProfile: (payload: { fullName: string; phone?: string; birthDate?: string | null; gender?: string | null }) =>
     apiClient.put<UserInfo>("/auth/me", payload).then((r) => r.data),
 
   forgotPassword: (email: string) =>

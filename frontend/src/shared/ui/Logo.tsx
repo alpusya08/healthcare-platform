@@ -33,7 +33,7 @@ export function Logo({ size = 32, showText = true }: LogoProps) {
       </svg>
       {showText && (
         <span className="font-bold text-xl tracking-tight text-foreground">
-          Med<span className="text-teal-600 dark:text-teal-400">AI</span>
+          Med<span className="text-blue-600 dark:text-blue-400">AI</span>
         </span>
       )}
     </div>

@@ -39,12 +39,14 @@ export interface DoctorReview {
   patientName: string;
   rating: number;
   comment: string | null;
+  anonymous: boolean;
   createdAt: string;
 }
 
 export interface CreateReviewRequest {
   rating: number;
   comment?: string;
+  anonymous: boolean;
 }
 
 export interface CreateAppointmentRequest {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Moon, Sun, LogOut, User, ChevronDown, Activity, Calendar, Home, LayoutDashboard, Phone, Stethoscope } from "lucide-react";
+import { Moon, Sun, LogOut, User, ChevronDown, Activity, Calendar, Home, LayoutDashboard, Phone, Stethoscope, Building2 } from "lucide-react";
 import { Logo } from "@/shared/ui/Logo";
 import { Button } from "@/shared/ui/button";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
@@ -30,6 +30,7 @@ const NAV_LINKS = [
   { to: routes.patient.home, label: "Главная", icon: Home },
   { to: routes.patient.aiAnalysis, label: "Симптомы", icon: Activity },
   { to: routes.patient.doctors, label: "Найти врача", icon: Stethoscope },
+  { to: routes.patient.clinics, label: "Клиники", icon: Building2 },
   { to: routes.patient.appointments, label: "Записи", icon: Calendar },
   { to: routes.patient.cabinet, label: "Кабинет", icon: LayoutDashboard },
 ];
@@ -78,7 +79,7 @@ export function Navbar() {
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors",
                   active
-                    ? "bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-400"
+                    ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 )}
               >
@@ -119,7 +120,7 @@ export function Navbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2 h-9">
                 <Avatar className="w-7 h-7">
-                  <AvatarFallback className="bg-teal-100 text-teal-700 dark:bg-teal-900 dark:text-teal-300 text-xs font-semibold">
+                  <AvatarFallback className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs font-semibold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>

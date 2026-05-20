@@ -13,14 +13,14 @@ import type { Doctor } from "@/features/appointments/types";
 function DoctorCard({ doctor, onClick }: { doctor: Doctor; onClick: () => void }) {
   return (
     <Card
-      className="border-border hover:border-teal-300 dark:hover:border-teal-700 hover:shadow-md transition-all duration-200 cursor-pointer"
+      className="border-border hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all duration-200 cursor-pointer"
       onClick={onClick}
     >
       <CardContent className="pt-5 pb-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex gap-3 min-w-0">
-            <div className="p-2.5 rounded-lg bg-teal-50 dark:bg-teal-950/50 shrink-0">
-              <Stethoscope className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+            <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 shrink-0">
+              <Stethoscope className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-foreground">{doctor.fullName}</p>
@@ -163,14 +163,14 @@ export function DoctorsPage() {
       </div>
 
       {specFilter && selectedSpec === specFilter && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-sm text-teal-700 dark:text-teal-300">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-300">
           <Stethoscope className="w-4 h-4 shrink-0" />
           <span>
             По результатам анализа рекомендован:{" "}
             <strong className="capitalize">{specFilter}</strong>
           </span>
           <button
-            className="ml-auto text-xs underline text-teal-600 dark:text-teal-400"
+            className="ml-auto text-xs underline text-blue-600 dark:text-blue-400"
             onClick={clearFilters}
           >
             Все врачи
@@ -223,8 +223,8 @@ export function DoctorsPage() {
                     onClick={() => setMinRating(opt.value)}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
                       minRating === opt.value
-                        ? "bg-teal-600 border-teal-600 text-white"
-                        : "border-border text-foreground hover:border-teal-400"
+                        ? "bg-blue-600 border-blue-700 text-white"
+                        : "border-border text-foreground hover:border-blue-400"
                     }`}
                   >
                     {opt.label}
@@ -243,8 +243,8 @@ export function DoctorsPage() {
                     onClick={() => setMaxPrice(opt.value)}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
                       maxPrice === opt.value
-                        ? "bg-teal-600 border-teal-600 text-white"
-                        : "border-border text-foreground hover:border-teal-400"
+                        ? "bg-blue-600 border-blue-700 text-white"
+                        : "border-border text-foreground hover:border-blue-400"
                     }`}
                   >
                     {opt.label}
@@ -263,8 +263,8 @@ export function DoctorsPage() {
                     onClick={() => setMinExperience(opt.value)}
                     className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
                       minExperience === opt.value
-                        ? "bg-teal-600 border-teal-600 text-white"
-                        : "border-border text-foreground hover:border-teal-400"
+                        ? "bg-blue-600 border-blue-700 text-white"
+                        : "border-border text-foreground hover:border-blue-400"
                     }`}
                   >
                     {opt.label}

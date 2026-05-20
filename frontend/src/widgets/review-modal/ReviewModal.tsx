@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { X, Star } from "lucide-react";
+import { X, Star, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/textarea";
@@ -26,6 +26,7 @@ export function ReviewModal({ appointmentId, doctorName, onClose }: Props) {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
+  const [anonymous, setAnonymous] = useState(false);
   const queryClient = useQueryClient();
 
   const submitMutation = useMutation({
@@ -33,6 +34,7 @@ export function ReviewModal({ appointmentId, doctorName, onClose }: Props) {
       appointmentsApi.submitReview(appointmentId, {
         rating,
         comment: comment.trim() || undefined,
+        anonymous,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
@@ -128,6 +130,29 @@ export function ReviewModal({ appointmentId, doctorName, onClose }: Props) {
               {comment.length}/2000
             </p>
           </div>
+
+          <button
+            type="button"
+            onClick={() => setAnonymous((v) => !v)}
+            className={cn(
+              "flex items-center gap-2.5 w-full p-3 rounded-lg border text-sm transition-all",
+              anonymous
+                ? "border-blue-300 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-700 text-blue-700 dark:text-blue-300"
+                : "border-border text-muted-foreground hover:border-blue-200 hover:text-foreground"
+            )}
+          >
+            <div className={cn(
+              "w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
+              anonymous ? "border-blue-600 bg-blue-600" : "border-muted-foreground"
+            )}>
+              {anonymous && <div className="w-2 h-2 bg-white rounded-sm" />}
+            </div>
+            <EyeOff className="w-4 h-4 shrink-0" />
+            <span>Оставить отзыв анонимно</span>
+            {anonymous && (
+              <span className="ml-auto text-xs text-blue-500">Ваше имя будет скрыто</span>
+            )}
+          </button>
         </div>
 
         <div className="flex items-center justify-end gap-2 p-5 border-t border-border">

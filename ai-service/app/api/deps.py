@@ -62,6 +62,16 @@ def _create_triage_predictor(settings: Settings) -> MLPredictor | None:
         return None
 
 
+_llm_provider: LLMProvider | None = None
+
+
+def get_llm_provider(settings: Settings = Depends(get_settings)) -> LLMProvider:
+    global _llm_provider
+    if _llm_provider is None:
+        _llm_provider = _create_llm_provider(settings)
+    return _llm_provider
+
+
 def get_domain_registry(settings: Settings = Depends(get_settings)) -> DomainRegistry:
     global _domain_registry
     if _domain_registry is None:

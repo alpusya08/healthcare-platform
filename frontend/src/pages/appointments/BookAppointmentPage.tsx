@@ -76,14 +76,14 @@ export function BookAppointmentPage() {
       if (appt.type === "ONLINE" && appt.meetingLink) {
         toast(
           <div className="flex items-center gap-2">
-            <Video className="w-4 h-4 text-teal-600 shrink-0" />
+            <Video className="w-4 h-4 text-blue-600 shrink-0" />
             <span className="text-sm">
               Ссылка на онлайн-консультацию:{" "}
               <a
                 href={appt.meetingLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-teal-600 underline"
+                className="text-blue-600 underline"
               >
                 Подключиться
               </a>
@@ -131,8 +131,8 @@ export function BookAppointmentPage() {
         <Card className="border-border">
           <CardContent className="pt-5 pb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-teal-50 dark:bg-teal-950/50">
-                <Stethoscope className="w-5 h-5 text-teal-600 dark:text-teal-400" />
+              <div className="p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/50">
+                <Stethoscope className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="font-semibold text-foreground">{doctor.fullName}</p>
@@ -146,7 +146,7 @@ export function BookAppointmentPage() {
       <Card className="border-border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             Выберите время
           </CardTitle>
         </CardHeader>
@@ -172,8 +172,8 @@ export function BookAppointmentPage() {
                         className={cn(
                           "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all",
                           selectedSlot?.id === slot.id
-                            ? "bg-teal-600 border-teal-600 text-white"
-                            : "border-border text-foreground hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30"
+                            ? "bg-blue-600 border-blue-700 text-white"
+                            : "border-border text-foreground hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30"
                         )}
                       >
                         <Clock className="w-3.5 h-3.5" />
@@ -201,8 +201,8 @@ export function BookAppointmentPage() {
                 className={cn(
                   "flex-1 py-2 rounded-lg border text-sm font-medium transition-all",
                   appointmentType === t
-                    ? "bg-teal-600 border-teal-600 text-white"
-                    : "border-border text-foreground hover:border-teal-400"
+                    ? "bg-blue-600 border-blue-700 text-white"
+                    : "border-border text-foreground hover:border-blue-400"
                 )}
               >
                 {t === "OFFLINE" ? "Офлайн" : "Онлайн"}

@@ -23,7 +23,7 @@ function FeedbackRow({ fb }: { fb: AdminFeedback }) {
   const date = new Date(fb.createdAt).toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
   return (
     <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">
-      <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center text-xs font-semibold text-teal-700 dark:text-teal-300 shrink-0">
+      <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-semibold text-blue-700 dark:text-blue-300 shrink-0">
         {fb.doctorName.charAt(0).toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
@@ -110,7 +110,7 @@ export function AdminMLDashboardPage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
-          { icon: Brain, label: "Всего feedback", value: totalFeedbacks, color: "text-teal-600", bg: "bg-teal-50 dark:bg-teal-950/40" },
+          { icon: Brain, label: "Всего feedback", value: totalFeedbacks, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/40" },
           { icon: CheckCircle2, label: `Подтверждено (${approvalRate}%)`, value: approvedCount, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/40" },
           { icon: XCircle, label: "Отклонено", value: rejectedCount, color: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950/40" },
           { icon: AlertTriangle, label: "Частично", value: partialCount, color: "text-amber-600", bg: "bg-amber-50 dark:bg-amber-950/40" },
@@ -137,7 +137,7 @@ export function AdminMLDashboardPage() {
         <Card className="border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <TrendingUp className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               Распределение feedback
             </CardTitle>
           </CardHeader>
@@ -210,10 +210,10 @@ export function AdminMLDashboardPage() {
       </div>
 
       {/* Retrain block */}
-      <Card className="border-border border-teal-200 dark:border-teal-800">
+      <Card className="border-border border-blue-200 dark:border-blue-800">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Rocket className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <Rocket className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             Запуск дообучения
           </CardTitle>
         </CardHeader>
@@ -238,7 +238,7 @@ export function AdminMLDashboardPage() {
           <Button
             onClick={() => retrainMutation.mutate()}
             disabled={retrainMutation.isPending || retrainPending}
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
             {retrainMutation.isPending || retrainPending ? (
               <>
@@ -267,7 +267,7 @@ export function AdminMLDashboardPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
-              <Brain className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+              <Brain className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               Последние feedback врачей
             </CardTitle>
             <Badge variant="outline" className="text-xs">{feedbacks.length}</Badge>

@@ -17,9 +17,11 @@ import { DoctorsPage } from "@/pages/appointments/DoctorsPage";
 import { DoctorProfilePage } from "@/pages/appointments/DoctorProfilePage";
 import { BookAppointmentPage } from "@/pages/appointments/BookAppointmentPage";
 import { PatientCabinetPage } from "@/pages/cabinet/PatientCabinetPage";
+import { ClinicsPage } from "@/pages/clinics/ClinicsPage";
 import { DoctorDashboard } from "@/pages/doctor/DoctorDashboard";
 import { DoctorProfilePage as DoctorOwnProfilePage } from "@/pages/doctor/DoctorProfilePage";
 import { DoctorSchedulePage } from "@/pages/doctor/DoctorSchedulePage";
+import { DoctorAiReportPage } from "@/pages/doctor/DoctorAiReportPage";
 import { AdminLayout } from "@/app/router/AdminLayout";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
@@ -57,6 +59,7 @@ export function App() {
                   <Route path={routes.patient.doctors} element={<DoctorsPage />} />
                   <Route path={routes.patient.doctorProfile} element={<DoctorProfilePage />} />
                   <Route path={routes.patient.bookAppointment} element={<BookAppointmentPage />} />
+                  <Route path={routes.patient.clinics} element={<ClinicsPage />} />
                   <Route path={routes.patient.cabinet} element={<PatientCabinetPage />} />
                 </Route>
               </Route>
@@ -67,6 +70,7 @@ export function App() {
                   <Route path="/doctor/profile" element={<DoctorOwnProfilePage />} />
                   <Route path={routes.doctor.schedule} element={<DoctorSchedulePage />} />
                   <Route path="/doctor/ai-reports" element={<DoctorDashboard />} />
+                  <Route path={routes.doctor.aiReport} element={<DoctorAiReportPage />} />
                 </Route>
               </Route>
 

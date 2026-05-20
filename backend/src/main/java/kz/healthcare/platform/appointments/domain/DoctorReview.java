@@ -39,6 +39,10 @@ public class DoctorReview {
     @Column(columnDefinition = "TEXT")
     private String comment;
 
+    @Column(name = "is_anonymous", nullable = false)
+    @Builder.Default
+    private boolean anonymous = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private Instant createdAt = Instant.now();

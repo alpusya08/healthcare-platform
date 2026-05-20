@@ -10,5 +10,6 @@ public record ReviewResponse(
         String patientName,
         int rating,
         String comment,
+        boolean anonymous,
         Instant createdAt
 ) {}

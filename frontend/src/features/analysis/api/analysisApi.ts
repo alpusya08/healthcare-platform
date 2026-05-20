@@ -37,4 +37,9 @@ export const analysisApi = {
       })
       .then((r) => r.data);
   },
+
+  getReport: (sessionId: string) =>
+    apiClient
+      .get<AnalysisReport>(`/ai/analysis/${sessionId}/report`)
+      .then((r) => r.data),
 };

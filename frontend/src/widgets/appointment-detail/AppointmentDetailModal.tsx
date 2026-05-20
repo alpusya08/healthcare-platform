@@ -25,7 +25,7 @@ const STATUS_LABELS: Record<AppointmentStatus, string> = {
 };
 
 const STATUS_COLORS: Record<AppointmentStatus, string> = {
-  SCHEDULED: "bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300 border-teal-200",
+  SCHEDULED: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200",
   COMPLETED: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200",
   CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300 border-red-200",
   NO_SHOW: "bg-muted text-muted-foreground border-border",
@@ -62,7 +62,7 @@ export function AppointmentDetailModal({ appointment: appt, onClose, onCancel, o
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-teal-600" />
+            <FileText className="w-4 h-4 text-blue-600" />
             Карточка записи
           </DialogTitle>
         </DialogHeader>
@@ -76,7 +76,7 @@ export function AppointmentDetailModal({ appointment: appt, onClose, onCancel, o
 
           {/* Doctor */}
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-teal-100 dark:bg-teal-900 flex items-center justify-center font-bold text-teal-700 dark:text-teal-300 shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center font-bold text-blue-700 dark:text-blue-300 shrink-0">
               {getDoctorInitials(appt.doctorName)}
             </div>
             <div>
@@ -153,7 +153,7 @@ export function AppointmentDetailModal({ appointment: appt, onClose, onCancel, o
           <div className="flex flex-col gap-2">
             {appt.status === "SCHEDULED" && appt.type === "ONLINE" && appt.meetingLink && (
               <Button
-                className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 onClick={() => window.open(appt.meetingLink, "_blank", "noopener,noreferrer")}
               >
                 <Video className="w-4 h-4 mr-2" />

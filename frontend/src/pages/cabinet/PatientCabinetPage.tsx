@@ -27,7 +27,7 @@ const STATUS_LABELS = {
 } as const;
 
 const STATUS_COLORS = {
-  SCHEDULED: "bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300",
+  SCHEDULED: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
   COMPLETED: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
   CANCELLED: "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300",
   NO_SHOW: "bg-muted text-muted-foreground",
@@ -35,7 +35,7 @@ const STATUS_COLORS = {
 
 const HEALTH_TIPS = [
   { icon: Heart,  color: "text-rose-500",    bg: "bg-rose-50 dark:bg-rose-950/40",    tip: "Пейте 1.5–2 литра воды в день для нормальной работы организма" },
-  { icon: Shield, color: "text-teal-600",    bg: "bg-teal-50 dark:bg-teal-950/40",    tip: "Регулярные прогулки 30 мин снижают риск сердечно-сосудистых заболеваний" },
+  { icon: Shield, color: "text-blue-600",    bg: "bg-blue-50 dark:bg-blue-950/40",    tip: "Регулярные прогулки 30 мин снижают риск сердечно-сосудистых заболеваний" },
   { icon: Clock,  color: "text-violet-600",  bg: "bg-violet-50 dark:bg-violet-950/40", tip: "7–9 часов сна в сутки — основа крепкого иммунитета" },
 ];
 
@@ -53,6 +53,8 @@ export function PatientCabinetPage() {
   const [editMode, setEditMode] = useState(false);
   const [editName, setEditName] = useState(user?.fullName ?? "");
   const [editPhone, setEditPhone] = useState(user?.phone ?? "");
+  const [editBirthDate, setEditBirthDate] = useState(user?.birthDate ?? "");
+  const [editGender, setEditGender] = useState(user?.gender ?? "");
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments"],
@@ -60,9 +62,14 @@ export function PatientCabinetPage() {
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: () => authApi.updateProfile({ fullName: editName.trim(), phone: editPhone.trim() || undefined }),
+    mutationFn: () => authApi.updateProfile({
+      fullName: editName.trim(),
+      phone: editPhone.trim() || undefined,
+      birthDate: editBirthDate || null,
+      gender: editGender || null,
+    }),
     onSuccess: (updated) => {
-      updateUser({ fullName: updated.fullName, phone: updated.phone });
+      updateUser({ fullName: updated.fullName, phone: updated.phone, birthDate: updated.birthDate, gender: updated.gender });
       setEditMode(false);
       toast.success("Профиль обновлён");
     },
@@ -93,7 +100,7 @@ export function PatientCabinetPage() {
           <Card className="border-border">
             <CardContent className="pt-6 pb-5">
               <div className="flex flex-col items-center text-center gap-3">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center text-3xl font-bold text-white shadow-md">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-3xl font-bold text-white shadow-md">
                   {initials}
                 </div>
                 <div>
@@ -108,36 +115,35 @@ export function PatientCabinetPage() {
                   <div className="w-full space-y-3 text-left">
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">Имя</label>
-                      <Input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="h-8 text-sm"
-                      />
+                      <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="h-8 text-sm" />
                     </div>
                     <div className="space-y-1">
                       <label className="text-xs text-muted-foreground">Телефон</label>
-                      <Input
-                        value={editPhone}
-                        onChange={(e) => setEditPhone(e.target.value)}
-                        placeholder="+7 (___) ___-__-__"
-                        className="h-8 text-sm"
-                      />
+                      <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="+7 (___) ___-__-__" className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Дата рождения</label>
+                      <Input type="date" value={editBirthDate} onChange={(e) => setEditBirthDate(e.target.value)} className="h-8 text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Пол</label>
+                      <select
+                        value={editGender}
+                        onChange={(e) => setEditGender(e.target.value)}
+                        className="w-full h-8 rounded-md border border-input bg-background px-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                      >
+                        <option value="">Не указан</option>
+                        <option value="MALE">Мужской</option>
+                        <option value="FEMALE">Женский</option>
+                        <option value="OTHER">Другой</option>
+                      </select>
                     </div>
                     <div className="flex gap-2 pt-1">
-                      <Button
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => updateProfileMutation.mutate()}
-                        disabled={updateProfileMutation.isPending || !editName.trim()}
-                      >
+                      <Button size="sm" className="flex-1" onClick={() => updateProfileMutation.mutate()} disabled={updateProfileMutation.isPending || !editName.trim()}>
                         <Check className="w-3.5 h-3.5 mr-1" />
                         Сохранить
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => { setEditMode(false); setEditName(user?.fullName ?? ""); setEditPhone(user?.phone ?? ""); }}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => { setEditMode(false); setEditName(user?.fullName ?? ""); setEditPhone(user?.phone ?? ""); setEditBirthDate(user?.birthDate ?? ""); setEditGender(user?.gender ?? ""); }}>
                         <X className="w-3.5 h-3.5" />
                       </Button>
                     </div>
@@ -150,17 +156,26 @@ export function PatientCabinetPage() {
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Phone className="w-4 h-4 shrink-0" />
-                      {user?.phone
-                        ? <span>{user.phone}</span>
-                        : <span className="text-muted-foreground/60 italic">Не указан</span>
-                      }
+                      {user?.phone ? <span>{user.phone}</span> : <span className="italic opacity-50">Не указан</span>}
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full mt-2"
-                      onClick={() => { setEditMode(true); setEditName(user?.fullName ?? ""); setEditPhone(user?.phone ?? ""); }}
-                    >
+                    {user?.birthDate && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Calendar className="w-4 h-4 shrink-0" />
+                        <span>{new Date(user.birthDate).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</span>
+                      </div>
+                    )}
+                    {user?.gender && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <User className="w-4 h-4 shrink-0" />
+                        <span>{{ MALE: "Мужской", FEMALE: "Женский", OTHER: "Другой" }[user.gender]}</span>
+                      </div>
+                    )}
+                    {(!user?.birthDate || !user?.gender) && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 rounded-md px-2 py-1.5 mt-1">
+                        Заполните дату рождения и пол — это поможет AI-анализу дать более точный результат
+                      </p>
+                    )}
+                    <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => { setEditMode(true); setEditName(user?.fullName ?? ""); setEditPhone(user?.phone ?? ""); setEditBirthDate(user?.birthDate ?? ""); setEditGender(user?.gender ?? ""); }}>
                       <Pencil className="w-3.5 h-3.5 mr-2" />
                       Редактировать профиль
                     </Button>
@@ -174,7 +189,7 @@ export function PatientCabinetPage() {
           <div className="grid grid-cols-3 gap-2">
             <Card className="border-border text-center">
               <CardContent className="pt-3 pb-3">
-                <Calendar className="w-4 h-4 text-teal-500 mx-auto mb-1" />
+                <Calendar className="w-4 h-4 text-blue-500 mx-auto mb-1" />
                 <p className="text-xl font-bold text-foreground">{scheduled.length}</p>
                 <p className="text-[10px] text-muted-foreground">Предстоит</p>
               </CardContent>
@@ -199,7 +214,7 @@ export function PatientCabinetPage() {
           <div className="space-y-2">
             <Button asChild className="w-full justify-start" variant="outline">
               <Link to={routes.patient.aiAnalysis}>
-                <Activity className="w-4 h-4 mr-2 text-teal-600" />
+                <Activity className="w-4 h-4 mr-2 text-blue-600" />
                 Новый AI-анализ
                 <ArrowRight className="w-3.5 h-3.5 ml-auto text-muted-foreground" />
               </Link>
@@ -249,11 +264,11 @@ export function PatientCabinetPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                  <Clock className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   Предстоящие визиты
                 </CardTitle>
                 {scheduled.length > 3 && (
-                  <Link to={routes.patient.appointments} className="text-xs text-teal-600 dark:text-teal-400 hover:underline flex items-center gap-1">
+                  <Link to={routes.patient.appointments} className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
                     Все <ChevronRight className="w-3 h-3" />
                   </Link>
                 )}
@@ -271,13 +286,13 @@ export function PatientCabinetPage() {
               ) : (
                 <div className="space-y-2">
                   {scheduled.slice(0, 4).map((appt) => (
-                    <div key={appt.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 hover:border-teal-300 dark:hover:border-teal-700 transition-colors">
+                    <div key={appt.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 hover:border-blue-300 dark:hover:border-blue-700 transition-colors">
                       <div
                         className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer"
                         onClick={() => setDetailTarget(appt)}
                       >
-                        <div className="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-900 flex items-center justify-center shrink-0">
-                          <User className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                        <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center shrink-0">
+                          <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">{appt.doctorName}</p>
@@ -288,7 +303,7 @@ export function PatientCabinetPage() {
                         {appt.type === "ONLINE" && appt.meetingLink && (
                           <Button
                             size="sm"
-                            className="h-7 text-xs bg-teal-600 hover:bg-teal-700 text-white px-2"
+                            className="h-7 text-xs bg-blue-600 hover:bg-blue-700 text-white px-2"
                             onClick={() => window.open(appt.meetingLink, "_blank", "noopener,noreferrer")}
                           >
                             <Video className="w-3 h-3 mr-1" />
@@ -310,7 +325,7 @@ export function PatientCabinetPage() {
           <Card className="border-border">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <Activity className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                <Activity className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 История визитов
               </CardTitle>
             </CardHeader>

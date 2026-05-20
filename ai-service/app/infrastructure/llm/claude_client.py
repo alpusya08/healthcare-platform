@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 from typing import Any
 
@@ -10,6 +11,18 @@ from app.core.exceptions import LLMProviderError
 from app.core.interfaces.llm_provider import LLMProvider
 
 logger = structlog.get_logger()
+
+_VISION_PROMPT = """\
+Ты — медицинский ассистент. Проанализируй это медицинское изображение (рентген, ЭКГ, результаты анализов, УЗИ или другой документ).
+
+Опиши на русском языке:
+1. Тип документа (рентген/ЭКГ/УЗИ/анализы/другое)
+2. Основные видимые показатели или находки
+3. Любые отклонения от нормы, если они визуально заметны
+4. Что пациент предоставил (краткое резюме)
+
+Важно: не ставь диагнозов, только описывай видимое. Ответ в 3-5 предложениях на русском.
+"""
 
 
 class ClaudeLLMProvider(LLMProvider):
@@ -47,3 +60,26 @@ class ClaudeLLMProvider(LLMProvider):
         except anthropic.APIError as e:
             logger.error("claude_api_error", error=str(e))
             raise LLMProviderError(f"Claude API error: {e}") from e
+
+    async def analyze_image(self, image_bytes: bytes, media_type: str, prompt: str = _VISION_PROMPT) -> str:
+        supported = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+        if media_type not in supported:
+            media_type = "image/jpeg"
+
+        b64 = base64.standard_b64encode(image_bytes).decode()
+        try:
+            response = await self._client.messages.create(
+                model=self._model,
+                max_tokens=512,
+                messages=[{
+                    "role": "user",
+                    "content": [
+                        {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": b64}},
+                        {"type": "text", "text": prompt},
+                    ],
+                }],
+            )
+            return response.content[0].text.strip()
+        except anthropic.APIError as e:
+            logger.error("claude_vision_error", error=str(e))
+            return f"[Не удалось проанализировать изображение: {e}]"

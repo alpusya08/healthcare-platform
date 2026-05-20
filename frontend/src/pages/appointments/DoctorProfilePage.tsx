@@ -37,7 +37,7 @@ function ReviewCard({ review }: { review: DoctorReview }) {
     <div className="py-4 first:pt-0 last:pb-0">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-teal-100 dark:bg-teal-900 flex items-center justify-center text-xs font-semibold text-teal-700 dark:text-teal-300">
+          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-xs font-semibold text-blue-700 dark:text-blue-300">
             {review.patientName.charAt(0).toUpperCase()}
           </div>
           <div>
@@ -84,11 +84,11 @@ function SlotChip({
       className={cn(
         "flex flex-col items-center px-3 py-2 rounded-lg border text-center min-w-[80px] transition-all",
         selected
-          ? "bg-teal-600 border-teal-600 text-white"
-          : "border-border text-foreground hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-950/30"
+          ? "bg-blue-600 border-blue-700 text-white"
+          : "border-border text-foreground hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30"
       )}
     >
-      <span className={cn("text-xs", selected ? "text-teal-100" : "text-muted-foreground")}>{date}</span>
+      <span className={cn("text-xs", selected ? "text-blue-100" : "text-muted-foreground")}>{date}</span>
       <span className="text-sm font-medium mt-0.5">
         {fmt(slot.startTime)}–{fmt(slot.endTime)}
       </span>
@@ -156,8 +156,8 @@ export function DoctorProfilePage() {
       <Card className="border-border">
         <CardContent className="pt-6 pb-5">
           <div className="flex items-start gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-teal-100 dark:bg-teal-900 flex items-center justify-center shrink-0">
-              <Stethoscope className="w-8 h-8 text-teal-600 dark:text-teal-400" />
+            <div className="w-16 h-16 rounded-2xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center shrink-0">
+              <Stethoscope className="w-8 h-8 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -190,7 +190,7 @@ export function DoctorProfilePage() {
                   </span>
                 )}
                 <span className="flex items-center gap-1.5">
-                  <BadgeCheck className="w-4 h-4 text-teal-500" />
+                  <BadgeCheck className="w-4 h-4 text-blue-500" />
                   Верифицирован
                 </span>
               </div>
@@ -209,7 +209,7 @@ export function DoctorProfilePage() {
       <Card className="border-border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             Ближайшие свободные слоты
           </CardTitle>
         </CardHeader>
@@ -230,7 +230,7 @@ export function DoctorProfilePage() {
               </div>
               {slots.length > nearestSlots.length && (
                 <button
-                  className="mt-3 text-xs text-teal-600 dark:text-teal-400 hover:underline"
+                  className="mt-3 text-xs text-blue-600 dark:text-blue-400 hover:underline"
                   onClick={() => navigate(`/book/${doctorId}`)}
                 >
                   Показать все слоты →
@@ -245,7 +245,7 @@ export function DoctorProfilePage() {
       <Card className="border-border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-teal-600 dark:text-teal-400" />
+            <MessageSquare className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             Отзывы пациентов
             {reviews.length > 0 && (
               <Badge variant="outline" className="ml-auto text-xs font-normal">
@@ -272,7 +272,7 @@ export function DoctorProfilePage() {
       {selectedSlot ? (
         <div className="sticky bottom-4 z-10">
           <Button
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-lg"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
             onClick={() => navigate(`/book/${doctorId}?slotId=${selectedSlot.id}`)}
           >
             <Calendar className="w-4 h-4 mr-2" />

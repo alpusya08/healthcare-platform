@@ -31,7 +31,7 @@ const SLOT_TYPE_LABEL: Record<string, string> = {
 const SLOT_TYPE_COLOR: Record<string, string> = {
   ONLINE_ONLY: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
   OFFLINE_ONLY: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  BOTH: "bg-teal-100 text-teal-700 dark:bg-teal-950/40 dark:text-teal-400",
+  BOTH: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
 };
 
 function SlotCard({
@@ -83,7 +83,7 @@ function SlotCard({
             <button
               onClick={onUnblock}
               title="Разблокировать"
-              className="p-0.5 rounded bg-white dark:bg-gray-700 hover:bg-teal-50 text-muted-foreground hover:text-teal-600 transition-colors"
+              className="p-0.5 rounded bg-white dark:bg-gray-700 hover:bg-blue-50 text-muted-foreground hover:text-blue-600 transition-colors"
             >
               <Unlock className="w-3 h-3" />
             </button>
@@ -207,7 +207,7 @@ export function DoctorSchedulePage() {
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Calendar className="w-4 h-4 text-teal-600" />
+              <Calendar className="w-4 h-4 text-blue-600" />
               {format(weekStart, "d MMMM", { locale: ru })} –{" "}
               {format(addDays(weekStart, 6), "d MMMM yyyy", { locale: ru })}
             </CardTitle>
@@ -242,13 +242,13 @@ export function DoctorSchedulePage() {
                     <div
                       className={cn(
                         "text-center pb-2 mb-2 border-b border-border",
-                        isToday && "text-teal-600 dark:text-teal-400 font-bold"
+                        isToday && "text-blue-600 dark:text-blue-400 font-bold"
                       )}
                     >
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">
                         {format(day, "EEE", { locale: ru })}
                       </p>
-                      <p className={cn("text-sm font-medium mt-0.5", isToday && "text-teal-600 dark:text-teal-400")}>
+                      <p className={cn("text-sm font-medium mt-0.5", isToday && "text-blue-600 dark:text-blue-400")}>
                         {format(day, "d")}
                       </p>
                     </div>
