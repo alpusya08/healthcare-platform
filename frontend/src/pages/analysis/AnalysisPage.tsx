@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft, Loader2, AlertTriangle, Phone, CheckCircle2,
   AlertCircle, Info, ArrowRight, Calendar, HelpCircle, Paperclip,
+  MessageSquareOff,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
@@ -390,8 +391,36 @@ export function AnalysisPage() {
       )}
 
       {/* ── Step 3: Report ── */}
-      {step === "report" && report && <ReportView report={report} onReset={handleReset} />}
+      {step === "report" && report && (
+        report.triage_level === "INSUFFICIENT_DATA" && report.confidence === 0
+          ? <NonMedicalScreen onReset={handleReset} />
+          : <ReportView report={report} onReset={handleReset} />
+      )}
     </div>
+  );
+}
+
+function NonMedicalScreen({ onReset }: { onReset: () => void }) {
+  const navigate = useNavigate();
+  return (
+    <Card className="border-border">
+      <CardContent className="pt-10 pb-8 flex flex-col items-center text-center gap-4">
+        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+          <MessageSquareOff className="w-7 h-7 text-muted-foreground" />
+        </div>
+        <div className="space-y-1.5">
+          <h2 className="text-lg font-semibold text-foreground">Это не медицинский запрос</h2>
+          <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+            Система предназначена для оценки симптомов и жалоб на здоровье.
+            Опишите, что вас беспокоит — боль, температуру, слабость или другие симптомы.
+          </p>
+        </div>
+        <div className="flex gap-3 mt-2">
+          <Button onClick={onReset}>Описать симптомы</Button>
+          <Button variant="outline" onClick={() => navigate(routes.patient.home)}>На главную</Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

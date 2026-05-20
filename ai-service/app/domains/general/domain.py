@@ -52,6 +52,41 @@ GENERAL_FEATURES = [
     "skin_symptom", "symptom_area",
 ]
 
+_NON_MEDICAL_RE = re.compile(
+    r"\b("
+    r"рецепт|приготов|готовить|варить|жарить|испечь|блюдо|кулинар|кухн|манты|плов|борщ|салат|торт|пирог|суп"
+    r"|программ|код|алгоритм|python|javascript|java|css|html|sql|скрипт|функци"
+    r"|математик|уравнени|задач[аи]|интеграл|производн"
+    r"|сочинени|реферат|эссе|стихотворени|перевод|перевести|переведи"
+    r"|история|биограф|расскаж|объясни|что\s+такое|как\s+работает"
+    r"|погод|курс\s+валют|новост|кино|фильм|игр[аы]|музык"
+    r"|шутк|анекдот|привет|здравствуй"
+    r")\b",
+    re.IGNORECASE,
+)
+
+_MEDICAL_RE = re.compile(
+    r"\b("
+    r"боль|болит|болью|боли|ноет|ломит|жжёт|жжение|покалива"
+    r"|температур|жар|лихорадк|озноб|потею|потливост"
+    r"|кашел|кашляю|насморк|заложен|чихаю|горло|хрипот"
+    r"|голова|головная|мигрен|тошнот|рвот|понос|запор"
+    r"|давлени|сердце|сердцебиени|одышк|задыхаюс"
+    r"|слабост|усталост|недомогани|головокружен"
+    r"|сыпь|зуд|краснот|отёк|опухл|синяк|рана"
+    r"|живот|желудок|почки|суставы|спина|поясниц"
+    r"|таблетк|препарат|врач|больниц|скорую|симптом|диагноз"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def _is_non_medical_query(description: str) -> bool:
+    has_non_medical = bool(_NON_MEDICAL_RE.search(description))
+    has_medical = bool(_MEDICAL_RE.search(description))
+    return has_non_medical and not has_medical
+
+
 _EMERGENCY_PATTERNS = [
     (r"внезапн.{0,20}сильн.{0,20}голов", "Внезапная сильная головная боль — возможен инсульт или разрыв аневризмы. Немедленно вызовите скорую — 103"),
     (r"онемени.{0,20}(рук|ног|лиц|половин)", "Онемение конечностей или лица — возможен инсульт. Немедленно вызовите скорую — 103"),
@@ -219,6 +254,28 @@ class GeneralSymptomDomain(MedicalDomain):
         return None
 
     async def predict(self, features: MedicalFeatures) -> Diagnosis:
+        raw_desc = features.get("_raw_description") or ""
+        if _is_non_medical_query(raw_desc):
+            logger.info("general_domain.non_medical_query_detected")
+            return Diagnosis(
+                domain=self.code,
+                primary_diagnosis="Запрос не является медицинским",
+                confidence=0.0,
+                explanation=(
+                    "Описание не содержит медицинских симптомов или жалоб на здоровье. "
+                    "Система предназначена для предварительной оценки симптомов и не может помочь с другими запросами."
+                ),
+                recommendations=[
+                    "Опишите симптомы или жалобы на здоровье — что беспокоит, когда началось, где болит",
+                    "Укажите давность симптомов и их интенсивность",
+                ],
+                triage_level=TriageLevel.INSUFFICIENT_DATA,
+                model_version=self.get_model_version(),
+                recommended_specialization="therapy",
+                possible_causes=[],
+                red_flags=[],
+                summary="",
+            )
         try:
             return await self._hybrid_predict(features)
         except Exception:
