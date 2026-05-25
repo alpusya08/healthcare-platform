@@ -167,7 +167,7 @@ services:
     container_name: hc-ai
     restart: unless-stopped
     environment:
-      ENVIRONMENT: production
+      ENVIRONMENT: prod
       DB_URL: postgresql+asyncpg://${AI_POSTGRES_USER}:${AI_POSTGRES_PASSWORD}@postgres:5432/${AI_POSTGRES_DB}
       AI_SERVICE_INTERNAL_TOKEN: ${AI_SERVICE_INTERNAL_TOKEN}
       LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
