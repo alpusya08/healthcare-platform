@@ -195,6 +195,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api/v1
     image: healthcare-frontend:latest
     container_name: hc-frontend
     restart: unless-stopped
