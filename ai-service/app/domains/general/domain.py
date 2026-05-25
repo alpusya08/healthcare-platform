@@ -104,7 +104,10 @@ Rules:
 - Questions must be in RUSSIAN (the patient speaks Russian)
 - Use a warm, conversational tone — not like a form
 - Focus on what is most clinically relevant given the specific complaint
-- Never repeat information already provided
+- CRITICAL: Check the "Already collected features" list below. NEVER ask about any feature in that list — it is ALREADY KNOWN.
+- CRITICAL: If "duration_days" is in "Already collected features", NEVER ask how long symptoms have lasted. Do NOT rephrase it in any way.
+- CRITICAL: Read the initial complaint. If patient mentioned duration (e.g. "3 дня", "уже неделю", "со вчера"), do NOT ask about it.
+- Never repeat information already provided in either the complaint or Q&A history
 - Never suggest a diagnosis
 - Never recommend specific medications or dosages
 
@@ -116,6 +119,19 @@ Otherwise return JSON:
 question_type: "text" for open-ended, "choice" when specific options make sense (preferred for medical intake).
 feature_name must be one of: duration_days, pain_severity, pain_character, pain_location, associated_symptoms, fever, food_relation, radiation, movement_relation, swelling, trauma, onset, photophobia, associated_nausea, trigger, cough_type, throat_pain, nasal_congestion, skin_symptom, spread
 """
+
+_DURATION_RE = re.compile(
+    r"\b("
+    r"\d+\s*(?:день|дня|дней|д\.?)|"
+    r"(?:один|два|три|четыре|пять|шесть|семь|восемь|девять|десять)\s*(?:день|дня|дней)|"
+    r"(?:несколько|пару)\s*дней|"
+    r"(?:с|со)\s+(?:вчера|позавчера|утра|ночи|вечера)|"
+    r"(?:вчера|сегодня|позавчера)\s+(?:началось|начал|появил)|"
+    r"неделю?|недели|нескольк[ие]х?\s+недел|"
+    r"месяц|давно|долго|уже\s+\d+|уже\s+(?:неделю?|месяц|давно)"
+    r")\b",
+    re.IGNORECASE,
+)
 
 _REPORT_SYSTEM_PROMPT = """\
 You are an experienced general practitioner. Based on the patient's reported symptoms, produce a brief clinical assessment.
@@ -213,9 +229,10 @@ class GeneralSymptomDomain(MedicalDomain):
                 for q in session.questions
                 if q.answer
             )
-            prompt = _TRIAGE_FEATURE_EXTRACTION_PROMPT.format(
-                description=session.initial_description,
-                qa_history=qa_history or "Нет ответов на вопросы",
+            prompt = (
+                _TRIAGE_FEATURE_EXTRACTION_PROMPT
+                .replace("{description}", session.initial_description)
+                .replace("{qa_history}", qa_history or "Нет ответов на вопросы")
             )
             raw = await self._llm.complete_structured(prompt, {})
 
@@ -399,8 +416,16 @@ class GeneralSymptomDomain(MedicalDomain):
                     lines.append(f"A: {q.answer}")
 
         asked = {q.feature_name for q in session.questions if q.feature_name}
+
+        # Auto-mark features already present in the initial description
+        implicit: set[str] = set()
+        if _DURATION_RE.search(session.initial_description):
+            implicit.add("duration_days")
+        asked = asked | implicit
+
         if asked:
-            lines.append(f"\nAlready collected features: {', '.join(asked)}")
+            lines.append(f"\n⚠️ ALREADY COLLECTED — DO NOT ASK ABOUT THESE: {', '.join(sorted(asked))}")
+            lines.append("You MUST skip any question whose feature_name appears in the list above.")
 
         lines.append(f"\nQuestions asked so far: {session.questions_count}/{MAX_QUESTIONS}")
         lines.append("\nNow generate the next most useful question, or {\"done\": true} if enough info.")

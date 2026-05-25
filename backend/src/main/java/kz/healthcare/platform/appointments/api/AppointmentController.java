@@ -68,6 +68,14 @@ public class AppointmentController {
         return appointmentService.listForPatient(patientId);
     }
 
+    @GetMapping("/with-ai")
+    public List<AppointmentResponse> myAiAppointments(
+            @AuthenticationPrincipal UUID patientId) {
+        return appointmentService.listForPatient(patientId).stream()
+                .filter(a -> a.aiSessionId() != null)
+                .toList();
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> cancel(
             @AuthenticationPrincipal UUID patientId,

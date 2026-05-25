@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft, Loader2, AlertTriangle, Phone, CheckCircle2,
   AlertCircle, Info, ArrowRight, Calendar, HelpCircle, Paperclip,
@@ -68,6 +68,7 @@ const TRIAGE_CONFIG: Record<TriageLevel, {
 
 export function AnalysisPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [step, setStep] = useState<Step>("describe");
   const [loading, setLoading] = useState(false);
@@ -84,6 +85,18 @@ export function AnalysisPage() {
 
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [fileUploading, setFileUploading] = useState(false);
+
+  // Open existing report from URL param (e.g. from appointment detail modal)
+  useEffect(() => {
+    const sid = searchParams.get("sessionId");
+    if (!sid) return;
+    setSessionId(sid);
+    setLoading(true);
+    analysisApi.getReport(sid)
+      .then((r) => { setReport(r); setStep("report"); })
+      .catch(() => {/* ignore — let user start fresh */})
+      .finally(() => setLoading(false));
+  }, []);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

@@ -1,0 +1,38 @@
+# Replace YOUR_DOMAIN with your actual domain or server IP
+# If using IP only (no domain): use http://YOUR_IP instead and remove tls lines
+
+{$DOMAIN} {
+
+    # Frontend (React SPA)
+    handle {
+        reverse_proxy hc-frontend:80
+    }
+
+    # Backend API
+    handle /api/* {
+        reverse_proxy hc-backend:8080
+    }
+
+    # AI service (internal only via backend, but exposed for health)
+    handle /ai-health {
+        reverse_proxy hc-ai:8000/health
+    }
+
+    # Swagger UI (optional, remove in prod)
+    handle /swagger-ui/* {
+        reverse_proxy hc-backend:8080
+    }
+    handle /v3/api-docs/* {
+        reverse_proxy hc-backend:8080
+    }
+
+    # Actuator health
+    handle /actuator/* {
+        reverse_proxy hc-backend:8080
+    }
+
+    encode gzip
+    log {
+        output file /var/log/caddy/access.log
+    }
+}

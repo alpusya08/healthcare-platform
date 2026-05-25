@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, Check } from "lucide-react";
+import { Bell, Check, CalendarCheck, CheckCircle2, Star, Cpu } from "lucide-react";
 import { apiClient } from "@/shared/api/axios";
 import { Button } from "@/shared/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
@@ -15,11 +15,11 @@ interface NotificationItem {
   createdAt: string;
 }
 
-const TYPE_ICONS: Record<string, string> = {
-  NEW_APPOINTMENT: "📅",
-  APPOINTMENT_CONFIRMED: "✅",
-  LEAVE_REVIEW: "⭐",
-  AI_COMPLETE: "🤖",
+const TYPE_ICON_MAP: Record<string, { icon: typeof Bell; color: string }> = {
+  NEW_APPOINTMENT:       { icon: CalendarCheck, color: "text-blue-600 dark:text-blue-400" },
+  APPOINTMENT_CONFIRMED: { icon: CheckCircle2,  color: "text-emerald-600 dark:text-emerald-400" },
+  LEAVE_REVIEW:          { icon: Star,          color: "text-amber-500 dark:text-amber-400" },
+  AI_COMPLETE:           { icon: Cpu,           color: "text-violet-600 dark:text-violet-400" },
 };
 
 function useNotifications() {
@@ -125,9 +125,15 @@ export function NotificationBell() {
                   !n.read && "bg-blue-50/50 dark:bg-blue-950/20"
                 )}
               >
-                <span className="text-lg shrink-0 mt-0.5">
-                  {TYPE_ICONS[n.type] ?? "🔔"}
-                </span>
+                {(() => {
+                  const cfg = TYPE_ICON_MAP[n.type];
+                  const Icon = cfg?.icon ?? Bell;
+                  return (
+                    <div className="shrink-0 mt-0.5 w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                      <Icon className={`w-4 h-4 ${cfg?.color ?? "text-muted-foreground"}`} />
+                    </div>
+                  );
+                })()}
                 <div className="flex-1 min-w-0">
                   <p className={cn("text-sm", !n.read ? "font-semibold text-foreground" : "text-foreground")}>
                     {n.title}

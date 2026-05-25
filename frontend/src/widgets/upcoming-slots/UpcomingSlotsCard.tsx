@@ -13,6 +13,19 @@ interface Props {
   limit?: number;
 }
 
+const SPEC_LABELS: Record<string, string> = {
+  therapy: "Терапия",
+  cardiology: "Кардиология",
+  neurology: "Неврология",
+  gastroenterology: "Гастроэнтерология",
+  orthopedics: "Ортопедия",
+  dermatology: "Дерматология",
+  pulmonology: "Пульмонология",
+  endocrinology: "Эндокринология",
+  otolaryngology: "ЛОР",
+  surgery: "Хирургия",
+};
+
 const RU_WEEKDAYS = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
 const RU_MONTHS = [
   "янв", "фев", "мар", "апр", "май", "июн",
@@ -117,8 +130,8 @@ export function UpcomingSlotsCard({ specializationCode, aiSessionId, limit = 3 }
           <Calendar className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           Ближайшие свободные приёмы
           {specializationCode && (
-            <Badge variant="outline" className="ml-auto text-xs font-normal capitalize">
-              {specializationCode}
+            <Badge variant="outline" className="ml-auto text-xs font-normal">
+              {SPEC_LABELS[specializationCode] ?? specializationCode}
             </Badge>
           )}
         </CardTitle>

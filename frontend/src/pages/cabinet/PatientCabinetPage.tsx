@@ -55,10 +55,24 @@ export function PatientCabinetPage() {
   const [editPhone, setEditPhone] = useState(user?.phone ?? "");
   const [editBirthDate, setEditBirthDate] = useState(user?.birthDate ?? "");
   const [editGender, setEditGender] = useState(user?.gender ?? "");
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments"],
     queryFn: appointmentsApi.myAppointments,
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: () => authApi.changePassword(currentPassword, newPassword),
+    onSuccess: () => {
+      toast.success("Пароль изменён. Войдите заново.");
+      setShowPasswordForm(false);
+      setCurrentPassword("");
+      setNewPassword("");
+    },
+    onError: () => toast.error("Неверный текущий пароль"),
   });
 
   const updateProfileMutation = useMutation({
@@ -179,6 +193,42 @@ export function PatientCabinetPage() {
                       <Pencil className="w-3.5 h-3.5 mr-2" />
                       Редактировать профиль
                     </Button>
+                    <Button size="sm" variant="ghost" className="w-full mt-1 text-muted-foreground" onClick={() => setShowPasswordForm((v) => !v)}>
+                      <Shield className="w-3.5 h-3.5 mr-2" />
+                      Сменить пароль
+                    </Button>
+                    {showPasswordForm && (
+                      <div className="mt-3 space-y-2 p-3 border border-border rounded-lg bg-muted/30">
+                        <Input
+                          type="password"
+                          placeholder="Текущий пароль"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                        <Input
+                          type="password"
+                          placeholder="Новый пароль (мин. 8 символов)"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="h-8 text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            disabled={!currentPassword || newPassword.length < 8 || changePasswordMutation.isPending}
+                            onClick={() => changePasswordMutation.mutate()}
+                          >
+                            <Check className="w-3.5 h-3.5 mr-1" />
+                            {changePasswordMutation.isPending ? "..." : "Сохранить"}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => { setShowPasswordForm(false); setCurrentPassword(""); setNewPassword(""); }}>
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

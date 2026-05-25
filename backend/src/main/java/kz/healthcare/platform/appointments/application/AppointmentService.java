@@ -405,7 +405,8 @@ public class AppointmentService {
                 a.getType(),
                 a.getComplaint(),
                 hasReview,
-                a.getMeetingLink()
+                a.getMeetingLink(),
+                a.getAiSessionId()
         );
     }
 }

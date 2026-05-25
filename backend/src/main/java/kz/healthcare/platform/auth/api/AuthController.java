@@ -59,6 +59,15 @@ public class AuthController {
         return ResponseEntity.ok(authService.updateProfile(userId, request));
     }
 
+    @PostMapping("/change-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void changePassword(
+            @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal UUID userId
+    ) {
+        authService.changePassword(userId, request.currentPassword(), request.newPassword());
+    }
+
     @PostMapping("/forgot-password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {

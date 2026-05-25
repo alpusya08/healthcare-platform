@@ -30,6 +30,7 @@ export interface Appointment {
   complaint: string | null;
   hasReview: boolean;
   meetingLink?: string;
+  aiSessionId?: string;
 }
 
 export interface DoctorReview {

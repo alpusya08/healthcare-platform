@@ -166,6 +166,19 @@ public class AuthService {
     }
 
     @Transactional
+    public void changePassword(UUID userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(InvalidCredentialsException::new);
+        if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new InvalidCredentialsException();
+        }
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        refreshTokenService.revokeAllUserTokens(userId);
+        log.info("password_change.completed user={}", user.getEmail());
+    }
+
+    @Transactional
     public UserInfoResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(InvalidCredentialsException::new);
