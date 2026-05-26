@@ -314,12 +314,29 @@ class GeneralSymptomDomain(MedicalDomain):
                         "EMERGENCY": TriageLevel.EMERGENCY,
                     }
                     ml_triage = triage_map.get(ml_prediction.triage_code, TriageLevel.ROUTINE)
-                    logger.info(
-                        "general_domain.ml_triage_used",
-                        ml_triage=ml_prediction.triage_code,
-                        confidence=ml_prediction.confidence,
-                        llm_triage=llm_diagnosis.triage_level.value,
-                    )
+
+                    # Safety check: ML says EMERGENCY but Claude found no red flags
+                    # and didn't classify it as EMERGENCY → downgrade to URGENT
+                    if (
+                        ml_triage == TriageLevel.EMERGENCY
+                        and not llm_diagnosis.red_flags
+                        and llm_diagnosis.triage_level != TriageLevel.EMERGENCY
+                    ):
+                        ml_triage = TriageLevel.URGENT
+                        logger.info(
+                            "general_domain.ml_emergency_downgraded",
+                            reason="no_red_flags_and_llm_disagrees",
+                            ml_confidence=ml_prediction.confidence,
+                            llm_triage=llm_diagnosis.triage_level.value,
+                        )
+                    else:
+                        logger.info(
+                            "general_domain.ml_triage_used",
+                            ml_triage=ml_prediction.triage_code,
+                            confidence=ml_prediction.confidence,
+                            llm_triage=llm_diagnosis.triage_level.value,
+                        )
+
                     return Diagnosis(
                         domain=self.code,
                         primary_diagnosis=llm_diagnosis.primary_diagnosis,
