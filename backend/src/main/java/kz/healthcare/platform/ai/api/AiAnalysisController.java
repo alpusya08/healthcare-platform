@@ -11,6 +11,7 @@ import kz.healthcare.platform.ai.application.dto.AiAnswerResponse;
 import kz.healthcare.platform.ai.application.dto.AiReportResponse;
 import kz.healthcare.platform.ai.application.dto.AiStartRequest;
 import kz.healthcare.platform.ai.application.dto.AiStartResponse;
+import kz.healthcare.platform.notifications.application.NotificationService;
 import kz.healthcare.platform.users.domain.Gender;
 import kz.healthcare.platform.users.infrastructure.PatientRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,7 @@ public class AiAnalysisController {
 
     private final AiServiceClient aiServiceClient;
     private final PatientRepository patientRepository;
+    private final NotificationService notificationService;
 
     @PostMapping("/analysis/start")
     @Operation(summary = "Start a new AI analysis session")
@@ -97,8 +99,25 @@ public class AiAnalysisController {
 
     @PostMapping("/analysis/{sessionId}/finalize")
     @Operation(summary = "Finalize analysis and get diagnosis report")
-    public ResponseEntity<AiReportResponse> finalizeAnalysis(@PathVariable UUID sessionId) {
+    public ResponseEntity<AiReportResponse> finalizeAnalysis(
+            @PathVariable UUID sessionId,
+            @AuthenticationPrincipal UUID userId
+    ) {
         AiReportResponse response = aiServiceClient.finalizeAnalysis(sessionId);
+        if (userId != null && response.primaryDiagnosis() != null) {
+            String triageLabel = switch (response.triageLevel() != null ? response.triageLevel() : "") {
+                case "EMERGENCY" -> "ЭКСТРЕННО";
+                case "URGENT"    -> "СРОЧНО";
+                default          -> "ПЛАНОВЫЙ";
+            };
+            notificationService.create(
+                    userId,
+                    "AI_COMPLETE",
+                    "Анализ завершён",
+                    triageLabel + " · " + response.primaryDiagnosis(),
+                    "/ai-analysis?sessionId=" + sessionId
+            );
+        }
         return ResponseEntity.ok(response);
     }
 

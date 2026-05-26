@@ -175,7 +175,7 @@ export function DashboardPage() {
       {/* ── Stats ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { icon: Users,    value: allDoctors.length || "13", label: "Врачей в системе", color: "text-blue-600"   },
+          { icon: Users,    value: allDoctors.length,          label: "Врачей в системе", color: "text-blue-600"   },
           { icon: Star,     value: "4.8",                     label: "Средний рейтинг",  color: "text-amber-500"  },
           { icon: Activity, value: "10",                      label: "Специализаций",    color: "text-violet-600" },
         ].map(({ icon: Icon, value, label, color }) => (
