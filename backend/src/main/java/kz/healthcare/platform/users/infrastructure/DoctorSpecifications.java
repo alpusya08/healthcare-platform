@@ -1,10 +1,13 @@
 package kz.healthcare.platform.users.infrastructure;
 
 import jakarta.persistence.criteria.*;
+import kz.healthcare.platform.appointments.domain.SlotType;
+import kz.healthcare.platform.appointments.domain.TimeSlot;
 import kz.healthcare.platform.users.domain.Doctor;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,14 +61,34 @@ public final class DoctorSpecifications {
         };
     }
 
+    public static Specification<Doctor> acceptsOnline() {
+        return (root, query, cb) -> {
+            Subquery<Long> sub = query.subquery(Long.class);
+            Root<TimeSlot> slot = sub.from(TimeSlot.class);
+            sub.select(cb.count(slot))
+               .where(
+                   cb.equal(slot.get("doctor").get("id"), root.get("id")),
+                   cb.isFalse(slot.get("booked")),
+                   cb.isFalse(slot.get("blocked")),
+                   cb.greaterThan(slot.get("startTime"), Instant.now()),
+                   cb.or(
+                       cb.equal(slot.get("appointmentType"), SlotType.ONLINE),
+                       cb.equal(slot.get("appointmentType"), SlotType.BOTH)
+                   )
+               );
+            return cb.greaterThan(sub, 0L);
+        };
+    }
+
     public static Specification<Doctor> combined(
             String specCode,
             BigDecimal minRating,
             BigDecimal maxPrice,
             String query,
-            Integer minExperience
+            Integer minExperience,
+            Boolean onlineOnly
     ) {
-        return Specification.allOf(
+        Specification<Doctor> spec = Specification.allOf(
                 verified(),
                 withSpecialization(specCode),
                 withMinRating(minRating),
@@ -73,5 +96,9 @@ public final class DoctorSpecifications {
                 withQuery(query),
                 withMinExperience(minExperience)
         );
+        if (Boolean.TRUE.equals(onlineOnly)) {
+            spec = spec.and(acceptsOnline());
+        }
+        return spec;
     }
 }

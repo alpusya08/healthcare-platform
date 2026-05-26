@@ -74,6 +74,7 @@ export interface DoctorSearchParams {
   sort?: string;
   page?: number;
   size?: number;
+  onlineOnly?: boolean;
 }
 
 export interface UpcomingSlot {

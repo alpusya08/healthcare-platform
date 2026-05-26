@@ -97,6 +97,7 @@ export function DoctorsPage() {
   const [minExperience, setMinExperience] = useState(searchParams.get("minExperience") ?? "");
   const [selectedSpec, setSelectedSpec] = useState(searchParams.get("specialization") ?? "");
   const [sort, setSort] = useState(searchParams.get("sort") ?? "rating_desc");
+  const [onlineOnly, setOnlineOnly] = useState(searchParams.get("onlineOnly") === "true");
   const [page, setPage] = useState(Number(searchParams.get("page") ?? "0"));
 
   useEffect(() => {
@@ -106,7 +107,7 @@ export function DoctorsPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, minRating, maxPrice, minExperience, selectedSpec, sort]);
+  }, [debouncedSearch, minRating, maxPrice, minExperience, selectedSpec, sort, onlineOnly]);
 
   useEffect(() => {
     const params: Record<string, string> = {};
@@ -116,9 +117,10 @@ export function DoctorsPage() {
     if (maxPrice) params.maxPrice = maxPrice;
     if (minExperience) params.minExperience = minExperience;
     if (sort !== "rating_desc") params.sort = sort;
+    if (onlineOnly) params.onlineOnly = "true";
     if (page > 0) params.page = String(page);
     setSearchParams(params, { replace: true });
-  }, [debouncedSearch, selectedSpec, minRating, maxPrice, minExperience, sort, page, setSearchParams]);
+  }, [debouncedSearch, selectedSpec, minRating, maxPrice, minExperience, sort, onlineOnly, page, setSearchParams]);
 
   const queryParams = {
     query: debouncedSearch || undefined,
@@ -129,6 +131,7 @@ export function DoctorsPage() {
     sort,
     page,
     size: PAGE_SIZE,
+    onlineOnly: onlineOnly || undefined,
   };
 
   const { data, isLoading } = useQuery({
@@ -141,13 +144,14 @@ export function DoctorsPage() {
   const totalPages = data?.totalPages ?? 0;
   const totalElements = data?.totalElements ?? 0;
 
-  const hasActiveFilters = minRating !== "" || maxPrice !== "" || minExperience !== "" || selectedSpec !== "";
+  const hasActiveFilters = minRating !== "" || maxPrice !== "" || minExperience !== "" || selectedSpec !== "" || onlineOnly;
 
   const clearFilters = () => {
     setMinRating("");
     setMaxPrice("");
     setMinExperience("");
     setSelectedSpec("");
+    setOnlineOnly(false);
     setSearch("");
   };
 
@@ -271,6 +275,21 @@ export function DoctorsPage() {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Online only */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setOnlineOnly((v) => !v)}
+                className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
+                  onlineOnly ? "bg-blue-600" : "bg-muted-foreground/30"
+                }`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                  onlineOnly ? "translate-x-4" : "translate-x-0.5"
+                }`} />
+              </button>
+              <span className="text-xs font-medium text-foreground">Только онлайн-консультации</span>
             </div>
 
             {hasActiveFilters && (

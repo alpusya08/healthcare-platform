@@ -36,9 +36,10 @@ public class AppointmentController {
             @RequestParam(required = false) String query,
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) Boolean onlineOnly) {
         return appointmentService.listDoctorsFiltered(
-                new DoctorFilterRequest(specialization, minRating, maxPrice, minExperience, query, sort, page, size)
+                new DoctorFilterRequest(specialization, minRating, maxPrice, minExperience, query, sort, page, size, onlineOnly)
         );
     }
 

@@ -74,7 +74,8 @@ public class AppointmentService {
                 filter.minRating(),
                 filter.maxPrice(),
                 filter.query(),
-                filter.minExperience()
+                filter.minExperience(),
+                filter.onlineOnly()
         );
 
         return doctorRepository.findAll(spec, PageRequest.of(filter.page(), filter.size(), sort))

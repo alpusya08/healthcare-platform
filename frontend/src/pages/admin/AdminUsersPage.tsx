@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, UserX, UserCheck } from "lucide-react";
+import { Search, UserX, UserCheck, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -59,9 +59,12 @@ function UserRow({ user, onToggleStatus }: { user: AdminUser; onToggleStatus: (u
   );
 }
 
+const PAGE_SIZE = 10;
+
 export function AdminUsersPage() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin", "users"],
@@ -83,6 +86,9 @@ export function AdminUsersPage() {
       u.fullName.toLowerCase().includes(search.toLowerCase()) ||
       u.email.toLowerCase().includes(search.toLowerCase())
   );
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
     <div className="space-y-6 max-w-5xl">
@@ -116,14 +122,33 @@ export function AdminUsersPage() {
           ) : filtered.length === 0 ? (
             <p className="text-center py-10 text-muted-foreground">Пользователи не найдены</p>
           ) : (
-            filtered.map((u) => (
+            paginated.map((u) => (
               <UserRow key={u.id} user={u} onToggleStatus={(user) => toggleMutation.mutate(user)} />
             ))
           )}
         </CardContent>
       </Card>
 
-      <p className="text-xs text-muted-foreground">Всего: {filtered.length} из {users.length}</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          Показано {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} из {filtered.length}
+        </p>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}>
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </Button>
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <Button key={i} variant={page === i ? "default" : "outline"} size="icon" className="w-8 h-8 text-xs" onClick={() => setPage(i)}>
+                {i + 1}
+              </Button>
+            ))}
+            <Button variant="outline" size="icon" className="w-8 h-8" onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

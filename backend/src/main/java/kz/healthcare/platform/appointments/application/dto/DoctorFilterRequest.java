@@ -10,7 +10,8 @@ public record DoctorFilterRequest(
         String query,
         String sort,
         int page,
-        int size
+        int size,
+        Boolean onlineOnly
 ) {
     public DoctorFilterRequest {
         if (page < 0) page = 0;

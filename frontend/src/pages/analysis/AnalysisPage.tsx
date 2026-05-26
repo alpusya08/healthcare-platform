@@ -83,7 +83,7 @@ export function AnalysisPage() {
 
   const [report, setReport] = useState<AnalysisReport | null>(null);
 
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<{ name: string; summary: string }[]>([]);
   const [fileUploading, setFileUploading] = useState(false);
 
   // Open existing report from URL param (e.g. from appointment detail modal)
@@ -103,9 +103,9 @@ export function AnalysisPage() {
     if (!file || !sessionId) return;
     setFileUploading(true);
     try {
-      await analysisApi.uploadFile(sessionId, file);
-      setUploadedFiles((prev) => [...prev, file]);
-      toast.success("Файл загружен и проанализирован");
+      const result = await analysisApi.uploadFile(sessionId, file);
+      setUploadedFiles((prev) => [...prev, { name: file.name, summary: result.summary ?? "" }]);
+      toast.success("Файл загружен и проанализирован AI");
     } catch {
       toast.error("Не удалось загрузить файл");
     } finally {
@@ -370,11 +370,18 @@ export function AnalysisPage() {
                 />
               </label>
               {uploadedFiles.length > 0 && (
-                <ul className="mt-2 space-y-1">
+                <ul className="mt-2 space-y-2">
                   {uploadedFiles.map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
-                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                      <span className="truncate max-w-[260px]">{f.name}</span>
+                    <li key={i} className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2">
+                      <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{f.name}</span>
+                      </div>
+                      {f.summary && (
+                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2 pl-5">
+                          {f.summary.replace(/^\[.*?\]\s*/, "").slice(0, 120)}…
+                        </p>
+                      )}
                     </li>
                   ))}
                 </ul>
