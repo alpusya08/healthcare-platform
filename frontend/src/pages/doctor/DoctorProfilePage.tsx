@@ -96,7 +96,7 @@ export function DoctorProfilePage() {
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <Badge variant="secondary">{profile.specialization}</Badge>
                     {profile.verified && (
-                      <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
+                      <span className="flex items-center gap-1 text-xs text-primary dark:text-primary/60">
                         <BadgeCheck className="w-3.5 h-3.5" />
                         Верифицирован
                       </span>
@@ -132,7 +132,7 @@ export function DoctorProfilePage() {
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <StatCard icon={Star} value={profile.averageRating > 0 ? profile.averageRating.toFixed(1) : "—"} label="Рейтинг" color="text-amber-400" />
-        <StatCard icon={Clock} value={profile.yearsExperience} label="Лет опыта" color="text-blue-600" />
+        <StatCard icon={Clock} value={profile.yearsExperience} label="Лет опыта" color="text-primary" />
         <StatCard icon={Banknote} value={profile.consultationFee ? `${profile.consultationFee.toLocaleString("ru-RU")} ₸` : "—"} label="Стоимость" color="text-emerald-600" />
       </div>
 
@@ -140,7 +140,7 @@ export function DoctorProfilePage() {
       <Card className="border-border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Stethoscope className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <Stethoscope className="w-4 h-4 text-primary dark:text-primary/60" />
             Профессиональная информация
           </CardTitle>
         </CardHeader>
@@ -232,7 +232,7 @@ export function DoctorProfilePage() {
       <Card className="border-border">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <Phone className="w-4 h-4 text-primary dark:text-primary/60" />
             Контактная информация
           </CardTitle>
         </CardHeader>

@@ -1,6 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Moon, Sun, LogOut, ChevronDown, LayoutDashboard, Calendar, FileText, User } from "lucide-react";
-import { Logo } from "@/shared/ui/Logo";
+import { Moon, Sun, LogOut, ChevronDown, LayoutDashboard, Calendar, FileText, User, Heart } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import {
@@ -18,7 +17,7 @@ import { cn } from "@/shared/lib/utils";
 import { NotificationBell } from "@/widgets/notification-bell/NotificationBell";
 
 const NAV_LINKS = [
-  { to: routes.doctor.dashboard, label: "Главная", icon: LayoutDashboard, exact: true },
+  { to: routes.doctor.dashboard, label: "Панель", icon: LayoutDashboard, exact: true },
   { to: routes.doctor.schedule, label: "Расписание", icon: Calendar, exact: false },
   { to: "/doctor/ai-reports", label: "AI Отчёты", icon: FileText, exact: false },
 ];
@@ -41,26 +40,28 @@ export function DoctorNavbar() {
     : "Д";
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 flex h-16 items-center justify-between gap-6">
-        <Link to={routes.doctor.dashboard} className="shrink-0">
-          <Logo size={30} />
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+        <Link to={routes.doctor.dashboard} className="flex items-center gap-2 hover:opacity-80 transition-opacity shrink-0">
+          <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary text-primary-foreground">
+            <Heart className="w-5 h-5" fill="currentColor" />
+          </div>
+          <span className="text-xl font-semibold text-foreground">MedAI</span>
+          <span className="text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">Врач</span>
         </Link>
 
-        <nav className="flex items-center gap-1">
+        <nav className="hidden md:flex items-center gap-1">
           {NAV_LINKS.map(({ to, label, icon: Icon, exact }) => {
-            const active = exact
-              ? location.pathname === to
-              : location.pathname.startsWith(to);
+            const active = exact ? location.pathname === to : location.pathname.startsWith(to);
             return (
               <Link
                 key={to}
                 to={to}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
                   active
-                    ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-400"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                 )}
               >
                 <Icon className="w-4 h-4" />
@@ -80,11 +81,11 @@ export function DoctorNavbar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2 h-9">
                 <Avatar className="w-7 h-7">
-                  <AvatarFallback className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs font-semibold">
+                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
-                <span className="text-sm font-medium max-w-[120px] truncate">
+                <span className="hidden sm:block text-sm font-medium max-w-[100px] truncate">
                   {user?.fullName.split(" ")[0] ?? "Врач"}
                 </span>
                 <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
@@ -94,7 +95,7 @@ export function DoctorNavbar() {
               <div className="px-3 py-2">
                 <p className="text-sm font-medium">{user?.fullName}</p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">Врач</p>
+                <p className="text-xs text-primary mt-0.5">Врач</p>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild className="gap-2 cursor-pointer">

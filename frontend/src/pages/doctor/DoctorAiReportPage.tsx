@@ -98,7 +98,7 @@ export function DoctorAiReportPage() {
       {/* Header */}
       <div className="flex items-start gap-3">
         <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 shrink-0">
-          <Brain className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <Brain className="w-5 h-5 text-primary dark:text-primary/60" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-foreground">AI-анализ симптомов</h1>
@@ -165,7 +165,7 @@ export function DoctorAiReportPage() {
           {/* Primary diagnosis */}
           <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/20">
             <CardContent className="pt-4 pb-4">
-              <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
+              <p className="text-xs font-medium text-primary dark:text-primary/60 uppercase tracking-wide mb-1">
                 Основной диагноз
               </p>
               <p className="text-base font-semibold text-foreground">{report.primary_diagnosis}</p>
@@ -176,7 +176,7 @@ export function DoctorAiReportPage() {
                     style={{ width: `${Math.round(report.confidence * 100)}%` }}
                   />
                 </div>
-                <span className="text-xs font-medium text-blue-700 dark:text-blue-400 shrink-0">
+                <span className="text-xs font-medium text-blue-700 dark:text-primary/60 shrink-0">
                   {Math.round(report.confidence * 100)}% уверенность
                 </span>
               </div>
@@ -237,7 +237,7 @@ export function DoctorAiReportPage() {
                 <ul className="space-y-1.5">
                   {report.possible_causes.map((cause, i) => (
                     <li key={i} className="flex gap-2 text-sm text-muted-foreground">
-                      <span className="text-blue-400 shrink-0 mt-0.5">·</span>
+                      <span className="text-primary/60 shrink-0 mt-0.5">·</span>
                       {cause}
                     </li>
                   ))}

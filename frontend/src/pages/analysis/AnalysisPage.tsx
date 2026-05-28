@@ -1,21 +1,19 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import {
-  ArrowLeft, Loader2, AlertTriangle, Phone, CheckCircle2,
-  AlertCircle, Info, ArrowRight, Calendar, HelpCircle, Paperclip,
-  MessageSquareOff,
+  Loader2, AlertTriangle, Phone, CheckCircle2,
+  Info, ArrowRight, Calendar, HelpCircle, Upload,
+  MessageSquareOff, Brain, Shield, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
 import { Textarea } from "@/shared/ui/textarea";
 import { Checkbox } from "@/shared/ui/checkbox";
-import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { Label } from "@/shared/ui/label";
 import { Progress } from "@/shared/ui/progress";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Input } from "@/shared/ui/input";
-import { Separator } from "@/shared/ui/separator";
 import { analysisApi } from "@/features/analysis/api/analysisApi";
 import type { AnalysisReport, QuestionDto, TriageLevel } from "@/features/analysis/types";
 import { routes } from "@/shared/config/routes";
@@ -23,11 +21,10 @@ import { UpcomingSlotsCard } from "@/widgets/upcoming-slots/UpcomingSlotsCard";
 
 type Step = "describe" | "questions" | "report";
 
-
 const TRIAGE_CONFIG: Record<TriageLevel, {
   label: string;
   color: string;
-  badgeVariant: "destructive" | "secondary" | "outline" | "default";
+  badgeVariant: "emergency" | "warning" | "success" | "info";
   bg: string;
   border: string;
   icon: typeof AlertTriangle;
@@ -35,7 +32,7 @@ const TRIAGE_CONFIG: Record<TriageLevel, {
   EMERGENCY: {
     label: "ВЫЗОВИТЕ СКОРУЮ",
     color: "text-red-700 dark:text-red-400",
-    badgeVariant: "destructive",
+    badgeVariant: "emergency",
     bg: "bg-red-50 dark:bg-red-950/40",
     border: "border-red-300 dark:border-red-800",
     icon: Phone,
@@ -43,7 +40,7 @@ const TRIAGE_CONFIG: Record<TriageLevel, {
   URGENT: {
     label: "НУЖНА КОНСУЛЬТАЦИЯ ВРАЧА",
     color: "text-amber-700 dark:text-amber-400",
-    badgeVariant: "secondary",
+    badgeVariant: "warning",
     bg: "bg-amber-50 dark:bg-amber-950/40",
     border: "border-amber-300 dark:border-amber-800",
     icon: AlertTriangle,
@@ -51,7 +48,7 @@ const TRIAGE_CONFIG: Record<TriageLevel, {
   ROUTINE: {
     label: "ПЛАНОВАЯ КОНСУЛЬТАЦИЯ",
     color: "text-emerald-700 dark:text-emerald-400",
-    badgeVariant: "outline",
+    badgeVariant: "success",
     bg: "bg-emerald-50 dark:bg-emerald-950/40",
     border: "border-emerald-300 dark:border-emerald-800",
     icon: CheckCircle2,
@@ -59,15 +56,17 @@ const TRIAGE_CONFIG: Record<TriageLevel, {
   INSUFFICIENT_DATA: {
     label: "НЕДОСТАТОЧНО ДАННЫХ",
     color: "text-blue-700 dark:text-blue-400",
-    badgeVariant: "secondary",
+    badgeVariant: "info",
     bg: "bg-blue-50 dark:bg-blue-950/40",
     border: "border-blue-300 dark:border-blue-800",
     icon: Info,
   },
 };
 
+const STEP_INDEX: Record<Step, number> = { describe: 1, questions: 2, report: 3 };
+const STEP_LABELS = ["Симптомы", "Вопросы", "Результат"];
+
 export function AnalysisPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   const [step, setStep] = useState<Step>("describe");
@@ -194,231 +193,285 @@ export function AnalysisPage() {
     setReport(null);
   };
 
+  const currentStepNum = STEP_INDEX[step];
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => (step === "describe" ? navigate(routes.patient.home) : handleReset())}
-          className="shrink-0"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <div>
-          <h1 className="text-xl font-bold text-foreground">Проверка симптомов</h1>
-          <p className="text-sm text-muted-foreground">AI-анализ симптомов</p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-accent/20 to-background">
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-2xl mx-auto space-y-8">
 
-      {/* Steps indicator */}
-      <div className="flex items-center gap-2 text-sm">
-        {(["describe", "questions", "report"] as Step[]).map((s, i) => {
-          const labels = ["Описание", "Вопросы", "Результат"];
-          const done =
-            (step === "questions" && i === 0) ||
-            (step === "report" && i < 2);
-          const active = step === s;
-          return (
-            <div key={s} className="flex items-center gap-2">
-              <div
-                className={`flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold transition-colors ${
-                  done || active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
-              </div>
-              <span className={active ? "font-semibold text-foreground" : "text-muted-foreground"}>
-                {labels[i]}
-              </span>
-              {i < 2 && <div className="w-8 h-px bg-border" />}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ── Step 1: Describe ── */}
-      {step === "describe" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Расскажите о своих симптомах</CardTitle>
-            <CardDescription>
-              Опишите своими словами — что беспокоит, когда началось, как проявляется
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <Textarea
-              placeholder="Например: три дня болит горло и температура 38, трудно глотать. Или: сильно болит голова в висках с утра, стало хуже за последние два дня..."
-              className="min-h-[140px] resize-none text-sm"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={5000}
-            />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Чем подробнее — тем точнее результат</span>
-              <span>{description.length}/5000</span>
-            </div>
-
-            <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border border-border">
-              <Checkbox
-                id="consent"
-                checked={consentGiven}
-                onCheckedChange={(v) => setConsentGiven(Boolean(v))}
-                className="mt-0.5"
-              />
-              <Label htmlFor="consent" className="text-sm leading-relaxed cursor-pointer">
-                Я даю согласие на анализ введённых данных для предварительной оценки состояния здоровья.
-                Понимаю, что результат не является медицинским диагнозом.
-              </Label>
-            </div>
-
-            <Button
-              onClick={handleStart}
-              disabled={loading || description.trim().length < 10 || !consentGiven}
-              className="w-full"
-            >
-              {loading ? (
-                <><Loader2 className="mr-2 w-4 h-4 animate-spin" />Анализируем...</>
-              ) : (
-                <>Начать проверку <ArrowRight className="ml-2 w-4 h-4" /></>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Step 2: Questions ── */}
-      {step === "questions" && currentQuestion && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base leading-relaxed">
-              {currentQuestion.question_text}
-            </CardTitle>
-
-            {/* Hint block */}
-            {currentQuestion.hint && (
-              <div className="mt-2 flex items-start gap-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-3">
-                <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed">
-                  {currentQuestion.hint}
-                </p>
-              </div>
-            )}
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Single choice */}
-            {(currentQuestion.question_type === "single_choice" ||
-              currentQuestion.question_type === "boolean") &&
-              currentQuestion.options && (
-                <RadioGroup value={currentAnswer} onValueChange={setCurrentAnswer} className="gap-2.5">
-                  {currentQuestion.options.map((opt) => (
+          {/* Progress Steps */}
+          <div className="flex items-center justify-center gap-0">
+            {[1, 2, 3].map((num) => {
+              const active = currentStepNum >= num;
+              const lineActive = currentStepNum > num;
+              return (
+                <div key={num} className="flex items-center">
+                  <div className="flex flex-col items-center gap-2">
                     <div
-                      key={opt}
-                      onClick={() => setCurrentAnswer(opt)}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        currentAnswer === opt
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50"
-                          : "border-border hover:border-blue-300 dark:hover:border-blue-700 hover:bg-accent"
+                      className={`rounded-2xl w-16 h-16 flex items-center justify-center font-bold text-xl transition-all duration-300 ${
+                        active
+                          ? "bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg scale-110"
+                          : "bg-card border-2 border-border text-muted-foreground"
                       }`}
                     >
-                      <RadioGroupItem value={opt} id={opt} />
-                      <Label htmlFor={opt} className="cursor-pointer text-sm flex-1">
-                        {opt.replace(/\s*\(\d+(?:\.\d+)?\)$/, "")}
-                      </Label>
+                      {num}
+                    </div>
+                    <span className={`text-xs font-medium ${active ? "text-primary" : "text-muted-foreground"}`}>
+                      {STEP_LABELS[num - 1]}
+                    </span>
+                  </div>
+                  {num < 3 && (
+                    <div className="w-20 h-1 bg-border mx-2 mb-5 overflow-hidden rounded-full">
+                      <div
+                        className={`h-full bg-primary rounded-full transition-all duration-500 ${lineActive ? "w-full" : "w-0"}`}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Step 1: Describe */}
+          {step === "describe" && (
+            <Card className="shadow-xl">
+              <CardHeader className="bg-gradient-to-br from-primary/5 to-transparent rounded-t-xl pb-4">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Brain className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">AI-Анализ симптомов</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Опишите ваши жалобы максимально подробно
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5 pt-5">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Что вас беспокоит?</Label>
+                  <Textarea
+                    placeholder="Например: три дня болит горло и температура 38, трудно глотать. Или: сильно болит голова в висках с утра, стало хуже за последние два дня..."
+                    className="min-h-[140px] resize-none text-sm rounded-xl"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    maxLength={5000}
+                  />
+                  <div className="flex justify-end">
+                    <span className="text-xs text-muted-foreground">{description.length}/5000</span>
+                  </div>
+                </div>
+
+                {/* Security info */}
+                <div className="flex items-start gap-3 p-3 rounded-xl bg-info/5 border border-info/20">
+                  <Shield className="w-4 h-4 text-info mt-0.5 shrink-0" />
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Ваши данные защищены и используются только для анализа в рамках текущей сессии.
+                  </p>
+                </div>
+
+                {/* Consent */}
+                <div className="flex items-start gap-3 p-4 bg-secondary rounded-xl">
+                  <Checkbox
+                    id="consent"
+                    checked={consentGiven}
+                    onCheckedChange={(v) => setConsentGiven(Boolean(v))}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="consent" className="text-sm leading-relaxed cursor-pointer">
+                    Я даю согласие на анализ введённых данных для предварительной оценки состояния здоровья.
+                    Понимаю, что результат не является медицинским диагнозом.
+                  </Label>
+                </div>
+
+                <Button
+                  onClick={handleStart}
+                  disabled={loading || description.trim().length < 10 || !consentGiven}
+                  className="w-full rounded-xl"
+                >
+                  {loading ? (
+                    <><Loader2 className="mr-2 w-4 h-4 animate-spin" />Анализируем...</>
+                  ) : (
+                    <>Начать анализ <ArrowRight className="ml-2 w-4 h-4" /></>
+                  )}
+                </Button>
+
+                {/* Info mini cards */}
+                <div className="grid grid-cols-3 gap-3 pt-1">
+                  {[
+                    { icon: Clock, label: "2–3 минуты", sub: "на анализ" },
+                    { icon: Brain, label: "AI-модель", sub: "обучена на клинических данных" },
+                    { icon: Shield, label: "Безопасно", sub: "данные не сохраняются" },
+                  ].map(({ icon: Icon, label, sub }) => (
+                    <div key={label} className="flex flex-col items-center text-center gap-1.5 p-3 rounded-xl bg-card border border-border">
+                      <Icon className="w-4 h-4 text-primary" />
+                      <span className="text-xs font-semibold text-foreground">{label}</span>
+                      <span className="text-[10px] text-muted-foreground leading-tight">{sub}</span>
                     </div>
                   ))}
-                </RadioGroup>
-              )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-            {/* Number input */}
-            {currentQuestion.question_type === "number" && (
-              <Input
-                type="number"
-                placeholder="Введите число..."
-                value={currentAnswer}
-                onChange={(e) => setCurrentAnswer(e.target.value)}
-                className="text-sm"
-              />
-            )}
+          {/* Step 2: Questions */}
+          {step === "questions" && currentQuestion && (
+            <Card className="shadow-xl">
+              <CardHeader className="bg-gradient-to-br from-warning/5 to-transparent rounded-t-xl pb-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <HelpCircle className="w-5 h-5 text-warning" />
+                  <span className="text-xs font-semibold text-warning uppercase tracking-wide">Уточняющие вопросы</span>
+                </div>
+                <CardTitle className="text-base leading-relaxed">
+                  {currentQuestion.question_text}
+                </CardTitle>
 
-            {/* Text input */}
-            {currentQuestion.question_type === "text" && (
-              <Textarea
-                placeholder="Ваш ответ..."
-                value={currentAnswer}
-                onChange={(e) => setCurrentAnswer(e.target.value)}
-                className="min-h-[80px] resize-none text-sm"
-              />
-            )}
-
-            {/* Optional file upload */}
-            <div className="pt-1">
-              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer hover:text-foreground transition-colors w-fit">
-                <Paperclip className="w-3.5 h-3.5" />
-                {fileUploading ? (
-                  <><Loader2 className="w-3 h-3 animate-spin" /> Загрузка...</>
-                ) : (
-                  "Прикрепить документы (заключения, снимки, анализы — PDF, JPG, PNG до 50 МБ)"
+                {currentQuestion.hint && (
+                  <div className="mt-3 flex items-start gap-2 rounded-xl bg-info/5 border border-info/20 p-3">
+                    <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {currentQuestion.hint}
+                    </p>
+                  </div>
                 )}
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="hidden"
-                  onChange={handleFileSelect}
-                  disabled={fileUploading || !sessionId}
-                />
-              </label>
-              {uploadedFiles.length > 0 && (
-                <ul className="mt-2 space-y-2">
-                  {uploadedFiles.map((f, i) => (
-                    <li key={i} className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2">
-                      <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{f.name}</span>
-                      </div>
-                      {f.summary && (
-                        <p className="mt-1 text-xs text-muted-foreground line-clamp-2 pl-5">
-                          {f.summary.replace(/^\[.*?\]\s*/, "").slice(0, 120)}…
-                        </p>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-4">
+                {/* Single choice / boolean */}
+                {(currentQuestion.question_type === "single_choice" ||
+                  currentQuestion.question_type === "boolean") &&
+                  currentQuestion.options && (
+                    <div className="space-y-2">
+                      {currentQuestion.options.map((opt) => (
+                        <Button
+                          key={opt}
+                          variant="outline"
+                          onClick={() => setCurrentAnswer(opt)}
+                          className={`w-full justify-start text-sm h-auto py-3 px-4 rounded-xl transition-all ${
+                            currentAnswer === opt
+                              ? "border-primary bg-primary/5 text-primary font-medium"
+                              : ""
+                          }`}
+                        >
+                          {opt.replace(/\s*\(\d+(?:\.\d+)?\)$/, "")}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
 
-            <div className="flex gap-3 pt-2">
-              <Button
-                variant="outline"
-                onClick={handleSkip}
-                className="flex-1 text-sm text-muted-foreground"
-                disabled={loading}
-              >
-                Не знаю / Пропустить
-              </Button>
-              <Button
-                onClick={handleAnswer}
-                disabled={loading || !currentAnswer.trim()}
-                className="flex-1"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>Далее <ArrowRight className="ml-1.5 w-4 h-4" /></>
+                {/* Number input */}
+                {currentQuestion.question_type === "number" && (
+                  <Input
+                    type="number"
+                    placeholder="Введите число..."
+                    value={currentAnswer}
+                    onChange={(e) => setCurrentAnswer(e.target.value)}
+                    className="text-sm rounded-xl"
+                  />
                 )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* ── Step 3: Report ── */}
-      {step === "report" && report && (
-        report.triage_level === "INSUFFICIENT_DATA" && report.confidence === 0
-          ? <NonMedicalScreen onReset={handleReset} />
-          : <ReportView report={report} onReset={handleReset} />
-      )}
+                {/* Text input */}
+                {currentQuestion.question_type === "text" && (
+                  <Textarea
+                    placeholder="Ваш ответ..."
+                    value={currentAnswer}
+                    onChange={(e) => setCurrentAnswer(e.target.value)}
+                    className="min-h-[80px] resize-none text-sm rounded-xl"
+                  />
+                )}
+
+                {/* File upload */}
+                <div className="pt-1">
+                  <label
+                    className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed cursor-pointer transition-colors ${
+                      fileUploading || !sessionId
+                        ? "opacity-50 cursor-not-allowed border-border"
+                        : "border-border hover:border-primary/50 hover:bg-primary/5"
+                    }`}
+                  >
+                    {fileUploading ? (
+                      <><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /><span className="text-xs text-muted-foreground">Загрузка...</span></>
+                    ) : (
+                      <>
+                        <Upload className="w-5 h-5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground text-center">
+                          Прикрепить документы (заключения, снимки, анализы)<br />
+                          <span className="text-[10px]">PDF, JPG, PNG до 50 МБ</span>
+                        </span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={handleFileSelect}
+                      disabled={fileUploading || !sessionId}
+                    />
+                  </label>
+
+                  {uploadedFiles.length > 0 && (
+                    <ul className="mt-2 space-y-2">
+                      {uploadedFiles.map((f, i) => (
+                        <li key={i} className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2">
+                          <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                            <span className="truncate">{f.name}</span>
+                          </div>
+                          {f.summary && (
+                            <p className="mt-1 text-xs text-muted-foreground line-clamp-2 pl-5">
+                              {f.summary.replace(/^\[.*?\]\s*/, "").slice(0, 120)}…
+                            </p>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Navigation */}
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleReset}
+                    className="rounded-xl"
+                    disabled={loading}
+                  >
+                    Назад
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={handleSkip}
+                    className="rounded-xl"
+                    disabled={loading}
+                  >
+                    Пропустить
+                  </Button>
+                  <Button
+                    onClick={handleAnswer}
+                    disabled={loading || !currentAnswer.trim()}
+                    className="flex-1 rounded-xl"
+                  >
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>Далее <ArrowRight className="ml-1.5 w-4 h-4" /></>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 3: Report */}
+          {step === "report" && report && (
+            report.triage_level === "INSUFFICIENT_DATA" && report.confidence === 0
+              ? <NonMedicalScreen onReset={handleReset} />
+              : <ReportView report={report} onReset={handleReset} />
+          )}
+
+        </div>
+      </div>
     </div>
   );
 }
@@ -426,10 +479,10 @@ export function AnalysisPage() {
 function NonMedicalScreen({ onReset }: { onReset: () => void }) {
   const navigate = useNavigate();
   return (
-    <Card className="border-border">
+    <Card className="shadow-xl border-border">
       <CardContent className="pt-10 pb-8 flex flex-col items-center text-center gap-4">
-        <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
-          <MessageSquareOff className="w-7 h-7 text-muted-foreground" />
+        <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center">
+          <MessageSquareOff className="w-8 h-8 text-muted-foreground" />
         </div>
         <div className="space-y-1.5">
           <h2 className="text-lg font-semibold text-foreground">Это не медицинский запрос</h2>
@@ -439,30 +492,9 @@ function NonMedicalScreen({ onReset }: { onReset: () => void }) {
           </p>
         </div>
         <div className="flex gap-3 mt-2">
-          <Button onClick={onReset}>Описать симптомы</Button>
-          <Button variant="outline" onClick={() => navigate(routes.patient.home)}>На главную</Button>
+          <Button onClick={onReset} className="rounded-xl">Описать симптомы</Button>
+          <Button variant="outline" onClick={() => navigate(routes.patient.home)} className="rounded-xl">На главную</Button>
         </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ExplanationBlock({ explanation }: { explanation: string }) {
-  const clean = explanation
-    .replace(/^#{1,4}\s*/gm, "")
-    .replace(/\*\*/g, "")
-    .trim();
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-          Что это означает
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-line">{clean}</p>
       </CardContent>
     </Card>
   );
@@ -475,157 +507,140 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
   const confidencePct = Math.round(report.confidence * 100);
 
   return (
-    <div className="space-y-4">
-      {/* Triage banner */}
-      <div className={`rounded-xl border-2 p-5 ${cfg.bg} ${cfg.border}`}>
-        <div className="flex items-start gap-3">
-          <div className="p-2 rounded-lg bg-white/60 dark:bg-black/20 shrink-0">
-            <Icon className={`w-5 h-5 ${cfg.color}`} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <Badge
-              variant={cfg.badgeVariant}
-              className={`text-xs font-bold uppercase tracking-wide ${
-                report.triage_level === "EMERGENCY"
-                  ? "bg-red-600 text-white border-0 animate-pulse"
-                  : ""
-              }`}
-            >
-              {cfg.label}
-            </Badge>
-            <p className={`mt-2 font-semibold text-base leading-snug ${cfg.color}`}>
-              {report.primary_diagnosis}
-            </p>
-            {report.triage_level === "EMERGENCY" && (
-              <p className="mt-2 text-sm font-medium text-red-700 dark:text-red-400 flex items-center gap-1.5">
-                <Phone className="w-4 h-4 shrink-0" />
-                Немедленно вызовите скорую помощь — 103
+    <div className="space-y-5">
+      {/* Hero triage card */}
+      <Card className={`shadow-2xl border-2 ${cfg.border}`}>
+        <CardContent className="pt-6 pb-6">
+          <div className="flex items-start gap-4">
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 ${cfg.bg}`}>
+              <Icon className={`w-8 h-8 ${cfg.color}`} />
+            </div>
+            <div className="flex-1 min-w-0 space-y-3">
+              <Badge
+                variant={cfg.badgeVariant}
+                className={`text-xs font-bold uppercase tracking-wide ${
+                  report.triage_level === "EMERGENCY" ? "animate-pulse" : ""
+                }`}
+              >
+                {cfg.label}
+              </Badge>
+              <p className={`font-semibold text-base leading-snug ${cfg.color}`}>
+                {report.primary_diagnosis}
               </p>
-            )}
+              {report.triage_level === "EMERGENCY" && (
+                <p className="text-sm font-medium text-red-700 dark:text-red-400 flex items-center gap-1.5">
+                  <Phone className="w-4 h-4 shrink-0" />
+                  Немедленно вызовите скорую помощь — 103
+                </p>
+              )}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Уверенность:</span>
+                  <span className={`font-bold ${
+                    confidencePct >= 75 ? "text-emerald-600" :
+                    confidencePct >= 60 ? "text-amber-600" : "text-muted-foreground"
+                  }`}>
+                    {confidencePct}%
+                  </span>
+                </div>
+                <Progress
+                  value={confidencePct}
+                  className={`h-2 ${
+                    confidencePct >= 75 ? "[&>div]:bg-emerald-500" :
+                    confidencePct >= 60 ? "[&>div]:bg-amber-500" : "[&>div]:bg-slate-400"
+                  }`}
+                />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Confidence */}
-      <Card>
-        <CardContent className="pt-5 space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground font-medium">Достоверность оценки</span>
-            <span className={`font-bold text-base ${
-              confidencePct >= 75 ? "text-emerald-600" :
-              confidencePct >= 60 ? "text-amber-600" : "text-muted-foreground"
-            }`}>
-              {confidencePct}%
-            </span>
-          </div>
-          <Progress
-            value={confidencePct}
-            className={`h-2 ${
-              confidencePct >= 75 ? "[&>div]:bg-emerald-500" :
-              confidencePct >= 60 ? "[&>div]:bg-amber-500" : "[&>div]:bg-slate-400"
-            }`}
-          />
-          <p className="text-xs text-muted-foreground">
-            Оценка основана на статистической модели, обученной на клинических данных
-          </p>
         </CardContent>
       </Card>
 
-      {/* Summary — what we learned about the patient */}
+      {/* 2-col grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Possible diagnoses */}
+        {report.possible_causes && report.possible_causes.length > 0 && (
+          <Card className="shadow-md">
+            <CardHeader className="pb-3 bg-gradient-to-br from-primary/5 to-transparent rounded-t-xl">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-primary" />
+                Возможные причины
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-3">
+              <ul className="space-y-2">
+                {report.possible_causes.map((cause, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground/90">
+                    <Badge variant="outline" className="shrink-0 text-[10px] mt-0.5">{i + 1}</Badge>
+                    <span>{cause}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Recommendations */}
+        {report.recommendations.length > 0 && (
+          <Card className="shadow-md">
+            <CardHeader className="pb-3 bg-gradient-to-br from-safe/5 to-transparent rounded-t-xl">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-safe" />
+                Рекомендации
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-3">
+              <ul className="space-y-2">
+                {report.recommendations.map((rec, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground/90">
+                    <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 text-safe shrink-0" />
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Red flags */}
+        {report.red_flags && report.red_flags.length > 0 && (
+          <Card className="shadow-md border-emergency/20 sm:col-span-2">
+            <CardHeader className="pb-3 bg-gradient-to-br from-emergency/5 to-transparent rounded-t-xl">
+              <CardTitle className="text-sm flex items-center gap-2 text-emergency">
+                <AlertTriangle className="w-4 h-4" />
+                Когда срочно к врачу
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-3">
+              <ul className="space-y-2">
+                {report.red_flags.map((flag, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-foreground/90">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emergency mt-2 shrink-0" />
+                    <span>{flag}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Summary */}
       {report.summary && (
-        <Card>
+        <Card className="shadow-md">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Info className="w-4 h-4 text-info" />
               Что мы выяснили
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-foreground/90 leading-relaxed">
-              {report.summary}
-            </p>
+            <p className="text-sm text-foreground/90 leading-relaxed">{report.summary}</p>
           </CardContent>
         </Card>
       )}
 
-      {/* Explanation */}
-      <ExplanationBlock explanation={report.explanation} />
-
-      {/* Possible causes */}
-      {report.possible_causes && report.possible_causes.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              Возможные причины
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Это лишь предположения на основе ваших ответов — точный диагноз ставит врач
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2.5">
-              {report.possible_causes.map((cause, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/90">
-                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-                  <span>{cause}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Red flags — emergency warnings specific to this case */}
-      {report.red_flags && report.red_flags.length > 0 && (
-        <Card className="border-coral-200 dark:border-coral-900 bg-coral-50/50 dark:bg-coral-950/10">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2 text-coral-700 dark:text-coral-300">
-              <AlertTriangle className="w-4 h-4" />
-              Когда срочно к врачу
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Признаки, при которых нужна неотложная помощь
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {report.red_flags.map((flag, i) => (
-                <li key={i} className="flex items-start gap-2.5 text-sm text-foreground/90">
-                  <AlertCircle className="w-4 h-4 mt-0.5 text-coral-600 dark:text-coral-400 shrink-0" />
-                  <span>{flag}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recommendations */}
-      {report.recommendations.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              Что делать дальше
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {report.recommendations.map((rec, i) => (
-                <li key={i} className="flex items-start gap-3 text-sm text-foreground/90">
-                  <span className="mt-0.5 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-700 dark:text-blue-400 text-xs font-semibold shrink-0">
-                    {i + 1}
-                  </span>
-                  {rec}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Embedded upcoming-slots widget — only for non-emergency triage */}
+      {/* Available slots widget */}
       {report.triage_level !== "EMERGENCY" && (
         <UpcomingSlotsCard
           specializationCode={report.recommended_specialization}
@@ -634,32 +649,39 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
       )}
 
       {/* Disclaimer */}
-      <div className="px-1">
-        <Separator className="mb-3" />
-        <p className="text-xs text-muted-foreground leading-relaxed">
-          ⚕️ {report.disclaimer}
-        </p>
-      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed px-1 border-t border-border pt-4">
+        ⚕️ {report.disclaimer}
+      </p>
 
-      {/* Actions */}
+      {/* Action buttons */}
       <div className="flex flex-col sm:flex-row gap-3">
         <Button
-          className="flex-1"
-          onClick={() => {
-            const spec = report.recommended_specialization;
-            const path = spec
-              ? `${routes.patient.doctors}?specialization=${spec}`
-              : routes.patient.doctors;
-            navigate(path);
-          }}
+          variant="outline"
+          onClick={onReset}
+          className="rounded-xl"
         >
-          <Calendar className="mr-2 w-4 h-4" />
-          Все врачи этой специализации
-        </Button>
-        <Button variant="outline" onClick={onReset} className="flex-1">
           Проверить снова
         </Button>
-        <Button variant="ghost" onClick={() => navigate(routes.patient.home)}>
+        <Button
+          asChild
+          className="flex-1 rounded-xl"
+        >
+          <Link
+            to={
+              report.recommended_specialization
+                ? `${routes.patient.doctors}?specialization=${report.recommended_specialization}`
+                : routes.patient.doctors
+            }
+          >
+            <Calendar className="mr-2 w-4 h-4" />
+            Найти врача
+          </Link>
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => navigate(routes.patient.home)}
+          className="rounded-xl"
+        >
           На главную
         </Button>
       </div>

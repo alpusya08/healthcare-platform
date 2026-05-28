@@ -37,54 +37,43 @@ const config: Config = {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
-        // Warm "sage" palette overrides default teal — used as the brand color across the app.
-        // Replaces clinical teal/cyan with a softer, more human medical green.
-        teal: {
-          50: "#f3f8f3",
-          100: "#e1ede2",
-          200: "#c2dac6",
-          300: "#9bbfa3",
-          400: "#74a17e",
-          500: "#558461",
-          600: "#41694c",
-          700: "#34543e",
-          800: "#2c4434",
-          900: "#26392c",
-          950: "#121f17",
+        card: {
+          DEFAULT: "hsl(var(--card))",
+          foreground: "hsl(var(--card-foreground))",
         },
-        // Warm coral for emergency / urgent banners — replaces harsh red.
-        coral: {
-          50: "#fff4f1",
-          100: "#ffe4dc",
-          200: "#ffcab9",
-          300: "#ffa386",
-          400: "#ff7551",
-          500: "#fa5128",
-          600: "#e8391b",
-          700: "#c22b18",
-          800: "#9d271a",
-          900: "#80251b",
-          950: "#460f08",
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
         },
-        // Warm amber for ratings / highlights.
-        sand: {
-          50: "#fbf8f1",
-          100: "#f4ecd9",
-          200: "#e9d8b3",
-          300: "#dcbd83",
-          400: "#cf9f54",
-          500: "#bf853a",
-          600: "#a26b30",
-          700: "#84522a",
-          800: "#6d4327",
-          900: "#5b3923",
-          950: "#321d11",
+        /* Medical semantic colors */
+        emergency: {
+          DEFAULT: "hsl(var(--emergency))",
+          foreground: "hsl(var(--emergency-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        safe: {
+          DEFAULT: "hsl(var(--safe))",
+          foreground: "hsl(var(--safe-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
         },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        xl: "calc(var(--radius) + 4px)",
+        "2xl": "calc(var(--radius) + 8px)",
+        "3xl": "calc(var(--radius) + 16px)",
       },
     },
   },

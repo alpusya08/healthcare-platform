@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, startOfWeek, addDays, addWeeks, isSameDay, parseISO } from "date-fns";
+import { format, parseISO, isSameDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import {
-  Calendar, ChevronLeft, ChevronRight, Settings, Zap,
-  Lock, Unlock, Trash2, CheckCircle2, Clock
+  Calendar, Settings, Zap,
+  Lock, Unlock, Trash2, CheckCircle2, Clock, Info,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
 import { apiClient } from "@/shared/api/axios";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
@@ -28,94 +29,20 @@ const SLOT_TYPE_LABEL: Record<string, string> = {
   BOTH: "Онлайн/Офлайн",
 };
 
-const SLOT_TYPE_COLOR: Record<string, string> = {
-  ONLINE_ONLY: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-  OFFLINE_ONLY: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  BOTH: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
-};
-
-function SlotCard({
-  slot,
-  onBlock,
-  onUnblock,
-  onDelete,
-}: {
-  slot: DoctorSlot;
-  onBlock: () => void;
-  onUnblock: () => void;
-  onDelete: () => void;
-}) {
-  const start = parseISO(slot.startTime);
-  const end = parseISO(slot.endTime);
-
-  return (
-    <div
-      className={cn(
-        "relative rounded-md px-2.5 py-2 text-xs border transition-colors group",
-        slot.booked
-          ? "bg-rose-50 border-rose-200 dark:bg-rose-950/30 dark:border-rose-800"
-          : slot.blocked
-          ? "bg-gray-100 border-gray-300 dark:bg-gray-800/40 dark:border-gray-700 opacity-60"
-          : "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/30 dark:border-emerald-800"
-      )}
-    >
-      <div className="font-semibold text-foreground">
-        {format(start, "HH:mm")}–{format(end, "HH:mm")}
-      </div>
-      <div className="mt-0.5">
-        {slot.booked ? (
-          <span className="text-rose-600 dark:text-rose-400 flex items-center gap-0.5">
-            <CheckCircle2 className="w-3 h-3" /> Занято
-          </span>
-        ) : slot.blocked ? (
-          <span className="text-gray-500 flex items-center gap-0.5">
-            <Lock className="w-3 h-3" /> Заблокировано
-          </span>
-        ) : (
-          <span className={cn("rounded px-1 py-0.5 text-[10px] font-medium", SLOT_TYPE_COLOR[slot.appointmentType])}>
-            {SLOT_TYPE_LABEL[slot.appointmentType] ?? slot.appointmentType}
-          </span>
-        )}
-      </div>
-      {!slot.booked && (
-        <div className="absolute top-1 right-1 hidden group-hover:flex gap-1">
-          {slot.blocked ? (
-            <button
-              onClick={onUnblock}
-              title="Разблокировать"
-              className="p-0.5 rounded bg-white dark:bg-gray-700 hover:bg-blue-50 text-muted-foreground hover:text-blue-600 transition-colors"
-            >
-              <Unlock className="w-3 h-3" />
-            </button>
-          ) : (
-            <button
-              onClick={onBlock}
-              title="Заблокировать"
-              className="p-0.5 rounded bg-white dark:bg-gray-700 hover:bg-amber-50 text-muted-foreground hover:text-amber-600 transition-colors"
-            >
-              <Lock className="w-3 h-3" />
-            </button>
-          )}
-          <button
-            onClick={onDelete}
-            title="Удалить"
-            className="p-0.5 rounded bg-white dark:bg-gray-700 hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-colors"
-          >
-            <Trash2 className="w-3 h-3" />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function DoctorSchedulePage() {
   const queryClient = useQueryClient();
-  const [weekOffset, setWeekOffset] = useState(0);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
 
-  const weekStart = startOfWeek(addWeeks(new Date(), weekOffset), { weekStartsOn: 1 });
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  // Generate slots date range state
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date();
+    return d.toISOString().split("T")[0];
+  });
+  const [dateTo, setDateTo] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 28);
+    return d.toISOString().split("T")[0];
+  });
 
   const { data: slots = [], isLoading } = useQuery({
     queryKey: ["doctor-slots"],
@@ -150,149 +77,293 @@ export function DoctorSchedulePage() {
     onError: () => toast.error("Не удалось удалить слот"),
   });
 
-  const slotsForDay = (date: Date) =>
-    slots.filter((s) => isSameDay(parseISO(s.startTime), date));
-
   const totalFree = slots.filter((s) => !s.booked && !s.blocked).length;
   const totalBooked = slots.filter((s) => s.booked).length;
+  const totalBlocked = slots.filter((s) => s.blocked).length;
+
+  // Compute weeks ahead from date range
+  const weeksAhead = Math.max(
+    1,
+    Math.ceil((new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / (7 * 24 * 60 * 60 * 1000))
+  );
+
+  // Group slots by date for the list view
+  const slotsByDate = slots.reduce<Record<string, DoctorSlot[]>>((acc, slot) => {
+    const dateKey = slot.startTime.split("T")[0];
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(slot);
+    return acc;
+  }, {});
+  const sortedDates = Object.keys(slotsByDate).sort();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Расписание</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Управляйте своими слотами и шаблоном рабочей недели
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowTemplateModal(true)}>
-            <Settings className="w-4 h-4 mr-2" />
-            Шаблон недели
-          </Button>
-          <Button
-            onClick={() => generateMutation.mutate(4)}
-            disabled={generateMutation.isPending}
-          >
-            <Zap className="w-4 h-4 mr-2" />
-            {generateMutation.isPending ? "Генерация..." : "Сгенерировать на 4 недели"}
-          </Button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-background">
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="border-border">
-          <CardContent className="pt-4 pb-3">
-            <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{totalFree}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Свободных слотов</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border">
-          <CardContent className="pt-4 pb-3">
-            <p className="text-2xl font-bold text-rose-600 dark:text-rose-400">{totalBooked}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Занятых слотов</p>
-          </CardContent>
-        </Card>
-        <Card className="border-border">
-          <CardContent className="pt-4 pb-3">
-            <p className="text-2xl font-bold text-foreground">{slots.length}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Всего слотов</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Week calendar */}
-      <Card className="border-border">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Calendar className="w-4 h-4 text-blue-600" />
-              {format(weekStart, "d MMMM", { locale: ru })} –{" "}
-              {format(addDays(weekStart, 6), "d MMMM yyyy", { locale: ru })}
-            </CardTitle>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={() => setWeekOffset((o) => o - 1)}>
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setWeekOffset(0)}
-                className="text-xs"
-              >
-                Сегодня
-              </Button>
-              <Button variant="ghost" size="icon" onClick={() => setWeekOffset((o) => o + 1)}>
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+      {/* ── Gradient Header ── */}
+      <div className="bg-gradient-to-br from-primary/5 via-background to-accent/10 border-b border-border py-12">
+        <div className="container mx-auto px-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-sm font-medium text-primary/70 uppercase tracking-widest mb-1">Врач</p>
+              <h1 className="text-3xl font-bold text-foreground">Управление расписанием</h1>
+              <p className="mt-1 text-muted-foreground">
+                Настройте шаблон рабочей недели и управляйте слотами
+              </p>
+            </div>
+            {/* Stat chips */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "Свободно", value: totalFree, color: "text-success" },
+                { label: "Занято", value: totalBooked, color: "text-destructive" },
+                { label: "Заблокировано", value: totalBlocked, color: "text-muted-foreground" },
+                { label: "Всего", value: slots.length, color: "text-primary" },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-background/80 border border-border shadow-sm">
+                  <span className={cn("text-sm font-bold", color)}>{value}</span>
+                  <span className="text-xs text-muted-foreground">{label}</span>
+                </div>
+              ))}
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">Загрузка расписания...</div>
-          ) : (
-            <div className="grid grid-cols-7 gap-2">
-              {weekDays.map((day) => {
-                const daySlots = slotsForDay(day);
-                const isToday = isSameDay(day, new Date());
-                return (
-                  <div key={day.toISOString()}>
-                    <div
-                      className={cn(
-                        "text-center pb-2 mb-2 border-b border-border",
-                        isToday && "text-blue-600 dark:text-blue-400 font-bold"
-                      )}
-                    >
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                        {format(day, "EEE", { locale: ru })}
-                      </p>
-                      <p className={cn("text-sm font-medium mt-0.5", isToday && "text-blue-600 dark:text-blue-400")}>
-                        {format(day, "d")}
-                      </p>
-                    </div>
-                    <div className="space-y-1.5">
-                      {daySlots.length === 0 ? (
-                        <p className="text-[10px] text-muted-foreground/50 text-center py-2">—</p>
-                      ) : (
-                        daySlots.map((slot) => (
-                          <SlotCard
-                            key={slot.id}
-                            slot={slot}
-                            onBlock={() => blockMutation.mutate(slot.id)}
-                            onUnblock={() => unblockMutation.mutate(slot.id)}
-                            onDelete={() => deleteMutation.mutate(slot.id)}
-                          />
-                        ))
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm bg-emerald-100 border border-emerald-200" />
-          Свободно
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm bg-rose-100 border border-rose-200" />
-          Занято
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-sm bg-gray-200 border border-gray-300" />
-          Заблокировано
-        </span>
-        <span className="flex items-center gap-1.5">
-          <Clock className="w-3 h-3" />
-          Наведите на слот для действий
-        </span>
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          {/* ── Left Column ── */}
+          <div className="space-y-6">
+
+            {/* Schedule Template Card */}
+            <Card className="shadow-xl rounded-2xl border-border hover:shadow-2xl transition-all">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Settings className="w-4 h-4 text-primary" />
+                  </div>
+                  Шаблон недели
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Настройте рабочие дни, время и продолжительность приёмов. Шаблон используется при генерации слотов.
+                </p>
+                <Button
+                  className="w-full rounded-xl"
+                  onClick={() => setShowTemplateModal(true)}
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  Открыть редактор шаблона
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Generate Slots Card */}
+            <Card className="shadow-xl rounded-2xl border-primary/30 hover:shadow-2xl transition-all bg-gradient-to-br from-primary/3 to-background">
+              <CardHeader className="pb-4">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center">
+                    <Zap className="w-4 h-4 text-primary" />
+                  </div>
+                  Генерация слотов
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Date range inputs */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">С даты</label>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">По дату</label>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Info note */}
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-info/5 border border-info/20">
+                  <Info className="w-4 h-4 text-info shrink-0 mt-0.5" />
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Будет создано ~{weeksAhead} {weeksAhead === 1 ? "неделя" : weeksAhead < 5 ? "недели" : "недель"} слотов по шаблону рабочей недели. Уже существующие слоты не будут затронуты.
+                  </p>
+                </div>
+
+                <Button
+                  className="w-full rounded-xl bg-primary hover:bg-primary/90 text-white shadow-md"
+                  onClick={() => generateMutation.mutate(weeksAhead)}
+                  disabled={generateMutation.isPending}
+                >
+                  <Zap className="w-4 h-4 mr-2" />
+                  {generateMutation.isPending ? "Генерация..." : `Сгенерировать на ${weeksAhead} нед.`}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* ── Right Column: Slots List ── */}
+          <Card className="shadow-xl rounded-2xl border-border hover:shadow-2xl transition-all">
+            <CardHeader className="pb-4 border-b border-border">
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <Calendar className="w-4 h-4 text-primary" />
+                  </div>
+                  Все слоты
+                </CardTitle>
+                <span className="text-sm font-bold text-muted-foreground">{slots.length} всего</span>
+              </div>
+              {/* Legend */}
+              <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-success inline-block" />
+                  Свободно
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-destructive inline-block" />
+                  Занято
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/40 inline-block" />
+                  Заблокировано
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                  <Clock className="w-8 h-8 animate-pulse text-primary/30" />
+                  <p className="text-sm">Загрузка расписания...</p>
+                </div>
+              ) : slots.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
+                  <Calendar className="w-12 h-12 text-muted-foreground/20" />
+                  <p className="font-semibold text-foreground">Слотов нет</p>
+                  <p className="text-sm text-center">Сгенерируйте слоты по шаблону рабочей недели</p>
+                </div>
+              ) : (
+                <div className="space-y-5 max-h-[600px] overflow-y-auto pr-1">
+                  {sortedDates.map((dateKey) => {
+                    const daySlots = slotsByDate[dateKey];
+                    const dateObj = parseISO(dateKey + "T00:00:00");
+                    const isToday = isSameDay(dateObj, new Date());
+                    return (
+                      <div key={dateKey}>
+                        {/* Date header */}
+                        <div className={cn(
+                          "flex items-center gap-2 mb-2 pb-1.5 border-b border-border",
+                          isToday && "border-primary/30"
+                        )}>
+                          <div className={cn(
+                            "w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold",
+                            isToday ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
+                          )}>
+                            {format(dateObj, "d")}
+                          </div>
+                          <p className={cn(
+                            "text-xs font-semibold uppercase tracking-wide",
+                            isToday ? "text-primary" : "text-muted-foreground"
+                          )}>
+                            {format(dateObj, "EEEE, d MMMM", { locale: ru })}
+                            {isToday && <span className="ml-2 normal-case font-normal">· Сегодня</span>}
+                          </p>
+                        </div>
+                        {/* Slot cards */}
+                        <div className="space-y-2">
+                          {daySlots.map((slot) => {
+                            const start = parseISO(slot.startTime);
+                            const end = parseISO(slot.endTime);
+                            return (
+                              <div
+                                key={slot.id}
+                                className={cn(
+                                  "flex items-center justify-between gap-3 rounded-xl px-4 py-3 border transition-all group",
+                                  slot.booked
+                                    ? "bg-destructive/5 border-destructive/20"
+                                    : slot.blocked
+                                    ? "bg-muted border-border opacity-60"
+                                    : "bg-success/5 border-success/20 hover:border-success/40"
+                                )}
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  {/* Time */}
+                                  <div className="shrink-0">
+                                    <p className="text-sm font-bold text-foreground font-mono">
+                                      {format(start, "HH:mm")}
+                                    </p>
+                                    <p className="text-[10px] text-muted-foreground font-mono">
+                                      {format(end, "HH:mm")}
+                                    </p>
+                                  </div>
+                                  {/* Status badge */}
+                                  {slot.booked ? (
+                                    <Badge className="text-[10px] px-2 py-0.5 bg-destructive/10 text-destructive border-destructive/20 rounded-lg shrink-0">
+                                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                                      Занято
+                                    </Badge>
+                                  ) : slot.blocked ? (
+                                    <Badge className="text-[10px] px-2 py-0.5 bg-secondary text-muted-foreground border-border rounded-lg shrink-0">
+                                      <Lock className="w-3 h-3 mr-1" />
+                                      Заблокировано
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="text-[10px] px-2 py-0.5 bg-success/10 text-success border-success/20 rounded-lg shrink-0">
+                                      {SLOT_TYPE_LABEL[slot.appointmentType] ?? slot.appointmentType}
+                                    </Badge>
+                                  )}
+                                </div>
+
+                                {/* Actions for non-booked */}
+                                {!slot.booked && (
+                                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                    {slot.blocked ? (
+                                      <button
+                                        onClick={() => unblockMutation.mutate(slot.id)}
+                                        title="Разблокировать"
+                                        className="p-1.5 rounded-lg hover:bg-info/10 text-muted-foreground hover:text-info transition-colors"
+                                      >
+                                        <Unlock className="w-3.5 h-3.5" />
+                                      </button>
+                                    ) : (
+                                      <button
+                                        onClick={() => blockMutation.mutate(slot.id)}
+                                        title="Заблокировать"
+                                        className="p-1.5 rounded-lg hover:bg-warning/10 text-muted-foreground hover:text-warning transition-colors"
+                                      >
+                                        <Lock className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => deleteMutation.mutate(slot.id)}
+                                      title="Удалить"
+                                      className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <TemplateModal

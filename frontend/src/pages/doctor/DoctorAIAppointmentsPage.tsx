@@ -91,7 +91,7 @@ function AppointmentListItem({
         "flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all",
         selected
           ? "border-blue-400 bg-blue-50 dark:bg-blue-950/30"
-          : "border-border hover:border-blue-300 hover:bg-muted/30"
+          : "border-border hover:border-primary/40 hover:bg-muted/30"
       )}
     >
       <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center shrink-0 font-bold text-blue-700 dark:text-blue-300 text-sm">
@@ -111,7 +111,7 @@ function AppointmentListItem({
           <Calendar className="w-3 h-3" />
           <span>{fmt(appt.startTime)}</span>
           {appt.type === "ONLINE" && (
-            <span className="flex items-center gap-0.5 text-blue-500">
+            <span className="flex items-center gap-0.5 text-primary">
               <Video className="w-3 h-3" />
               Онлайн
             </span>
@@ -121,7 +121,7 @@ function AppointmentListItem({
           <p className="text-xs text-muted-foreground mt-1 line-clamp-1 italic">«{appt.complaint}»</p>
         )}
       </div>
-      <ChevronRight className={cn("w-4 h-4 shrink-0 mt-1 transition-colors", selected ? "text-blue-500" : "text-muted-foreground")} />
+      <ChevronRight className={cn("w-4 h-4 shrink-0 mt-1 transition-colors", selected ? "text-primary" : "text-muted-foreground")} />
     </div>
   );
 }
@@ -182,16 +182,16 @@ function AiReportPanel({ appt }: { appt: DoctorAppointment }) {
               </div>
               <div className="mt-1.5 space-y-1 text-sm text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-blue-500" />
+                  <Calendar className="w-3.5 h-3.5 text-primary" />
                   <span>{fmtFull(appt.startTime)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Stethoscope className="w-3.5 h-3.5 text-blue-500" />
+                  <Stethoscope className="w-3.5 h-3.5 text-primary" />
                   <span>{appt.type === "ONLINE" ? "Онлайн-консультация" : "Очный приём"}</span>
                 </div>
                 {appt.patientPhone && (
                   <div className="flex items-center gap-2">
-                    <User className="w-3.5 h-3.5 text-blue-500" />
+                    <User className="w-3.5 h-3.5 text-primary" />
                     <a href={`tel:${appt.patientPhone}`} className="hover:underline">{appt.patientPhone}</a>
                   </div>
                 )}
@@ -208,7 +208,7 @@ function AiReportPanel({ appt }: { appt: DoctorAppointment }) {
 
       {/* Online meeting link */}
       {appt.status === "SCHEDULED" && appt.type === "ONLINE" && appt.meetingLink && (
-        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white" asChild>
+        <Button className="w-full bg-primary hover:bg-primary/90 text-white" asChild>
           <a href={appt.meetingLink} target="_blank" rel="noopener noreferrer">
             <Video className="w-4 h-4 mr-2" />
             Подключиться к онлайн-консультации
@@ -218,7 +218,7 @@ function AiReportPanel({ appt }: { appt: DoctorAppointment }) {
 
       {/* AI Report section */}
       <div className="flex items-center gap-2">
-        <Brain className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+        <Brain className="w-4 h-4 text-primary dark:text-primary/60" />
         <h3 className="font-semibold text-foreground">AI-анализ симптомов</h3>
       </div>
 
@@ -265,7 +265,7 @@ function AiReportPanel({ appt }: { appt: DoctorAppointment }) {
           {/* Diagnosis */}
           <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/20">
             <CardContent className="pt-4 pb-4">
-              <p className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide mb-1">
+              <p className="text-xs font-medium text-primary dark:text-primary/60 uppercase tracking-wide mb-1">
                 Предварительный диагноз
               </p>
               <p className="font-semibold text-foreground">{report.primary_diagnosis}</p>
@@ -276,7 +276,7 @@ function AiReportPanel({ appt }: { appt: DoctorAppointment }) {
                     style={{ width: `${Math.round(report.confidence * 100)}%` }}
                   />
                 </div>
-                <span className="text-xs font-medium text-blue-700 dark:text-blue-400 shrink-0">
+                <span className="text-xs font-medium text-blue-700 dark:text-primary/60 shrink-0">
                   {Math.round(report.confidence * 100)}%
                 </span>
               </div>
@@ -337,7 +337,7 @@ function AiReportPanel({ appt }: { appt: DoctorAppointment }) {
                 <ul className="space-y-1.5">
                   {report.possible_causes.map((c, i) => (
                     <li key={i} className="flex gap-2 text-sm text-muted-foreground">
-                      <span className="text-blue-400 shrink-0">·</span>
+                      <span className="text-primary/60 shrink-0">·</span>
                       {c}
                     </li>
                   ))}
@@ -404,7 +404,7 @@ function AiReportPanel({ appt }: { appt: DoctorAppointment }) {
         {appt.status === "COMPLETED" && !appt.hasFeedback && (
           <Button
             variant="outline"
-            className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400"
+            className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-primary/60"
             onClick={() => setFeedbackOpen(true)}
           >
             <MessageSquare className="w-4 h-4 mr-2" />

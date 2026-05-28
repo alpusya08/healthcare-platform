@@ -110,8 +110,8 @@ export function TemplateModal({ open, onClose, onGenerate }: TemplateModalProps)
                     onClick={() => (active ? setEntries((p) => p.filter((e) => e.dayOfWeek !== day)) : addEntry(day))}
                     className={`w-10 h-10 rounded-lg border text-sm font-medium transition-all ${
                       active
-                        ? "bg-blue-600 border-blue-700 text-white"
-                        : "border-border text-foreground hover:border-blue-400"
+                        ? "bg-primary border-primary text-white"
+                        : "border-border text-foreground hover:border-primary/60"
                     }`}
                   >
                     {DAY_NAMES[day]}

@@ -4,55 +4,92 @@
 
 @layer base {
   :root {
-    /* Warm cream-white instead of pure #fff — softer on the eyes, less "AI lab" feel */
-    --background: 0 0% 99%;
-    --foreground: 222 47% 11%;
+    /* Artistic medical palette — deep teal & warm cream */
+    --background: 30 50% 98%;
+    --foreground: 145 9% 13%;
 
-    --primary: 217 91% 40%;
+    --card: 0 0% 100%;
+    --card-foreground: 145 9% 13%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 145 9% 13%;
+
+    /* Deep teal primary */
+    --primary: 181 37% 26%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 20%;
+    /* Warm secondary */
+    --secondary: 30 36% 96%;
+    --secondary-foreground: 145 9% 13%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 30 17% 90%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 210 40% 94%;
-    --accent-foreground: 222 47% 20%;
+    --accent: 37 100% 97%;
+    --accent-foreground: 145 9% 13%;
 
-    /* Warm coral instead of pure red */
-    --destructive: 12 78% 52%;
-    --destructive-foreground: 40 30% 99%;
+    /* Coral destructive */
+    --destructive: 12 76% 61%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 40%;
-    --radius: 0.65rem;
+    /* Medical semantic colors */
+    --emergency: 12 76% 61%;
+    --emergency-foreground: 0 0% 100%;
+    --warning: 27 87% 67%;
+    --warning-foreground: 145 9% 13%;
+    --safe: 152 41% 52%;
+    --safe-foreground: 0 0% 100%;
+    --info: 181 37% 26%;
+    --info-foreground: 0 0% 100%;
+    --success: 152 41% 52%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 181 20% 88%;
+    --input: 181 20% 88%;
+    --ring: 181 37% 26%;
+
+    --radius: 1rem;
   }
 
   .dark {
-    /* Deep slate with green undertone, not pure navy */
-    --background: 222 47% 8%;
-    --foreground: 210 40% 98%;
+    --background: 135 8% 11%;
+    --foreground: 37 30% 94%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 8%;
+    --card: 130 6% 15%;
+    --card-foreground: 37 30% 94%;
 
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
+    --popover: 130 6% 15%;
+    --popover-foreground: 37 30% 94%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --primary: 126 11% 62%;
+    --primary-foreground: 135 8% 11%;
 
-    --accent: 217 33% 18%;
-    --accent-foreground: 210 40% 98%;
+    --secondary: 130 8% 18%;
+    --secondary-foreground: 37 30% 94%;
 
-    --destructive: 12 70% 48%;
-    --destructive-foreground: 40 30% 98%;
+    --muted: 130 8% 18%;
+    --muted-foreground: 126 7% 63%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 20%;
-    --ring: 217 91% 60%;
+    --accent: 130 9% 22%;
+    --accent-foreground: 37 30% 94%;
+
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --emergency: 0 62% 50%;
+    --emergency-foreground: 0 0% 100%;
+    --warning: 34 78% 55%;
+    --warning-foreground: 135 8% 11%;
+    --safe: 152 28% 55%;
+    --safe-foreground: 0 0% 100%;
+    --info: 126 11% 62%;
+    --info-foreground: 135 8% 11%;
+    --success: 152 28% 55%;
+    --success-foreground: 0 0% 100%;
+
+    --border: 126 9% 25%;
+    --input: 126 9% 25%;
+    --ring: 126 11% 62%;
   }
 }
 
