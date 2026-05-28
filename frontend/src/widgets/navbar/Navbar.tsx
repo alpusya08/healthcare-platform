@@ -73,7 +73,7 @@ export function Navbar() {
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1">
             {NAV_LINKS.map(({ to, label, icon: Icon }) => {
-              const active = to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
+              const active = location.pathname === to || (to !== routes.patient.home && location.pathname.startsWith(to));
               return (
                 <Link
                   key={to}
@@ -172,7 +172,7 @@ export function Navbar() {
         {mobileOpen && (
           <div className="md:hidden border-t border-border bg-card px-4 py-3 space-y-1">
             {NAV_LINKS.map(({ to, label, icon: Icon }) => {
-              const active = to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
+              const active = location.pathname === to || (to !== routes.patient.home && location.pathname.startsWith(to));
               return (
                 <Link
                   key={to}

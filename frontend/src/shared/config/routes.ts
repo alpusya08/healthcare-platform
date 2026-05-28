@@ -1,11 +1,12 @@
 export const routes = {
+  landing: "/",
   login: "/login",
   register: "/register",
   forgotPassword: "/forgot-password",
   resetPassword: "/reset-password",
 
   patient: {
-    home: "/",
+    home: "/dashboard",
     aiAnalysis: "/ai-analysis",
     aiAnalysisSession: "/ai-analysis/:sessionId",
     appointments: "/appointments",

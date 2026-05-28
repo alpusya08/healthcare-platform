@@ -27,6 +27,7 @@ import { AdminLayout } from "@/app/router/AdminLayout";
 import { AdminDashboardPage } from "@/pages/admin/AdminDashboardPage";
 import { AdminUsersPage } from "@/pages/admin/AdminUsersPage";
 import { AdminMLDashboardPage } from "@/pages/admin/AdminMLDashboardPage";
+import { LandingPage } from "@/pages/landing/LandingPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { routes } from "@/shared/config/routes";
 
@@ -47,6 +48,8 @@ export function App() {
         <BrowserRouter>
           <AuthProvider>
             <Routes>
+              {/* Public routes */}
+              <Route path={routes.landing} element={<LandingPage />} />
               <Route path={routes.login} element={<LoginPage />} />
               <Route path={routes.register} element={<RegisterPage />} />
               <Route path={routes.forgotPassword} element={<ForgotPasswordPage />} />
