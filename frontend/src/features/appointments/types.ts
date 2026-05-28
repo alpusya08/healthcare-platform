@@ -7,6 +7,8 @@ export interface Doctor {
   bio: string | null;
   consultationFee: number | null;
   averageRating: number;
+  photoUrl?: string | null;
+  city?: string | null;
 }
 
 export interface TimeSlot {
@@ -17,6 +19,7 @@ export interface TimeSlot {
 
 export type AppointmentStatus = "SCHEDULED" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
 export type AppointmentType = "ONLINE" | "OFFLINE";
+export type PaymentStatus = "PENDING" | "PAID" | "REFUNDED";
 
 export interface Appointment {
   id: string;
@@ -31,6 +34,8 @@ export interface Appointment {
   hasReview: boolean;
   meetingLink?: string;
   aiSessionId?: string;
+  paymentStatus: PaymentStatus;
+  paymentAmount: number | null;
 }
 
 export interface DoctorReview {
@@ -75,6 +80,7 @@ export interface DoctorSearchParams {
   page?: number;
   size?: number;
   onlineOnly?: boolean;
+  city?: string;
 }
 
 export interface UpcomingSlot {

@@ -37,9 +37,10 @@ public class AppointmentController {
             @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) Boolean onlineOnly) {
+            @RequestParam(required = false) Boolean onlineOnly,
+            @RequestParam(required = false) String city) {
         return appointmentService.listDoctorsFiltered(
-                new DoctorFilterRequest(specialization, minRating, maxPrice, minExperience, query, sort, page, size, onlineOnly)
+                new DoctorFilterRequest(specialization, minRating, maxPrice, minExperience, query, sort, page, size, onlineOnly, city)
         );
     }
 
@@ -83,6 +84,21 @@ public class AppointmentController {
             @PathVariable UUID id) {
         appointmentService.cancel(patientId, id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/reschedule")
+    public AppointmentResponse reschedule(
+            @AuthenticationPrincipal UUID patientId,
+            @PathVariable UUID id,
+            @Valid @RequestBody RescheduleRequest request) {
+        return appointmentService.reschedule(patientId, id, request.newSlotId());
+    }
+
+    @PostMapping("/{id}/pay")
+    public AppointmentResponse pay(
+            @AuthenticationPrincipal UUID patientId,
+            @PathVariable UUID id) {
+        return appointmentService.pay(patientId, id);
     }
 
     @PostMapping("/{id}/review")

@@ -5,6 +5,7 @@ import kz.healthcare.platform.appointments.domain.Appointment;
 import kz.healthcare.platform.appointments.domain.AppointmentStatus;
 import kz.healthcare.platform.appointments.domain.DoctorFeedback;
 import kz.healthcare.platform.appointments.domain.DoctorReview;
+import kz.healthcare.platform.appointments.domain.PaymentStatus;
 import kz.healthcare.platform.appointments.domain.TimeSlot;
 import kz.healthcare.platform.appointments.domain.exceptions.AppointmentNotCancellableException;
 import kz.healthcare.platform.appointments.domain.exceptions.SlotAlreadyBookedException;
@@ -75,7 +76,8 @@ public class AppointmentService {
                 filter.maxPrice(),
                 filter.query(),
                 filter.minExperience(),
-                filter.onlineOnly()
+                filter.onlineOnly(),
+                filter.city()
         );
 
         return doctorRepository.findAll(spec, PageRequest.of(filter.page(), filter.size(), sort))
@@ -180,9 +182,87 @@ public class AppointmentService {
 
         appt.setStatus(AppointmentStatus.CANCELLED);
         appt.setUpdatedAt(Instant.now());
+        if (appt.getPaymentStatus() == PaymentStatus.PAID) {
+            appt.setPaymentStatus(PaymentStatus.REFUNDED);
+        }
         appt.getTimeSlot().setBooked(false);
         appointmentRepository.save(appt);
         log.info("appointment.cancelled id={} patient={}", appointmentId, patientId);
+    }
+
+    @Transactional
+    public AppointmentResponse reschedule(UUID patientId, UUID appointmentId, UUID newSlotId) {
+        Appointment appt = appointmentRepository.findByIdAndPatientId(appointmentId, patientId)
+                .orElseThrow(() -> new NoSuchElementException("Запись не найдена"));
+
+        if (appt.getStatus() != AppointmentStatus.SCHEDULED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Перенести можно только запланированный приём");
+        }
+
+        TimeSlot newSlot = timeSlotRepository.findById(newSlotId)
+                .orElseThrow(() -> new NoSuchElementException("Слот не найден"));
+
+        if (newSlot.isBooked()) {
+            throw new SlotAlreadyBookedException();
+        }
+        if (!newSlot.getDoctor().getId().equals(appt.getDoctor().getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Слот принадлежит другому врачу");
+        }
+
+        TimeSlot oldSlot = appt.getTimeSlot();
+        oldSlot.setBooked(false);
+        timeSlotRepository.save(oldSlot);
+
+        newSlot.setBooked(true);
+        timeSlotRepository.save(newSlot);
+
+        appt.setTimeSlot(newSlot);
+        appt.setUpdatedAt(Instant.now());
+        Appointment saved = appointmentRepository.save(appt);
+        log.info("appointment.rescheduled id={} patient={} newSlot={}", appointmentId, patientId, newSlotId);
+
+        String newTime = newSlot.getStartTime().atZone(java.time.ZoneId.of("Asia/Almaty"))
+                .format(java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
+        notificationService.create(appt.getDoctor().getId(),
+                "APPOINTMENT_RESCHEDULED",
+                "Запись перенесена",
+                "Пациент " + appt.getPatient().getUser().getFullName() + " перенёс приём на " + newTime,
+                "/doctor");
+        notificationService.create(patientId,
+                "APPOINTMENT_RESCHEDULED",
+                "Запись перенесена",
+                "Ваш приём к " + appt.getDoctor().getUser().getFullName() + " перенесён на " + newTime,
+                "/appointments");
+
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public AppointmentResponse pay(UUID patientId, UUID appointmentId) {
+        Appointment appt = appointmentRepository.findByIdAndPatientId(appointmentId, patientId)
+                .orElseThrow(() -> new NoSuchElementException("Запись не найдена"));
+
+        if (appt.getStatus() != AppointmentStatus.SCHEDULED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Оплатить можно только активный приём");
+        }
+        if (appt.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Приём уже оплачен");
+        }
+
+        appt.setPaymentStatus(PaymentStatus.PAID);
+        appt.setPaymentAmount(appt.getDoctor().getConsultationFee());
+        appt.setPaidAt(Instant.now());
+        appt.setUpdatedAt(Instant.now());
+        Appointment saved = appointmentRepository.save(appt);
+        log.info("appointment.paid id={} patient={} amount={}", appointmentId, patientId, appt.getPaymentAmount());
+
+        notificationService.create(patientId,
+                "PAYMENT_CONFIRMED",
+                "Оплата прошла успешно",
+                "Приём у " + appt.getDoctor().getUser().getFullName() + " оплачен. Сумма: " + appt.getDoctor().getConsultationFee() + " ₸",
+                "/appointments");
+
+        return toResponse(saved);
     }
 
     @Transactional
@@ -246,7 +326,8 @@ public class AppointmentService {
                 doctor.getConsultationFee(),
                 doctor.getAverageRating(),
                 doctor.isVerified(),
-                doctor.getLicenseNumber()
+                doctor.getLicenseNumber(),
+                doctor.getPhotoUrl()
         );
     }
 
@@ -388,7 +469,9 @@ public class AppointmentService {
                 d.getYearsExperience(),
                 d.getBio(),
                 d.getConsultationFee(),
-                d.getAverageRating()
+                d.getAverageRating(),
+                d.getPhotoUrl(),
+                d.getCity()
         );
     }
 
@@ -407,7 +490,9 @@ public class AppointmentService {
                 a.getComplaint(),
                 hasReview,
                 a.getMeetingLink(),
-                a.getAiSessionId()
+                a.getAiSessionId(),
+                a.getPaymentStatus(),
+                a.getPaymentAmount()
         );
     }
 }

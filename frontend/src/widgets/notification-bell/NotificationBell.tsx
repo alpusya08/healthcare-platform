@@ -16,10 +16,12 @@ interface NotificationItem {
 }
 
 const TYPE_ICON_MAP: Record<string, { icon: typeof Bell; color: string }> = {
-  NEW_APPOINTMENT:       { icon: CalendarCheck, color: "text-blue-600 dark:text-blue-400" },
-  APPOINTMENT_CONFIRMED: { icon: CheckCircle2,  color: "text-emerald-600 dark:text-emerald-400" },
-  LEAVE_REVIEW:          { icon: Star,          color: "text-amber-500 dark:text-amber-400" },
-  AI_COMPLETE:           { icon: Cpu,           color: "text-violet-600 dark:text-violet-400" },
+  NEW_APPOINTMENT:          { icon: CalendarCheck, color: "text-primary" },
+  APPOINTMENT_CONFIRMED:    { icon: CheckCircle2,  color: "text-safe" },
+  APPOINTMENT_RESCHEDULED:  { icon: CalendarCheck, color: "text-primary" },
+  PAYMENT_CONFIRMED:        { icon: CheckCircle2,  color: "text-safe" },
+  LEAVE_REVIEW:             { icon: Star,          color: "text-amber-500 dark:text-amber-400" },
+  AI_COMPLETE:              { icon: Cpu,           color: "text-info" },
 };
 
 function useNotifications() {
@@ -99,7 +101,7 @@ export function NotificationBell() {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 text-xs text-blue-600 dark:text-blue-400 hover:bg-transparent"
+              className="h-6 text-xs text-primary hover:bg-transparent"
               onClick={() => markAllMutation.mutate()}
               disabled={markAllMutation.isPending}
             >
@@ -122,7 +124,7 @@ export function NotificationBell() {
                 onClick={() => handleClick(n)}
                 className={cn(
                   "flex gap-3 px-4 py-3 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors last:border-0",
-                  !n.read && "bg-blue-50/50 dark:bg-blue-950/20"
+                  !n.read && "bg-primary/5"
                 )}
               >
                 {(() => {
@@ -142,7 +144,7 @@ export function NotificationBell() {
                   <p className="text-xs text-muted-foreground/60 mt-1">{timeAgo(n.createdAt)}</p>
                 </div>
                 {!n.read && (
-                  <div className="w-2 h-2 bg-blue-500 rounded-full shrink-0 mt-2" />
+                  <div className="w-2 h-2 bg-primary rounded-full shrink-0 mt-2" />
                 )}
               </div>
             ))

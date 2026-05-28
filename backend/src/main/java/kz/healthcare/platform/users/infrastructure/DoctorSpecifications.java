@@ -80,13 +80,21 @@ public final class DoctorSpecifications {
         };
     }
 
+    public static Specification<Doctor> withCity(String city) {
+        return (root, query, cb) -> {
+            if (city == null || city.isBlank()) return null;
+            return cb.equal(root.get("city"), city);
+        };
+    }
+
     public static Specification<Doctor> combined(
             String specCode,
             BigDecimal minRating,
             BigDecimal maxPrice,
             String query,
             Integer minExperience,
-            Boolean onlineOnly
+            Boolean onlineOnly,
+            String city
     ) {
         Specification<Doctor> spec = Specification.allOf(
                 verified(),
@@ -94,7 +102,8 @@ public final class DoctorSpecifications {
                 withMinRating(minRating),
                 withMaxPrice(maxPrice),
                 withQuery(query),
-                withMinExperience(minExperience)
+                withMinExperience(minExperience),
+                withCity(city)
         );
         if (Boolean.TRUE.equals(onlineOnly)) {
             spec = spec.and(acceptsOnline());

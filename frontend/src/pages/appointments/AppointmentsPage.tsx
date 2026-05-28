@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, Clock, XCircle, Plus, Star, CheckCircle2,
-  FileText, CalendarX, Video,
+  FileText, CalendarX, Video, ArrowLeftRight, CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/shared/ui/card";
@@ -14,6 +14,8 @@ import type { Appointment, AppointmentStatus } from "@/features/appointments/typ
 import { routes } from "@/shared/config/routes";
 import { ReviewModal } from "@/widgets/review-modal/ReviewModal";
 import { AppointmentDetailModal } from "@/widgets/appointment-detail/AppointmentDetailModal";
+import { RescheduleModal } from "@/widgets/reschedule-modal/RescheduleModal";
+import { PaymentModal } from "@/widgets/payment-modal/PaymentModal";
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
   SCHEDULED: "Запланировано",
@@ -51,10 +53,14 @@ function UpcomingAppointmentCard({
   appt,
   onCancel,
   onOpen,
+  onReschedule,
+  onPay,
 }: {
   appt: Appointment;
   onCancel: (id: string) => void;
   onOpen: (appt: Appointment) => void;
+  onReschedule: (appt: Appointment) => void;
+  onPay: (appt: Appointment) => void;
 }) {
   return (
     <Card
@@ -105,7 +111,7 @@ function UpcomingAppointmentCard({
             )}
 
             {/* Action buttons */}
-            <div className="flex items-center gap-2 mt-4">
+            <div className="flex flex-wrap items-center gap-2 mt-4">
               {appt.type === "ONLINE" && appt.meetingLink && (
                 <Button
                   size="sm"
@@ -119,9 +125,35 @@ function UpcomingAppointmentCard({
                   Подключиться
                 </Button>
               )}
+              {appt.paymentStatus === "PENDING" && appt.paymentAmount != null && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl h-8 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                  onClick={(e) => { e.stopPropagation(); onPay(appt); }}
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  Оплатить {appt.paymentAmount} ₸
+                </Button>
+              )}
+              {appt.paymentStatus === "PAID" && (
+                <Badge variant="success" className="gap-1.5 text-xs">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Оплачено
+                </Badge>
+              )}
               <Button
                 size="sm"
                 variant="outline"
+                className="rounded-xl h-8 text-xs gap-1.5"
+                onClick={(e) => { e.stopPropagation(); onReschedule(appt); }}
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5" />
+                Перенести
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
                 className="rounded-xl h-8 text-xs gap-1.5"
                 onClick={(e) => { e.stopPropagation(); onOpen(appt); }}
               >
@@ -222,6 +254,8 @@ export function AppointmentsPage() {
   const queryClient = useQueryClient();
   const [reviewTarget, setReviewTarget] = useState<Appointment | null>(null);
   const [detailTarget, setDetailTarget] = useState<Appointment | null>(null);
+  const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
+  const [payTarget, setPayTarget] = useState<Appointment | null>(null);
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments", "my"],
@@ -295,6 +329,8 @@ export function AppointmentsPage() {
                       appt={a}
                       onCancel={(id) => cancelMutation.mutate(id)}
                       onOpen={setDetailTarget}
+                      onReschedule={setRescheduleTarget}
+                      onPay={setPayTarget}
                     />
                   ))}
                 </div>
@@ -338,6 +374,20 @@ export function AppointmentsPage() {
         onCancel={(id) => { cancelMutation.mutate(id); setDetailTarget(null); }}
         onReview={(appt) => { setReviewTarget(appt); setDetailTarget(null); }}
       />
+
+      {rescheduleTarget && (
+        <RescheduleModal
+          appointment={rescheduleTarget}
+          onClose={() => setRescheduleTarget(null)}
+        />
+      )}
+
+      {payTarget && (
+        <PaymentModal
+          appointment={payTarget}
+          onClose={() => setPayTarget(null)}
+        />
+      )}
     </div>
   );
 }

@@ -14,5 +14,6 @@ public record DoctorProfileResponse(
         BigDecimal consultationFee,
         BigDecimal averageRating,
         boolean verified,
-        String licenseNumber
+        String licenseNumber,
+        String photoUrl
 ) {}

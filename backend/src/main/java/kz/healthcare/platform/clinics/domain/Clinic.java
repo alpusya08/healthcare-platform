@@ -39,6 +39,15 @@ public class Clinic {
 
     private String website;
 
+    @Column(name = "photo_url")
+    private String photoUrl;
+
+    @Column(name = "gis_url")
+    private String gisUrl;
+
+    private Double lat;
+    private Double lng;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default
     private Instant createdAt = Instant.now();

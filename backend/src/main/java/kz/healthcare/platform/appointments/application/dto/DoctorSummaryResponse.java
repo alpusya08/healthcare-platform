@@ -11,5 +11,7 @@ public record DoctorSummaryResponse(
         int yearsExperience,
         String bio,
         BigDecimal consultationFee,
-        BigDecimal averageRating
+        BigDecimal averageRating,
+        String photoUrl,
+        String city
 ) {}

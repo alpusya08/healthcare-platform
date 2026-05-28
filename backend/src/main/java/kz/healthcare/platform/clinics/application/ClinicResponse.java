@@ -11,5 +11,9 @@ public record ClinicResponse(
         String email,
         String description,
         String workingHours,
-        String website
+        String website,
+        String photoUrl,
+        String gisUrl,
+        Double lat,
+        Double lng
 ) {}

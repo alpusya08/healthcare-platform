@@ -50,4 +50,11 @@ public class Doctor {
     @Column(name = "average_rating")
     @Builder.Default
     private BigDecimal averageRating = BigDecimal.ZERO;
+
+    @Column(name = "photo_url")
+    private String photoUrl;
+
+    @Column(name = "city", length = 64)
+    @Builder.Default
+    private String city = "Алматы";
 }

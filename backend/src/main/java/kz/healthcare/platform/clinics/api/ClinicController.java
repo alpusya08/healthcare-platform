@@ -20,20 +20,22 @@ public class ClinicController {
     @GetMapping
     public List<ClinicResponse> listClinics() {
         return clinicRepository.findAllByOrderByNameAsc().stream()
-                .map(c -> new ClinicResponse(
-                        c.getId(), c.getName(), c.getAddress(), c.getCity(),
-                        c.getPhone(), c.getEmail(), c.getDescription(),
-                        c.getWorkingHours(), c.getWebsite()))
+                .map(this::toResponse)
                 .toList();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ClinicResponse> getClinic(@PathVariable UUID id) {
         return clinicRepository.findById(id)
-                .map(c -> ResponseEntity.ok(new ClinicResponse(
-                        c.getId(), c.getName(), c.getAddress(), c.getCity(),
-                        c.getPhone(), c.getEmail(), c.getDescription(),
-                        c.getWorkingHours(), c.getWebsite())))
+                .map(c -> ResponseEntity.ok(toResponse(c)))
                 .orElseThrow(() -> new NoSuchElementException("Клиника не найдена"));
+    }
+
+    private ClinicResponse toResponse(kz.healthcare.platform.clinics.domain.Clinic c) {
+        return new ClinicResponse(
+                c.getId(), c.getName(), c.getAddress(), c.getCity(),
+                c.getPhone(), c.getEmail(), c.getDescription(),
+                c.getWorkingHours(), c.getWebsite(),
+                c.getPhotoUrl(), c.getGisUrl(), c.getLat(), c.getLng());
     }
 }

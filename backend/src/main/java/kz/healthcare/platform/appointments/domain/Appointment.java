@@ -7,6 +7,7 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -56,6 +57,18 @@ public class Appointment {
     private String meetingLink;
 
     private String notes;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", columnDefinition = "payment_status", nullable = false)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
+    @Builder.Default
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+
+    @Column(name = "payment_amount", precision = 12, scale = 2)
+    private BigDecimal paymentAmount;
+
+    @Column(name = "paid_at")
+    private Instant paidAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     @Builder.Default

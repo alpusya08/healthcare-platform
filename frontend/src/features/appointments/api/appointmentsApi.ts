@@ -45,6 +45,16 @@ export const appointmentsApi = {
   cancel: (id: string) =>
     apiClient.delete(`/appointments/${id}`).then(() => undefined),
 
+  reschedule: (id: string, newSlotId: string) =>
+    apiClient
+      .patch<import("../types").Appointment>(`/appointments/${id}/reschedule`, { newSlotId })
+      .then((r) => r.data),
+
+  pay: (id: string) =>
+    apiClient
+      .post<import("../types").Appointment>(`/appointments/${id}/pay`)
+      .then((r) => r.data),
+
   submitReview: (appointmentId: string, payload: CreateReviewRequest) =>
     apiClient
       .post<DoctorReview>(`/appointments/${appointmentId}/review`, payload)

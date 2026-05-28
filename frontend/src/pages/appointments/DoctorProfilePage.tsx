@@ -18,6 +18,7 @@ import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
 import type { DoctorReview, TimeSlot } from "@/features/appointments/types";
 import { cn } from "@/shared/lib/utils";
 import { routes } from "@/shared/config/routes";
+import { BookConfirmModal } from "@/widgets/book-confirm-modal/BookConfirmModal";
 
 function StarRating({ value }: { value: number }) {
   return (
@@ -114,6 +115,7 @@ export function DoctorProfilePage() {
   const { doctorId } = useParams<{ doctorId: string }>();
   const navigate = useNavigate();
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [confirmSlot, setConfirmSlot] = useState<TimeSlot | null>(null);
   const [showAllReviews, setShowAllReviews] = useState(false);
 
   const { data: doctors = [], isLoading: doctorsLoading } = useQuery({
@@ -257,7 +259,7 @@ export function DoctorProfilePage() {
                 className="rounded-xl shadow-lg px-8 gap-2"
                 onClick={() =>
                   selectedSlot
-                    ? navigate(`/book/${doctorId}?slotId=${selectedSlot.id}`)
+                    ? setConfirmSlot(selectedSlot)
                     : navigate(`/book/${doctorId}`)
                 }
               >
@@ -386,7 +388,7 @@ export function DoctorProfilePage() {
                 {selectedSlot ? (
                   <Button
                     className="w-full rounded-xl shadow-lg gap-2"
-                    onClick={() => navigate(`/book/${doctorId}?slotId=${selectedSlot.id}`)}
+                    onClick={() => setConfirmSlot(selectedSlot)}
                   >
                     <Calendar className="w-4 h-4" />
                     Записаться на{" "}
@@ -430,6 +432,17 @@ export function DoctorProfilePage() {
           </div>
         </div>
       </div>
+
+      {confirmSlot && (
+        <BookConfirmModal
+          doctorId={doctorId!}
+          doctorName={doctor.fullName}
+          specialization={doctor.specialization}
+          consultationFee={doctor.consultationFee ?? null}
+          slot={confirmSlot}
+          onClose={() => setConfirmSlot(null)}
+        />
+      )}
     </div>
   );
 }

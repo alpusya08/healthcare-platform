@@ -69,7 +69,15 @@ function DoctorCard({
         <div className="flex items-start gap-4">
           {/* Avatar */}
           <div className="relative shrink-0">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-white font-bold flex items-center justify-center text-lg">
+            {doctor.photoUrl ? (
+              <img
+                src={doctor.photoUrl}
+                alt={doctor.fullName}
+                className="w-14 h-14 rounded-2xl object-cover"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex"; }}
+              />
+            ) : null}
+            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-white font-bold items-center justify-center text-lg ${doctor.photoUrl ? "hidden" : "flex"}`}>
               {initials}
             </div>
           </div>
@@ -156,6 +164,7 @@ export function DoctorsPage() {
   const [selectedSpec, setSelectedSpec] = useState(searchParams.get("specialization") ?? "");
   const [sort, setSort] = useState(searchParams.get("sort") ?? "rating_desc");
   const [onlineOnly, setOnlineOnly] = useState(searchParams.get("onlineOnly") === "true");
+  const [selectedCity, setSelectedCity] = useState(searchParams.get("city") ?? "");
   const [page, setPage] = useState(Number(searchParams.get("page") ?? "0"));
 
   useEffect(() => {
@@ -165,7 +174,7 @@ export function DoctorsPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [debouncedSearch, minRating, maxPrice, minExperience, selectedSpec, sort, onlineOnly]);
+  }, [debouncedSearch, minRating, maxPrice, minExperience, selectedSpec, sort, onlineOnly, selectedCity]);
 
   useEffect(() => {
     const params: Record<string, string> = {};
@@ -176,9 +185,10 @@ export function DoctorsPage() {
     if (minExperience) params.minExperience = minExperience;
     if (sort !== "rating_desc") params.sort = sort;
     if (onlineOnly) params.onlineOnly = "true";
+    if (selectedCity) params.city = selectedCity;
     if (page > 0) params.page = String(page);
     setSearchParams(params, { replace: true });
-  }, [debouncedSearch, selectedSpec, minRating, maxPrice, minExperience, sort, onlineOnly, page, setSearchParams]);
+  }, [debouncedSearch, selectedSpec, minRating, maxPrice, minExperience, sort, onlineOnly, selectedCity, page, setSearchParams]);
 
   const queryParams = {
     query: debouncedSearch || undefined,
@@ -190,6 +200,7 @@ export function DoctorsPage() {
     page,
     size: PAGE_SIZE,
     onlineOnly: onlineOnly || undefined,
+    city: selectedCity || undefined,
   };
 
   const { data, isLoading } = useQuery({
@@ -202,7 +213,7 @@ export function DoctorsPage() {
   const totalPages = data?.totalPages ?? 0;
   const totalElements = data?.totalElements ?? 0;
 
-  const hasActiveFilters = minRating !== "" || maxPrice !== "" || minExperience !== "" || selectedSpec !== "" || onlineOnly;
+  const hasActiveFilters = minRating !== "" || maxPrice !== "" || minExperience !== "" || selectedSpec !== "" || onlineOnly || selectedCity !== "";
 
   const clearFilters = () => {
     setMinRating("");
@@ -210,6 +221,7 @@ export function DoctorsPage() {
     setMinExperience("");
     setSelectedSpec("");
     setOnlineOnly(false);
+    setSelectedCity("");
     setSearch("");
   };
 
@@ -225,6 +237,22 @@ export function DoctorsPage() {
           <p className="mt-2 text-muted-foreground text-lg">
             Выберите специалиста и запишитесь на удобное время
           </p>
+          {/* City pills */}
+          <div className="flex flex-wrap gap-2 mt-5">
+            {["", "Алматы", "Астана"].map((city) => (
+              <button
+                key={city || "all"}
+                onClick={() => setSelectedCity(city)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                  selectedCity === city
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : "border-border text-muted-foreground bg-background/80 hover:border-primary/50 hover:text-foreground"
+                }`}
+              >
+                {city === "" ? "Все города" : city}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
