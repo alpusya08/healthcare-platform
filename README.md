@@ -1,42 +1,47 @@
 # Healthcare Platform
 
-AI-Powered Healthcare Web Platform — дипломный проект.
+Дипломный проект. Веб-система для записи к врачу с AI-триажем симптомов и ML-моделью приоритизации.
 
-Три сервиса в монорепо:
-- **`backend/`** — Java 21 + Spring Boot 3.3 + PostgreSQL (REST API, авторизация, бизнес-логика)
-- **`ai-service/`** — Python 3.11 + FastAPI (AI-движок, ML-модели, LLM)
-- **`frontend/`** — React 18 + TypeScript + Vite + Tailwind + shadcn/ui (порталы: Пациент / Врач / Админ)
+Три сервиса:
+- **`backend/`** — Java 21, Spring Boot 3.3, PostgreSQL
+- **`ai-service/`** — Python 3.11, FastAPI, XGBoost, LLM (Anthropic / Ollama)
+- **`frontend/`** — React 18, TypeScript, Tailwind, shadcn/ui
 
 ---
 
-## Быстрый старт
+## Запуск
 
 ```bash
-# 1. Создай .env файл на основе примера
-cp .env.example .env
-# Заполни JWT_SECRET и ANTHROPIC_API_KEY
-
-# 2. Подними все сервисы через Docker Compose
+cp .env.example .env          # заполни JWT_SECRET и ANTHROPIC_API_KEY
 docker compose up -d
-
-# 3. Проверь работу
-curl http://localhost:8080/api/v1/health    # backend
-curl http://localhost:8000/health           # ai-service
-open http://localhost:5173                  # frontend
-open http://localhost:9001                  # MinIO (minioadmin / minioadmin_secret)
-open http://localhost:5000                  # MLflow
 ```
+
+Проверка:
+```bash
+curl http://localhost:8080/api/v1/health
+curl http://localhost:8000/health
+```
+
+| Сервис     | Адрес                       |
+|------------|-----------------------------|
+| Frontend   | http://localhost:5173        |
+| Backend    | http://localhost:8080        |
+| Swagger    | http://localhost:8080/swagger-ui.html |
+| AI Service | http://localhost:8000        |
+| MLflow     | http://localhost:5000        |
+| MinIO UI   | http://localhost:9001        |
+
+---
 
 ## Разработка
 
-### Backend
+**Backend**
 ```bash
-cd backend
-./mvnw spring-boot:run
+cd backend && ./mvnw spring-boot:run
 ./mvnw test
 ```
 
-### AI Service
+**AI Service**
 ```bash
 cd ai-service
 python -m venv .venv && source .venv/bin/activate
@@ -45,46 +50,20 @@ uvicorn app.main:app --reload
 pytest
 ```
 
-### Frontend
+**Frontend**
 ```bash
-cd frontend
-npm install
-npm run dev
-npm run build
+cd frontend && npm install && npm run dev
 ```
 
 ---
 
-## Структура проекта
+## Демо-аккаунты
 
-```
-healthcare-platform/
-├── docker-compose.yml
-├── backend/              ← Java + Spring Boot
-├── ai-service/           ← Python + FastAPI + ML
-└── frontend/             ← React + TypeScript
-```
+Создаются автоматически при первом запуске (Flyway seed).
 
-## Порты
-
-| Сервис      | Порт |
-|-------------|------|
-| Frontend    | 5173 |
-| Backend     | 8080 |
-| AI Service  | 8000 |
-| PostgreSQL  | 5432 |
-| Redis       | 6379 |
-| MinIO API   | 9000 |
-| MinIO UI    | 9001 |
-| MLflow      | 5000 |
-
-## Тестовые аккаунты
-
-После запуска автоматически создаются демо-аккаунты:
-
-| Роль    | Email                | Пароль       |
-|---------|----------------------|--------------|
-| Пациент | demo@patient.com     | Demo1234!    |
-| Врач    | demo@doctor.com      | Demo1234!    |
-| Врач    | dr.seitkali@medai.kz | Doctor1234!  |
-| Админ   | admin@medai.kz       | Admin1234!   |
+| Роль    | Email                | Пароль      |
+|---------|----------------------|-------------|
+| Пациент | demo@patient.com     | Demo1234!   |
+| Врач    | demo@doctor.com      | Demo1234!   |
+| Врач    | dr.seitkali@medai.kz | Doctor1234! |
+| Админ   | admin@medai.kz       | Admin1234!  |
