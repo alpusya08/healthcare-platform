@@ -31,22 +31,22 @@ DECLARE
     demo_patient UUID := 'b0000000-0000-0000-0000-000000000001';
     demo_doctor  UUID := 'b0000000-0000-0000-0000-000000000002';
     spec_id      UUID;
-    slot_id      UUID;
+    ts_id        UUID;
     appt_id      UUID;
 BEGIN
     SELECT id INTO spec_id FROM specializations WHERE code = 'cardiology' LIMIT 1;
 
     -- Appointment 1: 30 days ago, completed, with review
-    slot_id := gen_random_uuid();
+    ts_id   := gen_random_uuid();
     appt_id := gen_random_uuid();
     INSERT INTO time_slots (id, doctor_id, start_time, end_time, is_booked, appointment_type)
-    VALUES (slot_id, demo_doctor,
+    VALUES (ts_id, demo_doctor,
             NOW() - INTERVAL '30 days' + INTERVAL '10 hours',
             NOW() - INTERVAL '30 days' + INTERVAL '11 hours',
             true, 'OFFLINE') ON CONFLICT DO NOTHING;
-    INSERT INTO appointments (id, patient_id, doctor_id, slot_id, status, type, complaint,
+    INSERT INTO appointments (id, patient_id, doctor_id, time_slot_id, status, type, complaint,
                               payment_status, payment_amount, created_at, updated_at)
-    VALUES (appt_id, demo_patient, demo_doctor, slot_id, 'COMPLETED', 'OFFLINE',
+    VALUES (appt_id, demo_patient, demo_doctor, ts_id, 'COMPLETED', 'OFFLINE',
             'Периодические боли в груди, одышка при нагрузке',
             'PAID', 9000, NOW() - INTERVAL '30 days', NOW() - INTERVAL '30 days')
     ON CONFLICT DO NOTHING;
@@ -57,30 +57,30 @@ BEGIN
     ON CONFLICT DO NOTHING;
 
     -- Appointment 2: 15 days ago, completed, no review
-    slot_id := gen_random_uuid();
+    ts_id   := gen_random_uuid();
     appt_id := gen_random_uuid();
     INSERT INTO time_slots (id, doctor_id, start_time, end_time, is_booked, appointment_type)
-    VALUES (slot_id, demo_doctor,
+    VALUES (ts_id, demo_doctor,
             NOW() - INTERVAL '15 days' + INTERVAL '14 hours',
             NOW() - INTERVAL '15 days' + INTERVAL '15 hours',
             true, 'ONLINE') ON CONFLICT DO NOTHING;
-    INSERT INTO appointments (id, patient_id, doctor_id, slot_id, status, type, complaint,
+    INSERT INTO appointments (id, patient_id, doctor_id, time_slot_id, status, type, complaint,
                               payment_status, payment_amount, created_at, updated_at)
-    VALUES (appt_id, demo_patient, demo_doctor, slot_id, 'COMPLETED', 'ONLINE',
+    VALUES (appt_id, demo_patient, demo_doctor, ts_id, 'COMPLETED', 'ONLINE',
             'Контрольный осмотр после лечения',
             'PAID', 9000, NOW() - INTERVAL '15 days', NOW() - INTERVAL '15 days')
     ON CONFLICT DO NOTHING;
 
-    -- Appointment 3: cancelled (demonstrates cancel flow)
-    slot_id := gen_random_uuid();
+    -- Appointment 3: cancelled
+    ts_id := gen_random_uuid();
     INSERT INTO time_slots (id, doctor_id, start_time, end_time, is_booked, appointment_type)
-    VALUES (slot_id, demo_doctor,
+    VALUES (ts_id, demo_doctor,
             NOW() - INTERVAL '7 days' + INTERVAL '9 hours',
             NOW() - INTERVAL '7 days' + INTERVAL '10 hours',
             false, 'OFFLINE') ON CONFLICT DO NOTHING;
-    INSERT INTO appointments (id, patient_id, doctor_id, slot_id, status, type, complaint,
+    INSERT INTO appointments (id, patient_id, doctor_id, time_slot_id, status, type, complaint,
                               payment_status, payment_amount, created_at, updated_at)
-    VALUES (gen_random_uuid(), demo_patient, demo_doctor, slot_id, 'CANCELLED', 'OFFLINE',
+    VALUES (gen_random_uuid(), demo_patient, demo_doctor, ts_id, 'CANCELLED', 'OFFLINE',
             'Головные боли по утрам',
             'REFUNDED', 9000, NOW() - INTERVAL '8 days', NOW() - INTERVAL '7 days')
     ON CONFLICT DO NOTHING;
@@ -107,10 +107,10 @@ DECLARE
     doctors_arr UUID[];
     pat UUID;
     doc UUID;
-    slot_id UUID;
-    appt_id UUID;
+    ts_id       UUID;
+    appt_id     UUID;
     offset_days INT;
-    i INT;
+    i           INT;
 BEGIN
     SELECT ARRAY(SELECT id FROM doctors ORDER BY license_number LIMIT 12) INTO doctors_arr;
 
@@ -118,20 +118,20 @@ BEGIN
         FOR i IN 1..3 LOOP
             doc := doctors_arr[1 + ((i + array_position(patients, pat)) % array_length(doctors_arr, 1))];
             offset_days := 10 * i + array_position(patients, pat);
-            slot_id := gen_random_uuid();
+            ts_id   := gen_random_uuid();
             appt_id := gen_random_uuid();
 
             INSERT INTO time_slots (id, doctor_id, start_time, end_time, is_booked, appointment_type)
-            VALUES (slot_id, doc,
+            VALUES (ts_id, doc,
                     NOW() - (offset_days || ' days')::INTERVAL + INTERVAL '10 hours',
                     NOW() - (offset_days || ' days')::INTERVAL + INTERVAL '11 hours',
                     true,
                     CASE WHEN i % 2 = 0 THEN 'ONLINE' ELSE 'OFFLINE' END::text::appointment_type)
             ON CONFLICT DO NOTHING;
 
-            INSERT INTO appointments (id, patient_id, doctor_id, slot_id, status, type,
+            INSERT INTO appointments (id, patient_id, doctor_id, time_slot_id, status, type,
                                       payment_status, payment_amount, created_at, updated_at)
-            VALUES (appt_id, pat, doc, slot_id, 'COMPLETED',
+            VALUES (appt_id, pat, doc, ts_id, 'COMPLETED',
                     CASE WHEN i % 2 = 0 THEN 'ONLINE' ELSE 'OFFLINE' END::text::appointment_type,
                     'PAID',
                     (SELECT consultation_fee FROM doctors WHERE id = doc),
