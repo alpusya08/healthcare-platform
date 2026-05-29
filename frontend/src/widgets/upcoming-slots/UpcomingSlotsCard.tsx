@@ -72,8 +72,11 @@ function SlotRow({ slot, aiSessionId }: { slot: UpcomingSlot; aiSessionId?: stri
 
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-sm transition-all">
-      <div className="w-11 h-11 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-700 dark:text-blue-300 font-semibold text-sm shrink-0">
-        {getDoctorInitials(slot.doctorFullName)}
+      <div className="w-11 h-11 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-700 dark:text-blue-300 font-semibold text-sm shrink-0 overflow-hidden">
+        {slot.photoUrl
+          ? <img src={slot.photoUrl} alt={slot.doctorFullName} className="w-full h-full object-cover" />
+          : getDoctorInitials(slot.doctorFullName)
+        }
       </div>
 
       <div className="flex-1 min-w-0">

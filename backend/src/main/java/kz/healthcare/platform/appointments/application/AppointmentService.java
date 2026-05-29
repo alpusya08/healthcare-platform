@@ -110,7 +110,8 @@ public class AppointmentService {
                             d.getSpecialization().getCode(),
                             d.getYearsExperience(),
                             d.getConsultationFee(),
-                            d.getAverageRating()
+                            d.getAverageRating(),
+                            d.getPhotoUrl()
                     );
                 })
                 .toList();
@@ -471,7 +472,9 @@ public class AppointmentService {
                 d.getConsultationFee(),
                 d.getAverageRating(),
                 d.getPhotoUrl(),
-                d.getCity()
+                d.getCity(),
+                d.getClinicName(),
+                d.getClinicAddress()
         );
     }
 

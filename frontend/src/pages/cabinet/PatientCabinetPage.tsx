@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   User, Calendar, Star, Activity, Clock, CheckCircle2,
-  ArrowRight, Heart, Shield, ChevronRight, Phone, Mail, Pencil, X, Check, Video,
+  ArrowRight, Heart, Shield, ChevronRight, Phone, Mail, Pencil, X, Check, Video, Brain,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
@@ -30,6 +30,12 @@ function formatDate(iso: string) {
 }
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatCabinetName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length < 2) return fullName;
+  return `${parts[0]} ${parts[1][0]}.`;
 }
 
 export function PatientCabinetPage() {
@@ -79,6 +85,7 @@ export function PatientCabinetPage() {
   const scheduled = appointments.filter((a) => a.status === "SCHEDULED");
   const completed = appointments.filter((a) => a.status === "COMPLETED");
   const withReviews = appointments.filter((a) => a.hasReview);
+  const withAiAnalysis = appointments.filter((a) => !!a.aiSessionId);
 
   const initials = user
     ? user.fullName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
@@ -109,7 +116,9 @@ export function PatientCabinetPage() {
                     {initials}
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-foreground">{user?.fullName}</h2>
+                    <h2 className="text-xl font-bold text-foreground">
+                      {user ? formatCabinetName(user.fullName) : "Пациент"}
+                    </h2>
                     <Badge variant="secondary" className="mt-2 rounded-xl">
                       <User className="w-3 h-3 mr-1" />
                       Пациент
@@ -498,6 +507,49 @@ export function PatientCabinetPage() {
                 )}
               </CardContent>
             </Card>
+            {/* AI Analysis history */}
+            {withAiAnalysis.length > 0 && (
+              <Card className="shadow-lg hover:shadow-xl rounded-2xl border-violet-200 dark:border-violet-800 bg-violet-50/30 dark:bg-violet-950/10">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-violet-600" />
+                    История AI-анализов
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="divide-y divide-border">
+                    {withAiAnalysis.map((appt) => (
+                      <div key={appt.id} className="py-3 first:pt-0 last:pb-0">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-foreground truncate">{appt.doctorName}</p>
+                            <p className="text-xs text-muted-foreground">{formatDate(appt.startTime)}</p>
+                            {appt.complaint && (
+                              <p className="text-xs text-muted-foreground mt-0.5 italic line-clamp-1">«{appt.complaint}»</p>
+                            )}
+                          </div>
+                          <Link
+                            to={`/ai-analysis?sessionId=${appt.aiSessionId}`}
+                            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300 text-xs font-medium hover:bg-violet-200 dark:hover:bg-violet-900/60 transition-colors"
+                          >
+                            <Brain className="w-3.5 h-3.5" />
+                            Смотреть
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <Button asChild size="sm" variant="outline" className="w-full rounded-xl">
+                      <Link to={routes.patient.aiAnalysis}>
+                        <Brain className="w-3.5 h-3.5 mr-2" />
+                        Новый AI-анализ
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

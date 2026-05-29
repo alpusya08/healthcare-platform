@@ -3,8 +3,11 @@ import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, Clock, ChevronLeft, Stethoscope, Video,
-  MapPin, AlertTriangle, CheckCircle2, User,
+  MapPin, CheckCircle2, User, Info,
 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/shared/ui/dialog";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -68,6 +71,9 @@ export function BookAppointmentPage() {
   const [appointmentType, setAppointmentType] = useState<AppointmentType>("OFFLINE");
   const [bookedAppointment, setBookedAppointment] = useState<Appointment | null>(null);
   const [complaint, setComplaint] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [successOpen, setSuccessOpen] = useState(false);
+  const [successAppointment, setSuccessAppointment] = useState<Appointment | null>(null);
 
   const { data: doctor } = useQuery({
     queryKey: ["doctors"],
@@ -76,11 +82,17 @@ export function BookAppointmentPage() {
     enabled: !!doctorId,
   });
 
-  const { data: slots = [], isLoading: slotsLoading } = useQuery({
+  const { data: rawSlots = [], isLoading: slotsLoading } = useQuery({
     queryKey: ["slots", doctorId],
     queryFn: () => appointmentsApi.listSlots(doctorId!),
     enabled: !!doctorId,
   });
+
+  const slots = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() + 30);
+    return rawSlots.filter((s) => new Date(s.startTime) <= cutoff);
+  }, [rawSlots]);
 
   const monthMap = useMemo(() => buildMonthMap(slots), [slots]);
   const monthKeys = useMemo(() => Array.from(monthMap.keys()).sort(), [monthMap]);
@@ -127,25 +139,12 @@ export function BookAppointmentPage() {
     mutationFn: appointmentsApi.book,
     onSuccess: (appt) => {
       queryClient.invalidateQueries({ queryKey: ["appointments"] });
-      toast.success("Запись успешно создана!");
-      if (appt.type === "ONLINE" && appt.meetingLink) {
-        toast(
-          <div className="flex items-center gap-2">
-            <Video className="w-4 h-4 text-primary shrink-0" />
-            <span className="text-sm">
-              Ссылка на онлайн-консультацию:{" "}
-              <a href={appt.meetingLink} target="_blank" rel="noopener noreferrer" className="text-primary underline">
-                Подключиться
-              </a>
-            </span>
-          </div>,
-          { duration: 10000 }
-        );
-      }
+      setConfirmOpen(false);
       if (appt.paymentAmount != null) {
         setBookedAppointment(appt);
       } else {
-        navigate(routes.patient.appointments);
+        setSuccessAppointment(appt);
+        setSuccessOpen(true);
       }
     },
     onError: (err: unknown) => {
@@ -158,6 +157,11 @@ export function BookAppointmentPage() {
 
   const handleBook = () => {
     if (!selectedSlot) { toast.error("Выберите время приёма"); return; }
+    setConfirmOpen(true);
+  };
+
+  const doBook = () => {
+    if (!selectedSlot) return;
     bookMutation.mutate({
       slotId: selectedSlot.id,
       type: appointmentType,
@@ -334,6 +338,11 @@ export function BookAppointmentPage() {
                             {t === "OFFLINE" ? "Очный визит" : "Видеоконсультация"}
                           </p>
                         </div>
+                        {isSelected && t === "OFFLINE" && doctor?.clinicName && (
+                          <p className="text-xs text-primary/70 text-center leading-tight">
+                            {doctor.clinicName}
+                          </p>
+                        )}
                         {isSelected && <CheckCircle2 className="w-4 h-4 text-primary" />}
                       </button>
                     );
@@ -363,11 +372,11 @@ export function BookAppointmentPage() {
               </CardContent>
             </Card>
 
-            {/* Warning */}
-            <div className="flex items-start gap-3 p-4 rounded-2xl border border-warning/30 bg-warning/5">
-              <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+            {/* Cancellation notice */}
+            <div className="flex items-start gap-3 p-4 rounded-2xl border border-border bg-muted/30">
+              <Info className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Бесплатная отмена доступна не менее чем за 2 часа до начала приёма. Поздняя отмена может повлечь штраф.
+                Бесплатная отмена доступна не менее чем за 2 часа до начала приёма.
               </p>
             </div>
 
@@ -436,6 +445,12 @@ export function BookAppointmentPage() {
                         {appointmentType === "ONLINE" ? "Онлайн" : "Офлайн"}
                       </Badge>
                     </div>
+                    {appointmentType === "OFFLINE" && doctor?.clinicAddress && (
+                      <div className="flex items-start gap-2 text-xs text-muted-foreground pt-1">
+                        <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary" />
+                        <span>{doctor.clinicAddress}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="border-t border-border pt-4">
@@ -461,6 +476,103 @@ export function BookAppointmentPage() {
           onSuccess={() => navigate(routes.patient.appointments)}
         />
       )}
+
+      {/* Confirmation modal */}
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-primary" />
+              Подтвердите запись
+            </DialogTitle>
+            <DialogDescription>Проверьте данные перед записью</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            {doctor && (
+              <div className="rounded-xl bg-muted/50 p-3 space-y-1.5">
+                <p className="font-semibold">{doctor.fullName}</p>
+                <p className="text-muted-foreground">{doctor.specialization}</p>
+              </div>
+            )}
+            {selectedSlot && (
+              <div className="rounded-xl bg-muted/50 p-3 space-y-1.5">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span className="capitalize">{fmtDateLong(selectedSlot.startTime)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>{fmtTime(selectedSlot.startTime)} – {fmtTime(selectedSlot.endTime)}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  {appointmentType === "ONLINE" ? <Video className="w-3.5 h-3.5" /> : <MapPin className="w-3.5 h-3.5" />}
+                  <span>{appointmentType === "ONLINE" ? "Онлайн" : "Офлайн"}</span>
+                </div>
+              </div>
+            )}
+            {doctor?.consultationFee != null && (
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl border border-primary/20 bg-primary/5">
+                <span className="text-muted-foreground">Стоимость</span>
+                <span className="font-bold text-primary">{doctor.consultationFee.toLocaleString("ru-RU")} ₸</span>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setConfirmOpen(false)} className="flex-1 rounded-xl">
+              Отмена
+            </Button>
+            <Button onClick={doBook} disabled={bookMutation.isPending} className="flex-1 rounded-xl">
+              {bookMutation.isPending ? "Записываем..." : "Подтвердить"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success modal */}
+      <Dialog open={successOpen} onOpenChange={() => { setSuccessOpen(false); navigate(routes.patient.appointments); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-600">
+              <CheckCircle2 className="w-5 h-5" />
+              Запись создана!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/30 p-3 space-y-1.5 border border-emerald-200 dark:border-emerald-800">
+              <p className="font-semibold">{successAppointment?.doctorName}</p>
+              <p className="text-muted-foreground">{successAppointment?.specialization}</p>
+              {successAppointment && (
+                <>
+                  <div className="flex items-center gap-2 text-muted-foreground pt-1">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span className="capitalize">{fmtDateLong(successAppointment.startTime)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>{fmtTime(successAppointment.startTime)} – {fmtTime(successAppointment.endTime)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+            {successAppointment?.type === "ONLINE" && successAppointment.meetingLink && (
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-sm">
+                <Video className="w-4 h-4 text-blue-600 shrink-0" />
+                <a href={successAppointment.meetingLink} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                  Ссылка на видеоконсультацию
+                </a>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              className="w-full rounded-xl"
+              onClick={() => { setSuccessOpen(false); navigate(routes.patient.appointments); }}
+            >
+              Перейти к моим записям
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

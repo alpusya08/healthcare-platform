@@ -396,19 +396,19 @@ export function DoctorsPage() {
                 {/* Online only */}
                 <div>
                   <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-3">Формат приёма</p>
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <button
-                      onClick={() => setOnlineOnly((v) => !v)}
-                      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
-                        onlineOnly ? "bg-primary" : "bg-muted-foreground/30"
-                      }`}
-                    >
+                  <div
+                    className="flex items-center gap-3 cursor-pointer group"
+                    onClick={() => setOnlineOnly((v) => !v)}
+                  >
+                    <div className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
+                      onlineOnly ? "bg-primary" : "bg-muted-foreground/30"
+                    }`}>
                       <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
                         onlineOnly ? "translate-x-6" : "translate-x-1"
                       }`} />
-                    </button>
-                    <span className="text-sm font-medium text-foreground">Только онлайн</span>
-                  </label>
+                    </div>
+                    <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">Только онлайн</span>
+                  </div>
                   {hasActiveFilters && (
                     <button
                       onClick={clearFilters}

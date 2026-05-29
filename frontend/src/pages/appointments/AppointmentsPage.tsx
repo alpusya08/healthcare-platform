@@ -3,8 +3,11 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, Clock, XCircle, Plus, Star, CheckCircle2,
-  FileText, CalendarX, Video, ArrowLeftRight, CreditCard,
+  FileText, CalendarX, Video, ArrowLeftRight, CreditCard, AlertTriangle,
 } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/shared/ui/dialog";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -57,7 +60,7 @@ function UpcomingAppointmentCard({
   onPay,
 }: {
   appt: Appointment;
-  onCancel: (id: string) => void;
+  onCancel: (appt: Appointment) => void;
   onOpen: (appt: Appointment) => void;
   onReschedule: (appt: Appointment) => void;
   onPay: (appt: Appointment) => void;
@@ -164,7 +167,7 @@ function UpcomingAppointmentCard({
                 size="sm"
                 variant="ghost"
                 className="rounded-xl h-8 text-xs gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto"
-                onClick={(e) => { e.stopPropagation(); onCancel(appt.id); }}
+                onClick={(e) => { e.stopPropagation(); onCancel(appt); }}
               >
                 <XCircle className="w-3.5 h-3.5" />
                 Отменить
@@ -256,6 +259,7 @@ export function AppointmentsPage() {
   const [detailTarget, setDetailTarget] = useState<Appointment | null>(null);
   const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
   const [payTarget, setPayTarget] = useState<Appointment | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
 
   const { data: appointments = [], isLoading } = useQuery({
     queryKey: ["appointments", "my"],
@@ -327,7 +331,7 @@ export function AppointmentsPage() {
                     <UpcomingAppointmentCard
                       key={a.id}
                       appt={a}
-                      onCancel={(id) => cancelMutation.mutate(id)}
+                      onCancel={(appt) => setCancelTarget(appt)}
                       onOpen={setDetailTarget}
                       onReschedule={setRescheduleTarget}
                       onPay={setPayTarget}
@@ -371,7 +375,7 @@ export function AppointmentsPage() {
       <AppointmentDetailModal
         appointment={detailTarget}
         onClose={() => setDetailTarget(null)}
-        onCancel={(id) => { cancelMutation.mutate(id); setDetailTarget(null); }}
+        onCancel={(id) => { setCancelTarget(appointments.find(a => a.id === id) ?? null); setDetailTarget(null); }}
         onReview={(appt) => { setReviewTarget(appt); setDetailTarget(null); }}
       />
 
@@ -388,6 +392,47 @@ export function AppointmentsPage() {
           onClose={() => setPayTarget(null)}
         />
       )}
+
+      {/* Cancel confirmation dialog */}
+      <Dialog open={!!cancelTarget} onOpenChange={() => setCancelTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Отменить запись?
+            </DialogTitle>
+            <DialogDescription>
+              {cancelTarget && (
+                <>
+                  <span className="font-medium text-foreground">{cancelTarget.doctorName}</span>
+                  {" · "}
+                  {new Date(cancelTarget.startTime).toLocaleString("ru-RU", {
+                    day: "numeric", month: "long", hour: "2-digit", minute: "2-digit",
+                  })}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setCancelTarget(null)} className="flex-1 rounded-xl">
+              Оставить
+            </Button>
+            <Button
+              variant="destructive"
+              className="flex-1 rounded-xl"
+              disabled={cancelMutation.isPending}
+              onClick={() => {
+                if (cancelTarget) {
+                  cancelMutation.mutate(cancelTarget.id);
+                  setCancelTarget(null);
+                }
+              }}
+            >
+              Да, отменить
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

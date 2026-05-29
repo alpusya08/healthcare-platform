@@ -13,5 +13,7 @@ public record DoctorSummaryResponse(
         BigDecimal consultationFee,
         BigDecimal averageRating,
         String photoUrl,
-        String city
+        String city,
+        String clinicName,
+        String clinicAddress
 ) {}

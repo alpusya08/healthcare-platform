@@ -9,6 +9,8 @@ export interface Doctor {
   averageRating: number;
   photoUrl?: string | null;
   city?: string | null;
+  clinicName?: string | null;
+  clinicAddress?: string | null;
 }
 
 export interface TimeSlot {
@@ -94,4 +96,5 @@ export interface UpcomingSlot {
   yearsExperience: number;
   consultationFee: number | null;
   averageRating: number;
+  photoUrl?: string | null;
 }

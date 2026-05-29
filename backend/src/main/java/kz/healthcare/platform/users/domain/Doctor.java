@@ -57,4 +57,10 @@ public class Doctor {
     @Column(name = "city", length = 64)
     @Builder.Default
     private String city = "Алматы";
+
+    @Column(name = "clinic_name")
+    private String clinicName;
+
+    @Column(name = "clinic_address")
+    private String clinicAddress;
 }
