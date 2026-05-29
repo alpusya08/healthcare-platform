@@ -262,8 +262,9 @@ export function AppointmentsPage() {
   const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
 
   const { data: appointments = [], isLoading } = useQuery({
-    queryKey: ["appointments", "my"],
+    queryKey: ["appointments"],
     queryFn: appointmentsApi.myAppointments,
+    staleTime: 0,
   });
 
   const cancelMutation = useMutation({
