@@ -67,6 +67,7 @@ dist/
 dist-ssr/
 .vite/
 *.local
+*.tsbuildinfo
 coverage/
 .turbo/
 .next/
@@ -100,6 +101,14 @@ data/redis/
 data/minio/
 data/mlflow/
 data/uploads/
+
+# --- Claude Code ---
+.claude/worktrees/
+.claude/memory/
+
+# --- Misc ---
+*.pdf
+Medical AI Web System Design/
 
 # --- ML artifacts (large) ---
 ai-service/artifacts/*.pkl
