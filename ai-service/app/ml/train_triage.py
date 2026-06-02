@@ -42,6 +42,7 @@ from sklearn.preprocessing import StandardScaler
 
 EXPERIMENT_NAME = "triage-classification"
 MODEL_REGISTRY_NAME = "triage-classifier"
+DATASET_VERSION = "v3_30k_all_domains"
 
 NUMERIC_FEATURES = [
     "age", "symptom_duration_days", "pain_severity", "associated_symptoms_count",
@@ -98,7 +99,7 @@ def _triage_label(row: dict) -> int:
     if age >= 65 and sev >= 8 and assoc >= 4:
         return 2
 
-    # Red flag in children — potentially sepsis, meningitis
+    # Red flag in children — potentially sepsis, meningitis, anaphylaxis
     if age <= 5 and red == 1 and sev >= 6:
         return 2
 
@@ -108,6 +109,10 @@ def _triage_label(row: dict) -> int:
 
     # High severity + red flag (even without sudden onset)
     if red == 1 and sev >= 7:
+        return 2
+
+    # Children with sudden severe multi-symptom presentation
+    if age <= 12 and red == 1 and onset == 1 and sev >= 7:
         return 2
 
     # ── URGENT criteria ─────────────────────────────────────────────────────────
@@ -160,6 +165,10 @@ def _triage_label(row: dict) -> int:
     if worsening == 1 and assoc >= 4 and sev >= 4:
         return 1
 
+    # Acute onset with moderate severity and multiple symptoms
+    if onset == 1 and sev >= 4 and assoc >= 3:
+        return 1
+
     return 0
 
 
@@ -197,7 +206,7 @@ def _scenario_cardiac(rng: np.random.Generator, triage: int) -> dict:
             "associated_symptoms_count": int(rng.integers(2, 5)),
             "red_flag_present": int(rng.choice([0, 1], p=[0.5, 0.5])),
         }
-    else:  # ROUTINE: musculoskeletal chest pain
+    else:  # ROUTINE: musculoskeletal chest pain, costochondritis
         return {
             "age": int(rng.integers(20, 60)),
             "sex": int(rng.integers(0, 2)),
@@ -510,7 +519,7 @@ def _scenario_geriatric(rng: np.random.Generator, triage: int) -> dict:
 
 def _scenario_musculoskeletal(rng: np.random.Generator, triage: int) -> dict:
     """Back pain, joint pain, musculoskeletal."""
-    if triage == 2:
+    if triage == 2:  # EMERGENCY: cauda equina, acute spinal cord compression
         return {
             "age": int(rng.integers(30, 70)),
             "sex": int(rng.integers(0, 2)),
@@ -525,7 +534,7 @@ def _scenario_musculoskeletal(rng: np.random.Generator, triage: int) -> dict:
             "associated_symptoms_count": int(rng.integers(2, 5)),
             "red_flag_present": 1,
         }
-    elif triage == 1:
+    elif triage == 1:  # URGENT: disc herniation, gout attack, septic arthritis
         return {
             "age": int(rng.integers(25, 70)),
             "sex": int(rng.integers(0, 2)),
@@ -540,7 +549,7 @@ def _scenario_musculoskeletal(rng: np.random.Generator, triage: int) -> dict:
             "associated_symptoms_count": int(rng.integers(1, 4)),
             "red_flag_present": int(rng.choice([0, 1], p=[0.7, 0.3])),
         }
-    else:
+    else:  # ROUTINE: chronic back pain, osteoarthritis
         return {
             "age": int(rng.integers(20, 65)),
             "sex": int(rng.integers(0, 2)),
@@ -559,7 +568,7 @@ def _scenario_musculoskeletal(rng: np.random.Generator, triage: int) -> dict:
 
 def _scenario_mental_health(rng: np.random.Generator, triage: int) -> dict:
     """Mental health / psychiatric presentations."""
-    if triage == 2:
+    if triage == 2:  # EMERGENCY: suicidal crisis, acute psychosis
         return {
             "age": int(rng.integers(18, 50)),
             "sex": int(rng.integers(0, 2)),
@@ -574,7 +583,7 @@ def _scenario_mental_health(rng: np.random.Generator, triage: int) -> dict:
             "associated_symptoms_count": int(rng.integers(3, 6)),
             "red_flag_present": 1,
         }
-    elif triage == 1:
+    elif triage == 1:  # URGENT: severe depression, panic disorder
         return {
             "age": int(rng.integers(18, 55)),
             "sex": int(rng.integers(0, 2)),
@@ -589,7 +598,7 @@ def _scenario_mental_health(rng: np.random.Generator, triage: int) -> dict:
             "associated_symptoms_count": int(rng.integers(2, 5)),
             "red_flag_present": 0,
         }
-    else:
+    else:  # ROUTINE: mild anxiety, adjustment disorder
         return {
             "age": int(rng.integers(18, 60)),
             "sex": int(rng.integers(0, 2)),
@@ -602,6 +611,251 @@ def _scenario_mental_health(rng: np.random.Generator, triage: int) -> dict:
             "takes_medications": int(rng.choice([0, 1], p=[0.4, 0.6])),
             "prior_similar_episode": 1,
             "associated_symptoms_count": int(rng.integers(1, 4)),
+            "red_flag_present": 0,
+        }
+
+
+def _scenario_dermatological(rng: np.random.Generator, triage: int) -> dict:
+    """Dermatological / allergic presentations."""
+    if triage == 2:  # EMERGENCY: anaphylaxis, Stevens-Johnson syndrome
+        return {
+            "age": int(rng.integers(5, 70)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": 0,
+            "pain_severity": int(rng.integers(7, 11)),
+            "onset_type": 1,
+            "is_worsening": 1,
+            "affects_daily_activity": 1,
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "prior_similar_episode": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "associated_symptoms_count": int(rng.integers(4, 7)),
+            "red_flag_present": 1,
+        }
+    elif triage == 1:  # URGENT: severe cellulitis, extensive urticaria, infected wound
+        return {
+            "age": int(rng.integers(10, 70)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.integers(1, 5)),
+            "pain_severity": int(rng.integers(4, 8)),
+            "onset_type": int(rng.choice([0, 1], p=[0.4, 0.6])),
+            "is_worsening": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "affects_daily_activity": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.6, 0.4])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "prior_similar_episode": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "associated_symptoms_count": int(rng.integers(1, 4)),
+            "red_flag_present": int(rng.choice([0, 1], p=[0.6, 0.4])),
+        }
+    else:  # ROUTINE: eczema, psoriasis, mild allergic rash
+        return {
+            "age": int(rng.integers(5, 65)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.integers(3, 60)),
+            "pain_severity": int(rng.integers(1, 5)),
+            "onset_type": 0,
+            "is_worsening": int(rng.choice([0, 1], p=[0.7, 0.3])),
+            "affects_daily_activity": int(rng.choice([0, 1], p=[0.6, 0.4])),
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.4, 0.6])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "prior_similar_episode": 1,
+            "associated_symptoms_count": int(rng.integers(0, 3)),
+            "red_flag_present": 0,
+        }
+
+
+def _scenario_metabolic(rng: np.random.Generator, triage: int) -> dict:
+    """Metabolic / endocrine presentations."""
+    if triage == 2:  # EMERGENCY: DKA, severe hypoglycemia, thyroid storm
+        return {
+            "age": int(rng.integers(15, 70)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.choice([0, 1, 2])),
+            "pain_severity": int(rng.integers(6, 10)),
+            "onset_type": int(rng.choice([0, 1], p=[0.4, 0.6])),
+            "is_worsening": 1,
+            "affects_daily_activity": 1,
+            "has_chronic_conditions": 1,
+            "takes_medications": 1,
+            "prior_similar_episode": int(rng.choice([0, 1], p=[0.4, 0.6])),
+            "associated_symptoms_count": int(rng.integers(3, 7)),
+            "red_flag_present": 1,
+        }
+    elif triage == 1:  # URGENT: uncontrolled diabetes, hyperthyroidism flare
+        return {
+            "age": int(rng.integers(20, 75)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.integers(1, 14)),
+            "pain_severity": int(rng.integers(3, 7)),
+            "onset_type": 0,
+            "is_worsening": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "affects_daily_activity": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "has_chronic_conditions": 1,
+            "takes_medications": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "prior_similar_episode": int(rng.choice([0, 1], p=[0.4, 0.6])),
+            "associated_symptoms_count": int(rng.integers(2, 5)),
+            "red_flag_present": int(rng.choice([0, 1], p=[0.6, 0.4])),
+        }
+    else:  # ROUTINE: controlled hypothyroidism, stable diabetes follow-up
+        return {
+            "age": int(rng.integers(30, 75)),
+            "sex": int(rng.choice([0, 1], p=[0.6, 0.4])),
+            "symptom_duration_days": int(rng.integers(14, 180)),
+            "pain_severity": int(rng.integers(1, 4)),
+            "onset_type": 0,
+            "is_worsening": 0,
+            "affects_daily_activity": int(rng.choice([0, 1], p=[0.7, 0.3])),
+            "has_chronic_conditions": 1,
+            "takes_medications": 1,
+            "prior_similar_episode": 1,
+            "associated_symptoms_count": int(rng.integers(0, 3)),
+            "red_flag_present": 0,
+        }
+
+
+def _scenario_urological(rng: np.random.Generator, triage: int) -> dict:
+    """Urological / gynecological presentations."""
+    if triage == 2:  # EMERGENCY: ectopic pregnancy rupture, testicular torsion
+        return {
+            "age": int(rng.integers(15, 45)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.choice([0, 1])),
+            "pain_severity": int(rng.integers(8, 11)),
+            "onset_type": 1,
+            "is_worsening": 1,
+            "affects_daily_activity": 1,
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.7, 0.3])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.6, 0.4])),
+            "prior_similar_episode": 0,
+            "associated_symptoms_count": int(rng.integers(3, 6)),
+            "red_flag_present": 1,
+        }
+    elif triage == 1:  # URGENT: renal colic, pyelonephritis, ovarian cyst
+        return {
+            "age": int(rng.integers(18, 65)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.choice([0, 1, 2, 3])),
+            "pain_severity": int(rng.integers(5, 9)),
+            "onset_type": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "is_worsening": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "affects_daily_activity": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.6, 0.4])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "prior_similar_episode": int(rng.choice([0, 1], p=[0.4, 0.6])),
+            "associated_symptoms_count": int(rng.integers(1, 4)),
+            "red_flag_present": int(rng.choice([0, 1], p=[0.5, 0.5])),
+        }
+    else:  # ROUTINE: UTI, benign prostatic hyperplasia, minor dysmenorrhea
+        return {
+            "age": int(rng.integers(18, 70)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.integers(1, 14)),
+            "pain_severity": int(rng.integers(1, 5)),
+            "onset_type": 0,
+            "is_worsening": 0,
+            "affects_daily_activity": int(rng.choice([0, 1], p=[0.6, 0.4])),
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "prior_similar_episode": 1,
+            "associated_symptoms_count": int(rng.integers(0, 3)),
+            "red_flag_present": 0,
+        }
+
+
+def _scenario_infectious(rng: np.random.Generator, triage: int) -> dict:
+    """Infectious disease presentations."""
+    if triage == 2:  # EMERGENCY: sepsis, meningitis, severe septic shock
+        return {
+            "age": int(rng.integers(0, 90)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.choice([0, 1, 2])),
+            "pain_severity": int(rng.integers(7, 11)),
+            "onset_type": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "is_worsening": 1,
+            "affects_daily_activity": 1,
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.4, 0.6])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.4, 0.6])),
+            "prior_similar_episode": 0,
+            "associated_symptoms_count": int(rng.integers(4, 7)),
+            "red_flag_present": 1,
+        }
+    elif triage == 1:  # URGENT: high fever with rash, suspected influenza with complications
+        return {
+            "age": int(rng.integers(1, 80)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.integers(1, 5)),
+            "pain_severity": int(rng.integers(4, 8)),
+            "onset_type": int(rng.choice([0, 1], p=[0.4, 0.6])),
+            "is_worsening": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "affects_daily_activity": 1,
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "prior_similar_episode": int(rng.choice([0, 1], p=[0.6, 0.4])),
+            "associated_symptoms_count": int(rng.integers(2, 5)),
+            "red_flag_present": int(rng.choice([0, 1], p=[0.5, 0.5])),
+        }
+    else:  # ROUTINE: common cold, mild viral illness
+        return {
+            "age": int(rng.integers(2, 70)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.integers(1, 10)),
+            "pain_severity": int(rng.integers(1, 5)),
+            "onset_type": 0,
+            "is_worsening": 0,
+            "affects_daily_activity": int(rng.choice([0, 1], p=[0.6, 0.4])),
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.7, 0.3])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.6, 0.4])),
+            "prior_similar_episode": 1,
+            "associated_symptoms_count": int(rng.integers(1, 4)),
+            "red_flag_present": 0,
+        }
+
+
+def _scenario_ophthalmological(rng: np.random.Generator, triage: int) -> dict:
+    """Ophthalmological / ENT presentations."""
+    if triage == 2:  # EMERGENCY: acute angle-closure glaucoma, chemical eye burn
+        return {
+            "age": int(rng.integers(40, 75)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": 0,
+            "pain_severity": int(rng.integers(8, 11)),
+            "onset_type": 1,
+            "is_worsening": 1,
+            "affects_daily_activity": 1,
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "prior_similar_episode": int(rng.choice([0, 1], p=[0.7, 0.3])),
+            "associated_symptoms_count": int(rng.integers(2, 5)),
+            "red_flag_present": 1,
+        }
+    elif triage == 1:  # URGENT: sudden vision loss, severe otitis, peritonsillar abscess
+        return {
+            "age": int(rng.integers(5, 70)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.integers(0, 3)),
+            "pain_severity": int(rng.integers(5, 9)),
+            "onset_type": int(rng.choice([0, 1], p=[0.4, 0.6])),
+            "is_worsening": int(rng.choice([0, 1], p=[0.3, 0.7])),
+            "affects_daily_activity": 1,
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.6, 0.4])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "prior_similar_episode": int(rng.choice([0, 1], p=[0.5, 0.5])),
+            "associated_symptoms_count": int(rng.integers(1, 4)),
+            "red_flag_present": int(rng.choice([0, 1], p=[0.5, 0.5])),
+        }
+    else:  # ROUTINE: conjunctivitis, earwax, mild pharyngitis
+        return {
+            "age": int(rng.integers(3, 65)),
+            "sex": int(rng.integers(0, 2)),
+            "symptom_duration_days": int(rng.integers(1, 14)),
+            "pain_severity": int(rng.integers(1, 5)),
+            "onset_type": 0,
+            "is_worsening": 0,
+            "affects_daily_activity": int(rng.choice([0, 1], p=[0.7, 0.3])),
+            "has_chronic_conditions": int(rng.choice([0, 1], p=[0.7, 0.3])),
+            "takes_medications": int(rng.choice([0, 1], p=[0.6, 0.4])),
+            "prior_similar_episode": 1,
+            "associated_symptoms_count": int(rng.integers(0, 3)),
             "red_flag_present": 0,
         }
 
@@ -666,16 +920,37 @@ _SCENARIO_GENERATORS = [
     _scenario_geriatric,
     _scenario_musculoskeletal,
     _scenario_mental_health,
+    _scenario_dermatological,
+    _scenario_metabolic,
+    _scenario_urological,
+    _scenario_infectious,
+    _scenario_ophthalmological,
     _scenario_general,
 ]
 
-# Weights: general scenarios are most common
-_SCENARIO_WEIGHTS = [0.12, 0.12, 0.12, 0.10, 0.08, 0.08, 0.10, 0.12, 0.06, 0.10]
+# Weights across 15 medical domains (sum = 1.0)
+_SCENARIO_WEIGHTS = [
+    0.08,  # cardiac
+    0.08,  # neurological
+    0.09,  # abdominal
+    0.08,  # respiratory
+    0.06,  # trauma
+    0.06,  # pediatric
+    0.07,  # geriatric
+    0.09,  # musculoskeletal
+    0.06,  # mental_health
+    0.05,  # dermatological
+    0.05,  # metabolic
+    0.06,  # urological
+    0.07,  # infectious
+    0.06,  # ophthalmological
+    0.09,  # general
+]
 
 
-def generate_synthetic_dataset(n_samples: int = 15000, seed: int = 42) -> pd.DataFrame:
+def generate_synthetic_dataset(n_samples: int = 30000, seed: int = 42) -> pd.DataFrame:
     """
-    Generate clinically realistic synthetic dataset.
+    Generate clinically realistic synthetic dataset covering 15 medical domains.
 
     Class distribution targets (based on real ED studies):
       EMERGENCY ~10%, URGENT ~28%, ROUTINE ~62%
@@ -683,7 +958,6 @@ def generate_synthetic_dataset(n_samples: int = 15000, seed: int = 42) -> pd.Dat
     rng = np.random.default_rng(seed)
     rows = []
 
-    # Pre-assign triage levels with realistic distribution
     n_emergency = int(n_samples * 0.10)
     n_urgent = int(n_samples * 0.28)
     n_routine = n_samples - n_emergency - n_urgent
@@ -702,11 +976,9 @@ def generate_synthetic_dataset(n_samples: int = 15000, seed: int = 42) -> pd.Dat
         scenario_fn = rng.choice(_SCENARIO_GENERATORS, p=scenario_weights)
         row = scenario_fn(rng, triage)
 
-        # Verify the label matches our deterministic rules
         computed_triage = _triage_label(row)
 
-        # If the scenario produced inconsistent features, use computed label
-        # (this handles edge cases and adds realistic noise)
+        # Allow up to 8% label noise for realism
         if computed_triage != triage and rng.random() > 0.08:
             row[TARGET] = computed_triage
         else:
@@ -730,19 +1002,19 @@ def load_or_generate_dataset(extra_samples: Optional[list[dict]] = None) -> pd.D
     data_dir.mkdir(parents=True, exist_ok=True)
     cache_path = data_dir / "triage_synthetic.csv"
 
-    # Always regenerate if cache is small (old 3k dataset)
+    # Regenerate if missing or from older smaller dataset
     if cache_path.exists():
         base_df = pd.read_csv(cache_path)
-        if len(base_df) < 10000:
-            print(f"Cache has only {len(base_df)} rows — regenerating with full dataset...")
-            base_df = generate_synthetic_dataset(n_samples=15000)
+        if len(base_df) < 25000:
+            print(f"Cache has only {len(base_df)} rows — regenerating with v3 dataset (30k, all domains)...")
+            base_df = generate_synthetic_dataset(n_samples=30000)
             base_df.to_csv(cache_path, index=False)
         else:
-            print(f"Loaded cached synthetic dataset: {len(base_df)} rows from {cache_path}")
+            print(f"Loaded cached dataset: {len(base_df)} rows from {cache_path}")
     else:
-        base_df = generate_synthetic_dataset(n_samples=15000)
+        base_df = generate_synthetic_dataset(n_samples=30000)
         base_df.to_csv(cache_path, index=False)
-        print(f"Saved synthetic dataset to {cache_path}")
+        print(f"Saved dataset to {cache_path}")
 
     parts = [base_df]
 
@@ -787,9 +1059,9 @@ def build_pipeline(params: dict) -> Pipeline:
 
 def _default_params() -> dict:
     return {
-        "n_estimators": 300,
+        "n_estimators": 400,
         "max_depth": 6,
-        "learning_rate": 0.08,
+        "learning_rate": 0.07,
         "subsample": 0.8,
         "colsample_bytree": 0.8,
         "min_child_weight": 3,
@@ -817,14 +1089,15 @@ def train(mlflow_uri: str = "http://localhost:5000") -> None:
     params = _default_params()
     pipeline = build_pipeline(params)
 
-    with mlflow.start_run(run_name="triage_v2_clinical_scenarios"):
+    with mlflow.start_run(run_name="triage_v3_all_domains"):
         mlflow.log_params(params)
         mlflow.log_param("features", ALL_FEATURES)
         mlflow.log_param("n_train", len(X_train))
         mlflow.log_param("n_test", len(X_test))
         mlflow.log_param("target_classes", list(_TRIAGE_CODES.values()))
-        mlflow.log_param("dataset_version", "v2_15k_clinical_scenarios")
+        mlflow.log_param("dataset_version", DATASET_VERSION)
         mlflow.log_param("triage_standard", "Manchester_Triage_System_ESI")
+        mlflow.log_param("n_domains", len(_SCENARIO_GENERATORS))
 
         cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
         cv_f1 = cross_val_score(pipeline, X_train, y_train, cv=cv, scoring="f1_macro")
@@ -855,7 +1128,12 @@ def train(mlflow_uri: str = "http://localhost:5000") -> None:
         )
         mlflow.set_tag("model_type", "xgboost_multiclass")
         mlflow.set_tag("feature_set", "12_general_triage_features")
-        mlflow.set_tag("scenarios", "cardiac,neurological,abdominal,respiratory,trauma,pediatric,geriatric,musculoskeletal,mental_health,general")
+        mlflow.set_tag(
+            "scenarios",
+            "cardiac,neurological,abdominal,respiratory,trauma,pediatric,"
+            "geriatric,musculoskeletal,mental_health,dermatological,"
+            "metabolic,urological,infectious,ophthalmological,general",
+        )
 
     _promote_to_champion(mlflow_uri)
 
