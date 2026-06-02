@@ -20,7 +20,7 @@ BEGIN
     INSERT INTO doctors (
         id, specialization_id, years_experience, bio,
         consultation_fee, average_rating, verified, license_number,
-        photo_url, created_at, updated_at
+        photo_url
     )
     SELECT
         doc_uid,
@@ -31,9 +31,7 @@ BEGIN
         0,
         true,
         'KZ-2016-TH-00421',
-        NULL,
-        NOW(),
-        NOW()
+        NULL
     FROM specializations s WHERE s.code = 'THERAPY'
     ON CONFLICT (id) DO NOTHING;
 END $$;
