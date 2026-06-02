@@ -72,7 +72,7 @@ public final class DoctorSpecifications {
                    cb.isFalse(slot.get("blocked")),
                    cb.greaterThan(slot.get("startTime"), Instant.now()),
                    cb.or(
-                       cb.equal(slot.get("appointmentType"), SlotType.ONLINE_ONLY),
+                       cb.equal(slot.get("appointmentType"), SlotType.ONLINE),
                        cb.equal(slot.get("appointmentType"), SlotType.BOTH)
                    )
                );
