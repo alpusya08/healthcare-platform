@@ -86,9 +86,18 @@ export function DoctorProfilePage() {
       <Card className="border-border">
         <CardContent className="pt-6 pb-5">
           <div className="flex items-start gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-3xl font-bold text-white shadow-md shrink-0">
-              {initials}
-            </div>
+            {profile.photoUrl ? (
+              <img
+                src={profile.photoUrl}
+                alt={profile.fullName}
+                className="w-20 h-20 rounded-2xl object-cover shadow-md shrink-0"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-3xl font-bold text-white shadow-md shrink-0">
+                {initials}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div>

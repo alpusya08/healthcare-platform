@@ -34,6 +34,13 @@ const STATUS_VARIANTS: Record<AppointmentStatus, "default" | "secondary" | "dest
   NO_SHOW: "warning",
 };
 
+function getDisplayStatus(appt: Appointment): { label: string; variant: "default" | "secondary" | "destructive" | "outline" | "success" | "warning" | "info" } {
+  if (appt.status === "SCHEDULED" && new Date(appt.startTime) <= new Date()) {
+    return { label: "Прошедший", variant: "secondary" };
+  }
+  return { label: STATUS_LABELS[appt.status], variant: STATUS_VARIANTS[appt.status] };
+}
+
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString("ru-RU", {
     day: "numeric",
@@ -100,8 +107,8 @@ function UpcomingAppointmentCard({
                 <p className="font-semibold text-foreground truncate text-base">{appt.doctorName}</p>
                 <p className="text-sm text-muted-foreground">{appt.specialization}</p>
               </div>
-              <Badge variant={STATUS_VARIANTS[appt.status]} className="shrink-0">
-                {STATUS_LABELS[appt.status]}
+              <Badge variant={getDisplayStatus(appt).variant} className="shrink-0">
+                {getDisplayStatus(appt).label}
               </Badge>
             </div>
 
@@ -220,8 +227,8 @@ function CompletedAppointmentCard({
                 <p className="font-semibold text-foreground truncate">{appt.doctorName}</p>
                 <p className="text-sm text-muted-foreground">{appt.specialization}</p>
               </div>
-              <Badge variant={STATUS_VARIANTS[appt.status]} className="shrink-0">
-                {STATUS_LABELS[appt.status]}
+              <Badge variant={getDisplayStatus(appt).variant} className="shrink-0">
+                {getDisplayStatus(appt).label}
               </Badge>
             </div>
 
@@ -233,7 +240,7 @@ function CompletedAppointmentCard({
             </div>
 
             <div className="flex items-center gap-2 mt-4">
-              {appt.status === "COMPLETED" && !appt.hasReview ? (
+              {(appt.status === "COMPLETED" || (appt.status === "SCHEDULED" && new Date(appt.startTime) <= new Date())) && !appt.hasReview ? (
                 <Button
                   size="sm"
                   variant="outline"

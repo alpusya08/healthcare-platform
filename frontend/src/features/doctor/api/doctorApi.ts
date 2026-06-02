@@ -32,6 +32,7 @@ export interface DoctorProfile {
   averageRating: number;
   verified: boolean;
   licenseNumber: string;
+  photoUrl?: string | null;
 }
 
 export interface FeedbackRequest {
