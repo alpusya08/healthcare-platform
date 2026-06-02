@@ -13,6 +13,7 @@ public record AppointmentResponse(
         UUID doctorId,
         String doctorName,
         String specialization,
+        String doctorPhotoUrl,
         Instant startTime,
         Instant endTime,
         AppointmentStatus status,

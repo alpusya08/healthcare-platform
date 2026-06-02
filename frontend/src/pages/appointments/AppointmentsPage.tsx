@@ -52,6 +52,24 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
+function DoctorAvatar({ name, photoUrl, muted = false }: { name: string; photoUrl?: string | null; muted?: boolean }) {
+  if (photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name}
+        className="w-12 h-12 rounded-2xl object-cover shrink-0"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+      />
+    );
+  }
+  return (
+    <div className={`w-12 h-12 rounded-2xl font-bold flex items-center justify-center text-sm shrink-0 ${muted ? "bg-muted text-muted-foreground" : "bg-gradient-to-br from-primary to-primary/70 text-white"}`}>
+      {getInitials(name)}
+    </div>
+  );
+}
+
 function UpcomingAppointmentCard({
   appt,
   onCancel,
@@ -73,9 +91,7 @@ function UpcomingAppointmentCard({
       <CardContent className="pt-5 pb-5">
         <div className="flex items-start gap-4">
           {/* Avatar */}
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-white font-bold flex items-center justify-center text-sm shrink-0">
-            {getInitials(appt.doctorName)}
-          </div>
+          <DoctorAvatar name={appt.doctorName} photoUrl={appt.doctorPhotoUrl} />
 
           {/* Info */}
           <div className="flex-1 min-w-0">
@@ -196,10 +212,7 @@ function CompletedAppointmentCard({
     >
       <CardContent className="pt-5 pb-5">
         <div className="flex items-start gap-4">
-          {/* Muted avatar for completed */}
-          <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center text-muted-foreground font-bold text-sm shrink-0">
-            {getInitials(appt.doctorName)}
-          </div>
+          <DoctorAvatar name={appt.doctorName} photoUrl={appt.doctorPhotoUrl} muted={!appt.doctorPhotoUrl} />
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-3">
@@ -276,8 +289,13 @@ export function AppointmentsPage() {
     onError: () => toast.error("Не удалось отменить запись"),
   });
 
-  const upcoming = appointments.filter((a) => a.status === "SCHEDULED");
-  const past = appointments.filter((a) => a.status !== "SCHEDULED");
+  const now = new Date();
+  const upcoming = appointments.filter(
+    (a) => a.status === "SCHEDULED" && new Date(a.startTime) > now,
+  );
+  const past = appointments.filter(
+    (a) => a.status !== "SCHEDULED" || new Date(a.startTime) <= now,
+  );
 
   return (
     <div>

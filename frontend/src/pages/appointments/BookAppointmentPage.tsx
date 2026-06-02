@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -65,6 +65,7 @@ export function BookAppointmentPage() {
   const presetSlotId = searchParams.get("slotId");
   const aiSessionId = searchParams.get("aiSessionId");
 
+  const presetApplied = useRef(false);
   const [selectedMonthKey, setSelectedMonthKey] = useState<string | null>(null);
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
@@ -117,9 +118,9 @@ export function BookAppointmentPage() {
     setSelectedSlot(null);
   };
 
-  // Apply preset slotId after slots load
+  // Apply preset slotId once on initial load only
   useEffect(() => {
-    if (presetSlotId && slots.length > 0 && !selectedSlot) {
+    if (presetSlotId && slots.length > 0 && !presetApplied.current) {
       const match = slots.find((s) => s.id === presetSlotId);
       if (match) {
         const mk = monthKey(match.startTime);
@@ -127,9 +128,10 @@ export function BookAppointmentPage() {
         setSelectedMonthKey(mk);
         setSelectedDayKey(dk);
         setSelectedSlot(match);
+        presetApplied.current = true;
       }
     }
-  }, [presetSlotId, slots, selectedSlot]);
+  }, [presetSlotId, slots]);
 
   const dayMap: Map<string, TimeSlot[]> = selectedMonthKey ? (monthMap.get(selectedMonthKey) ?? new Map<string, TimeSlot[]>()) : new Map<string, TimeSlot[]>();
   const dayKeys = Array.from(dayMap.keys()).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());

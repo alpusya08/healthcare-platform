@@ -28,6 +28,7 @@ export interface Appointment {
   doctorId: string;
   doctorName: string;
   specialization: string;
+  doctorPhotoUrl?: string | null;
   startTime: string;
   endTime: string;
   status: AppointmentStatus;

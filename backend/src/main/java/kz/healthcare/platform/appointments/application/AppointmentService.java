@@ -487,6 +487,7 @@ public class AppointmentService {
                 a.getDoctor().getId(),
                 a.getDoctor().getUser().getFullName(),
                 a.getDoctor().getSpecialization().getDisplayName(),
+                a.getDoctor().getPhotoUrl(),
                 a.getTimeSlot().getStartTime(),
                 a.getTimeSlot().getEndTime(),
                 a.getStatus(),
