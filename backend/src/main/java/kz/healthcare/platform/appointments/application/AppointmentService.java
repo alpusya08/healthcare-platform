@@ -166,6 +166,7 @@ public class AppointmentService {
         return toResponse(saved);
     }
 
+    @Transactional(readOnly = true)
     public List<AppointmentResponse> listForPatient(UUID patientId) {
         return appointmentRepository.findByPatientIdOrderBySlot(patientId).stream()
                 .map(this::toResponse)
