@@ -84,7 +84,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>ФИО</FormLabel>
               <FormControl>
-                <Input placeholder="Иванов Иван Иванович" {...field} />
+                <Input placeholder="Введите ваше ФИО" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -98,7 +98,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="email@example.com" type="email" {...field} />
+                <Input placeholder="Введите email" type="email" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -153,7 +153,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Телефон (необязательно)</FormLabel>
               <FormControl>
-                <Input placeholder="+77001234567" {...field} />
+                <Input placeholder="Введите номер телефона" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -167,7 +167,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Пароль</FormLabel>
               <FormControl>
-                <Input placeholder="••••••••" type="password" {...field} />
+                <Input placeholder="Введите пароль" type="password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -181,7 +181,7 @@ export function RegisterForm() {
             <FormItem>
               <FormLabel>Подтвердите пароль</FormLabel>
               <FormControl>
-                <Input placeholder="••••••••" type="password" {...field} />
+                <Input placeholder="Повторите пароль" type="password" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

@@ -18,7 +18,17 @@ import { AxiosError } from "axios";
 import type { ErrorResponse } from "@/shared/types/api";
 
 const loginSchema = z.object({
-  email: z.string().email("Введите корректный email"),
+  identifier: z
+    .string()
+    .min(1, "Введите email или номер телефона")
+    .refine(
+      (val) => {
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+        const isPhone = /^\+?[\d\s\-()]{7,15}$/.test(val);
+        return isEmail || isPhone;
+      },
+      "Введите корректный email или номер телефона"
+    ),
   password: z.string().min(1, "Введите пароль"),
 });
 
@@ -29,7 +39,7 @@ export function LoginForm() {
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { identifier: "", password: "" },
   });
 
   const loginMutation = useLoginMutation();
@@ -51,12 +61,12 @@ export function LoginForm() {
 
         <FormField
           control={form.control}
-          name="email"
+          name="identifier"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>Email или номер телефона</FormLabel>
               <FormControl>
-                <Input placeholder="" type="email" {...field} />
+                <Input placeholder="Введите email или номер телефона" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -71,7 +81,7 @@ export function LoginForm() {
               <FormLabel>Пароль</FormLabel>
               <FormControl>
                 <div className="relative">
-                  <Input placeholder="" type={showPassword ? "text" : "password"} {...field} />
+                  <Input placeholder="Введите пароль" type={showPassword ? "text" : "password"} {...field} />
                   <button
                     type="button"
                     onClick={() => setShowPassword((p) => !p)}

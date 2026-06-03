@@ -47,7 +47,7 @@ const FEATURES = [
     color: "text-primary",
     bg: "bg-primary/10",
     title: "AI-анализ симптомов",
-    desc: "Интеллектуальный триаж на основе машинного обучения. Опишите симптомы — система определит степень срочности и порекомендует нужного специалиста.",
+    desc: "Опишите симптомы — система проанализирует возможные диагнозы, расскажет о вероятных причинах и методах лечения, а также подберёт профиль нужного специалиста.",
   },
   {
     icon: Calendar,
@@ -60,19 +60,19 @@ const FEATURES = [
     icon: BadgeCheck,
     color: "text-violet-600",
     bg: "bg-violet-50",
-    title: "Проверенные врачи",
-    desc: "Все специалисты проходят верификацию. Читайте отзывы, смотрите рейтинги и выбирайте врача с уверенностью.",
+    title: "Квалифицированные врачи",
+    desc: "Выбирайте среди зарегистрированных специалистов платформы. Читайте отзывы, смотрите рейтинги и записывайтесь с уверенностью.",
   },
 ];
 
 const STEPS = [
-  { num: "01", title: "Зарегистрируйтесь", desc: "Создайте аккаунт за 30 секунд — только имя и email." },
-  { num: "02", title: "Опишите симптомы", desc: "AI проведёт анализ и подберёт подходящую специализацию." },
-  { num: "03", title: "Запишитесь к врачу", desc: "Выберите специалиста и удобный слот. Подтверждение — мгновенно." },
+  { num: "01", title: "Зарегистрируйтесь", desc: "Создайте аккаунт — только имя, email и несколько базовых данных." },
+  { num: "02", title: "Опишите симптомы", desc: "AI-система проанализирует симптомы, определит возможные диагнозы, предложит рекомендации и подберёт профиль нужного специалиста." },
+  { num: "03", title: "Запишитесь к врачу", desc: "Выберите подходящего специалиста и удобный временной слот." },
 ];
 
 const STATS = [
-  { icon: Users, value: "30+", label: "Врачей" },
+  { icon: Users, value: "20+", label: "Специалистов" },
   { icon: MapPin, value: "2", label: "Города" },
   { icon: Stethoscope, value: "15+", label: "Специализаций" },
   { icon: Star, value: "4.8", label: "Средний рейтинг" },
@@ -108,25 +108,20 @@ export function LandingPage() {
         </div>
 
         <div className="container mx-auto px-4 text-center max-w-4xl">
-          <Badge variant="outline" className="mb-6 px-4 py-1.5 rounded-full text-xs font-medium gap-1.5 border-primary/30 text-primary">
-            <Brain className="w-3 h-3" />
-            Медицина с поддержкой искусственного интеллекта
-          </Badge>
-
           <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight text-foreground leading-tight mb-6">
             Медицина нового
             <span className="text-primary block sm:inline"> поколения</span>
           </h1>
 
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-10">
-            Опишите симптомы — AI сориентирует по специализации. Выберите врача из 30+ проверенных специалистов
-            и запишитесь онлайн за несколько кликов.
+            Опишите симптомы — AI-система проанализирует возможные диагнозы, подскажет причины и методы лечения,
+            а также поможет выбрать нужного специалиста и записаться онлайн.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <Button size="lg" className="rounded-2xl px-8 h-12 text-base font-semibold gap-2 shadow-lg" asChild>
               <Link to={routes.register}>
-                Начать бесплатно
+                Зарегистрироваться
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>
@@ -139,7 +134,7 @@ export function LandingPage() {
           <div className="mt-10 flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
             {[
               { icon: Shield, text: "Безопасные данные" },
-              { icon: CheckCircle2, text: "Верифицированные врачи" },
+              { icon: CheckCircle2, text: "Квалифицированные специалисты" },
               { icon: Clock, text: "Запись за 2 минуты" },
             ].map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-1.5">
@@ -223,7 +218,7 @@ export function LandingPage() {
           <div className="mt-12 text-center">
             <Button size="lg" className="rounded-2xl px-10 h-12 gap-2 shadow-lg" asChild>
               <Link to={routes.register}>
-                Попробовать бесплатно
+                Начать работу
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>
@@ -240,7 +235,7 @@ export function LandingPage() {
             </div>
             <h2 className="text-3xl font-bold text-foreground mb-3">Готовы начать?</h2>
             <p className="text-muted-foreground mb-8 leading-relaxed">
-              Зарегистрируйтесь за 30 секунд и получите доступ к AI-анализу симптомов и 30+ врачам прямо сейчас.
+              Зарегистрируйтесь и получите доступ к AI-анализу симптомов и квалифицированным специалистам прямо сейчас.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button size="lg" className="rounded-2xl px-8 h-12 gap-2" asChild>

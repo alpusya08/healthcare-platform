@@ -16,7 +16,7 @@ export function LoginPage() {
         <Card className="shadow-lg border-border/60">
           <CardHeader className="text-center pb-4">
             <CardTitle className="text-xl">Вход в систему</CardTitle>
-            <CardDescription>Введите email и пароль для входа</CardDescription>
+            <CardDescription>Введите email или номер телефона и пароль</CardDescription>
           </CardHeader>
           <CardContent>
             <LoginForm />

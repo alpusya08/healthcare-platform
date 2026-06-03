@@ -2,7 +2,7 @@ import { apiClient } from "@/shared/api/axios";
 import type { TokenResponse, RegisterResponse, UserInfo } from "@/shared/types/api";
 
 export type LoginPayload = {
-  email: string;
+  identifier: string;
   password: string;
 };
 

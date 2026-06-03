@@ -63,8 +63,12 @@ public class AuthService {
 
     @Transactional
     public TokenResponse login(LoginRequest request, String userAgent, String ipAddress) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(InvalidCredentialsException::new);
+        String identifier = request.identifier().trim();
+        User user = identifier.contains("@")
+                ? userRepository.findByEmail(identifier).orElseThrow(InvalidCredentialsException::new)
+                : patientRepository.findByPhone(identifier)
+                        .map(kz.healthcare.platform.users.domain.Patient::getUser)
+                        .orElseThrow(InvalidCredentialsException::new);
 
         if (!user.isActive()) {
             throw new InvalidCredentialsException();
