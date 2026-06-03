@@ -71,7 +71,7 @@ export function PaymentModal({ appointment, onClose, onSuccess }: Props) {
             <div>
               <p className="text-lg font-bold text-foreground">Оплачено!</p>
               <p className="text-sm text-muted-foreground mt-1">
-                {appointment.paymentAmount ?? appointment.paymentAmount} ₸ списано успешно
+                {appointment.paymentAmount} ₸ списано успешно
               </p>
             </div>
           </div>

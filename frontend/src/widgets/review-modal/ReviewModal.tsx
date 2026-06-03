@@ -99,7 +99,7 @@ export function ReviewModal({ appointmentId, doctorName, onClose }: Props) {
                     className={cn(
                       "w-9 h-9 transition-colors",
                       n <= displayRating
-                        ? "text-sand-500 fill-sand-500"
+                        ? "text-amber-400 fill-amber-400"
                         : "text-muted-foreground/30"
                     )}
                   />

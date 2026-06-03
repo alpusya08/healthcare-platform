@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Stethoscope, Calendar, Clock, FileText, CheckCheck,
@@ -460,6 +461,7 @@ function PatientDetailModal({
 /* ─── main component ───────────────────────────────────────────── */
 
 export function DoctorDashboard() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("appointments");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [selectedAppt, setSelectedAppt] = useState<DoctorAppointment | null>(null);
@@ -813,10 +815,18 @@ export function DoctorDashboard() {
                     )}
                   </div>
                   <div className="flex gap-2 w-full pt-1">
-                    <Button variant="outline" className="flex-1 rounded-xl text-sm">
+                    <Button
+                      variant="outline"
+                      className="flex-1 rounded-xl text-sm"
+                      onClick={() => navigate("/doctor/profile")}
+                    >
                       Редактировать
                     </Button>
-                    <Button variant="outline" className="flex-1 rounded-xl text-sm">
+                    <Button
+                      variant="outline"
+                      className="flex-1 rounded-xl text-sm"
+                      onClick={() => navigate("/doctor/schedule")}
+                    >
                       <Calendar className="w-3.5 h-3.5 mr-1.5" />
                       Расписание
                     </Button>

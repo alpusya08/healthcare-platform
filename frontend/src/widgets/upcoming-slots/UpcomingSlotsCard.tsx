@@ -83,8 +83,8 @@ function SlotRow({ slot, aiSessionId }: { slot: UpcomingSlot; aiSessionId?: stri
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-semibold text-sm truncate">{slot.doctorFullName}</p>
           {slot.averageRating > 0 && (
-            <span className="flex items-center gap-0.5 text-xs text-sand-700 dark:text-sand-400">
-              <Star className="w-3 h-3 fill-sand-500 text-sand-500" />
+            <span className="flex items-center gap-0.5 text-xs text-amber-600 dark:text-amber-400">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
               {slot.averageRating.toFixed(1)}
             </span>
           )}
