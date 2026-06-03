@@ -5,7 +5,6 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/features/auth/model/authStore";
 import { Button } from "@/shared/ui/button";
-import { Badge } from "@/shared/ui/badge";
 import { routes } from "@/shared/config/routes";
 
 function PublicNavbar() {
