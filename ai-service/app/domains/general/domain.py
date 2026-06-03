@@ -8,7 +8,7 @@ from typing import Any, Optional
 import structlog
 
 from app.core.entities.analysis_session import AnalysisSession
-from app.core.entities.diagnosis import Diagnosis
+from app.core.entities.diagnosis import Diagnosis, DiagnosisCandidate
 from app.core.entities.medical_features import MedicalFeatures
 from app.core.entities.question import Question
 from app.core.enums import QuestionType, TriageLevel
@@ -19,6 +19,10 @@ from app.infrastructure.llm.general_questions import (
     AREA_DISPLAY_NAMES,
     detect_general_area,
     get_questions_for_area,
+)
+from app.ml.diagnosis.registry import (
+    ALL_DIAGNOSIS_FEATURES,
+    DIAGNOSIS_EXTRA_FEATURES,
 )
 
 logger = structlog.get_logger()
@@ -179,12 +183,60 @@ Q&A History:
 """
 
 
-class GeneralSymptomDomain(MedicalDomain):
-    """Universal symptom intake. Claude interviews, extracts features, ML classifies triage."""
+_DIAGNOSIS_FEATURE_EXTRACTION_PROMPT = """\
+Extract structured clinical features from this patient intake for an ML diagnosis classifier.
+Return ONLY valid JSON. Every value must be 0 or 1 (binary flag) UNLESS noted otherwise.
+Set to 0 if unclear or not mentioned. NEVER use null.
 
-    def __init__(self, llm: LLMProvider, predictor: Optional[MLPredictor] = None) -> None:
+{{
+  "loc_chest": 0 or 1,
+  "loc_abdomen": 0 or 1,
+  "loc_head": 0 or 1,
+  "loc_back": 0 or 1,
+  "loc_limbs": 0 or 1,
+  "loc_throat": 0 or 1,
+  "loc_skin": 0 or 1,
+  "loc_respiratory": 0 or 1,
+  "pain_character": 0-5 (0=none, 1=dull/aching, 2=cramping, 3=burning, 4=sharp/stabbing, 5=pressing/squeezing),
+  "radiates": 0 or 1 (does pain radiate elsewhere),
+  "fever": 0 or 1,
+  "nausea_vomiting": 0 or 1,
+  "cough": 0 or 1,
+  "shortness_of_breath": 0 or 1,
+  "palpitations": 0 or 1 (irregular/fast heartbeat felt),
+  "dizziness": 0 or 1,
+  "rash": 0 or 1,
+  "itching": 0 or 1,
+  "swelling": 0 or 1,
+  "worse_on_exertion": 0 or 1,
+  "worse_after_eating": 0 or 1,
+  "relieved_by_rest": 0 or 1,
+  "smoking": 0 or 1,
+  "alcohol_use": 0 or 1,
+  "family_history_similar": 0 or 1
+}}
+
+Patient complaint: {description}
+
+Q&A History:
+{qa_history}
+"""
+
+
+class GeneralSymptomDomain(MedicalDomain):
+    """Universal symptom intake. Claude interviews, extracts features, ML classifies triage,
+    and a domain-specific ML model predicts the top diagnosis candidates."""
+
+    def __init__(
+        self,
+        llm: LLMProvider,
+        predictor: Optional[MLPredictor] = None,
+        diagnosis_predictors: Optional[dict] = None,
+    ) -> None:
         self._llm = llm
         self._predictor = predictor
+        # dict[specialization_code -> DomainDiagnosisPredictor]
+        self._diagnosis_predictors = diagnosis_predictors or {}
 
     @property
     def code(self) -> str:
@@ -224,23 +276,25 @@ class GeneralSymptomDomain(MedicalDomain):
         return MedicalFeatures(values=values)
 
     async def extract_triage_features(self, session: AnalysisSession) -> MedicalFeatures:
-        """Extract the 12 ML triage features from the full dialogue."""
+        """Extract the 12 ML triage features + extended diagnosis features from the dialogue."""
         try:
             qa_history = "\n".join(
                 f"Q: {q.question_text}\nA: {q.answer}"
                 for q in session.questions
                 if q.answer
             )
-            prompt = (
+
+            # 1) Triage features (12) — required for triage classifier
+            triage_prompt = (
                 _TRIAGE_FEATURE_EXTRACTION_PROMPT
                 .replace("{description}", session.initial_description)
                 .replace("{qa_history}", qa_history or "Нет ответов на вопросы")
             )
-            raw = await self._llm.complete_structured(prompt, {})
+            triage_raw = await self._llm.complete_structured(triage_prompt, {})
 
             values: dict[str, Any] = {}
             for k in TRIAGE_FEATURES:
-                v = raw.get(k)
+                v = triage_raw.get(k)
                 if v is not None:
                     try:
                         values[k] = float(v)
@@ -248,6 +302,25 @@ class GeneralSymptomDomain(MedicalDomain):
                         values[k] = None
                 else:
                     values[k] = None
+
+            # 2) Diagnosis extras (25) — required for domain diagnosis classifier
+            try:
+                dx_prompt = (
+                    _DIAGNOSIS_FEATURE_EXTRACTION_PROMPT
+                    .replace("{description}", session.initial_description)
+                    .replace("{qa_history}", qa_history or "Нет ответов на вопросы")
+                )
+                dx_raw = await self._llm.complete_structured(dx_prompt, {})
+                for k in DIAGNOSIS_EXTRA_FEATURES:
+                    v = dx_raw.get(k, 0)
+                    try:
+                        values[k] = float(v) if v is not None else 0.0
+                    except (TypeError, ValueError):
+                        values[k] = 0.0
+            except Exception:
+                logger.warning("general_domain.diagnosis_features_extraction_failed")
+                for k in DIAGNOSIS_EXTRA_FEATURES:
+                    values[k] = 0.0
 
             values["_raw_description"] = session.initial_description
             return MedicalFeatures(values=values)
@@ -305,7 +378,10 @@ class GeneralSymptomDomain(MedicalDomain):
         # Always get Claude's full report (diagnosis text, recommendations, etc.)
         llm_diagnosis = await self._llm_predict(features)
 
-        # If ML predictor available and confident — use its triage classification
+        triage_level = llm_diagnosis.triage_level
+        triage_confidence = llm_diagnosis.confidence
+
+        # Step 1: triage classifier (urgency level)
         if self._predictor is not None:
             try:
                 ml_prediction = self._predictor.predict(features)
@@ -316,9 +392,7 @@ class GeneralSymptomDomain(MedicalDomain):
                         "EMERGENCY": TriageLevel.EMERGENCY,
                     }
                     ml_triage = triage_map.get(ml_prediction.triage_code, TriageLevel.ROUTINE)
-
-                    # Safety check: ML says EMERGENCY but Claude found no red flags
-                    # and didn't classify it as EMERGENCY → downgrade to URGENT
+                    # Safety: ML says EMERGENCY but Claude found no red flags → downgrade
                     if (
                         ml_triage == TriageLevel.EMERGENCY
                         and not llm_diagnosis.red_flags
@@ -329,33 +403,64 @@ class GeneralSymptomDomain(MedicalDomain):
                             "general_domain.ml_emergency_downgraded",
                             reason="no_red_flags_and_llm_disagrees",
                             ml_confidence=ml_prediction.confidence,
-                            llm_triage=llm_diagnosis.triage_level.value,
                         )
-                    else:
-                        logger.info(
-                            "general_domain.ml_triage_used",
-                            ml_triage=ml_prediction.triage_code,
-                            confidence=ml_prediction.confidence,
-                            llm_triage=llm_diagnosis.triage_level.value,
-                        )
-
-                    return Diagnosis(
-                        domain=self.code,
-                        primary_diagnosis=llm_diagnosis.primary_diagnosis,
+                    triage_level = ml_triage
+                    triage_confidence = ml_prediction.confidence
+                    logger.info(
+                        "general_domain.ml_triage_used",
+                        ml_triage=ml_prediction.triage_code,
                         confidence=ml_prediction.confidence,
-                        explanation=llm_diagnosis.explanation,
-                        recommendations=llm_diagnosis.recommendations,
-                        triage_level=ml_triage,
-                        model_version=self.get_model_version(),
-                        recommended_specialization=llm_diagnosis.recommended_specialization,
-                        possible_causes=llm_diagnosis.possible_causes,
-                        red_flags=llm_diagnosis.red_flags,
-                        summary=llm_diagnosis.summary,
                     )
             except Exception:
-                logger.warning("general_domain.ml_prediction_failed_using_llm_triage")
+                logger.warning("general_domain.triage_prediction_failed")
 
-        return llm_diagnosis
+        # Step 2: domain diagnosis classifier (top-3 differential diagnoses)
+        candidates: list[DiagnosisCandidate] = []
+        specialization = llm_diagnosis.recommended_specialization
+        dx_predictor = self._diagnosis_predictors.get(specialization)
+        if dx_predictor is not None:
+            try:
+                ml_candidates = dx_predictor.predict_top_k(features, k=3)
+                candidates = [
+                    DiagnosisCandidate(
+                        code=c.code,
+                        name_ru=c.name_ru,
+                        name_lay_ru=c.name_lay_ru,
+                        probability=c.probability,
+                        icd10=c.icd10,
+                    )
+                    for c in ml_candidates
+                ]
+                logger.info(
+                    "general_domain.diagnosis_predicted",
+                    domain=specialization,
+                    top1=candidates[0].code if candidates else None,
+                    top1_prob=candidates[0].probability if candidates else None,
+                )
+            except Exception:
+                logger.exception("general_domain.diagnosis_prediction_failed", domain=specialization)
+        else:
+            logger.info(
+                "general_domain.no_diagnosis_model_for_domain",
+                specialization=specialization,
+                available=list(self._diagnosis_predictors.keys()),
+            )
+
+        # Build hybrid result: Claude's narrative + ML's structured top-K candidates
+        return Diagnosis(
+            domain=self.code,
+            primary_diagnosis=llm_diagnosis.primary_diagnosis,
+            confidence=triage_confidence,
+            explanation=llm_diagnosis.explanation,
+            recommendations=llm_diagnosis.recommendations,
+            triage_level=triage_level,
+            model_version=self.get_model_version(),
+            recommended_specialization=specialization,
+            possible_causes=llm_diagnosis.possible_causes,
+            red_flags=llm_diagnosis.red_flags,
+            summary=llm_diagnosis.summary,
+            candidate_diagnoses=candidates,
+        )
 
     async def _llm_predict(self, features: MedicalFeatures) -> Diagnosis:
         prompt = self._build_report_prompt(features)

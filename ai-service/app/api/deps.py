@@ -62,6 +62,36 @@ def _create_triage_predictor(settings: Settings) -> MLPredictor | None:
         return None
 
 
+def _create_diagnosis_predictors(settings: Settings) -> dict:
+    """Load one DomainDiagnosisPredictor per supported domain (best-effort)."""
+    if settings.ai_mode == "claude_only":
+        logger.info("diagnosis_predictors.skipped", reason="ai_mode=claude_only")
+        return {}
+
+    predictors: dict = {}
+    try:
+        import mlflow
+        from app.infrastructure.ml.predictors.diagnosis_predictor import DomainDiagnosisPredictor
+        from app.ml.diagnosis.registry import DOMAIN_REGISTRY
+
+        mlflow.set_tracking_uri(settings.mlflow_tracking_uri)
+        alias = settings.mlflow_model_alias
+
+        for code, domain_cfg in DOMAIN_REGISTRY.items():
+            try:
+                model_uri = f"models:/{domain_cfg.model_name}@{alias}"
+                predictors[code] = DomainDiagnosisPredictor.from_mlflow(
+                    domain_code=code, model_uri=model_uri, version=alias,
+                )
+            except Exception as e:
+                logger.warning("diagnosis_predictor.load_failed", domain=code, error=str(e))
+    except Exception as e:
+        logger.warning("diagnosis_predictors.init_failed", error=str(e))
+
+    logger.info("diagnosis_predictors.loaded", domains=list(predictors.keys()))
+    return predictors
+
+
 _llm_provider: LLMProvider | None = None
 
 
@@ -77,12 +107,20 @@ def get_domain_registry(settings: Settings = Depends(get_settings)) -> DomainReg
     if _domain_registry is None:
         llm = _create_llm_provider(settings)
         predictor = _create_triage_predictor(settings)
+        diagnosis_predictors = _create_diagnosis_predictors(settings)
         _domain_registry = DomainRegistry()
-        _domain_registry.register(GeneralSymptomDomain(llm=llm, predictor=predictor))
+        _domain_registry.register(
+            GeneralSymptomDomain(
+                llm=llm,
+                predictor=predictor,
+                diagnosis_predictors=diagnosis_predictors,
+            )
+        )
         logger.info(
             "domain_registry.initialized",
             llm=type(llm).__name__,
             predictor=type(predictor).__name__ if predictor else "none",
+            diagnosis_domains=list(diagnosis_predictors.keys()),
             ai_mode=settings.ai_mode,
         )
     return _domain_registry

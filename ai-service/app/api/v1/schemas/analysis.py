@@ -45,6 +45,14 @@ class AnswerQuestionResponse(BaseModel):
     is_complete: bool = False
 
 
+class DiagnosisCandidateDto(BaseModel):
+    code: str
+    name_ru: str
+    name_lay_ru: str
+    probability: float = Field(ge=0, le=1)
+    icd10: Optional[str] = None
+
+
 class AnalysisReportResponse(BaseModel):
     session_id: UUID
     triage_level: TriageLevel
@@ -59,3 +67,4 @@ class AnalysisReportResponse(BaseModel):
     possible_causes: list[str] = Field(default_factory=list)
     red_flags: list[str] = Field(default_factory=list)
     summary: str = ""
+    candidate_diagnoses: list[DiagnosisCandidateDto] = Field(default_factory=list)

@@ -217,6 +217,17 @@ async def finalize_analysis(
     await _persist_session_features(db, session, triage_features, diagnosis)
     await _persist_general_session(db, session, diagnosis)
 
+    candidates = [
+        {
+            "code": c.code,
+            "name_ru": c.name_ru,
+            "name_lay_ru": c.name_lay_ru,
+            "probability": c.probability,
+            "icd10": c.icd10,
+        }
+        for c in diagnosis.candidate_diagnoses
+    ]
+
     report = AnalysisReportResponse(
         session_id=session.id,
         triage_level=diagnosis.triage_level,
@@ -231,6 +242,7 @@ async def finalize_analysis(
         possible_causes=diagnosis.possible_causes,
         red_flags=diagnosis.red_flags,
         summary=diagnosis.summary,
+        candidate_diagnoses=candidates,
     )
     await _persist_session_report(db, session.id, report)
     return report
