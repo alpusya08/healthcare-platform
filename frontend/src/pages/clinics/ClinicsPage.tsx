@@ -22,27 +22,27 @@ interface Clinic {
   lng: number | null;
 }
 
+function getClinicInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter((w) => w.length > 2)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase() || name.slice(0, 2).toUpperCase();
+}
+
 function ClinicCard({ clinic }: { clinic: Clinic }) {
   const [expanded, setExpanded] = useState(false);
-  const [imgError, setImgError] = useState(false);
 
   return (
     <Card className="shadow-lg hover:shadow-xl rounded-2xl border-border transition-all duration-200 overflow-hidden flex flex-col">
-      {/* Photo */}
-      {clinic.photoUrl && !imgError ? (
-        <div className="h-44 w-full overflow-hidden shrink-0">
-          <img
-            src={clinic.photoUrl}
-            alt={clinic.name}
-            className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
-            onError={() => setImgError(true)}
-          />
+      {/* Initials placeholder */}
+      <div className="h-28 w-full bg-gradient-to-br from-primary/10 via-primary/5 to-accent/10 flex items-center justify-center shrink-0">
+        <div className="w-14 h-14 rounded-2xl bg-background/70 dark:bg-card/60 shadow-sm flex items-center justify-center">
+          <span className="text-xl font-bold text-primary">{getClinicInitials(clinic.name)}</span>
         </div>
-      ) : (
-        <div className="h-28 w-full bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center shrink-0">
-          <Building2 className="w-10 h-10 text-primary/30" />
-        </div>
-      )}
+      </div>
 
       <CardContent className="pt-5 pb-5 flex-1 flex flex-col">
         {/* Name + city badge */}

@@ -51,14 +51,16 @@ export function DashboardPage() {
     queryFn: appointmentsApi.myAppointments,
   });
 
-  const { data: allDoctors = [] } = useQuery({
-    queryKey: ["doctors"],
-    queryFn: () => appointmentsApi.listDoctors(),
-  });
-
+  const now = new Date();
   const nextAppointment = appointments
-    .filter((a) => a.status === "SCHEDULED")
+    .filter((a) => a.status === "SCHEDULED" && new Date(a.startTime) > now)
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0];
+
+  const totalAppointments = appointments.length;
+  const completedAppointments = appointments.filter((a) => a.status === "COMPLETED").length;
+  const upcomingAppointments = appointments.filter(
+    (a) => a.status === "SCHEDULED" && new Date(a.startTime) > now,
+  ).length;
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -83,8 +85,8 @@ export function DashboardPage() {
             {/* Left: Greeting + CTAs + stats */}
             <div className="space-y-8">
               <div className="space-y-4">
-                <p className="text-sm font-semibold text-primary uppercase tracking-widest">
-                  {greeting()}, {user?.fullName.split(" ")[0] ?? "Пациент"} 👋
+                <p className="text-sm font-medium text-muted-foreground">
+                  {greeting()}, {user?.fullName.split(" ")[1] ?? user?.fullName.split(" ")[0] ?? "Пациент"} 👋
                 </p>
                 <h1 className="text-4xl sm:text-5xl font-bold text-foreground leading-tight">
                   Медицина<br />
@@ -116,21 +118,21 @@ export function DashboardPage() {
                 </Button>
               </div>
 
-              {/* Mini stats */}
+              {/* Personal stats */}
               <div className="flex flex-wrap gap-6 pt-2">
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">{allDoctors.length}</p>
-                  <p className="text-xs text-muted-foreground">врачей</p>
+                  <p className="text-2xl font-bold text-foreground">{totalAppointments}</p>
+                  <p className="text-xs text-muted-foreground">Мои записи</p>
                 </div>
                 <div className="w-px bg-border" />
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">4.8★</p>
-                  <p className="text-xs text-muted-foreground">Рейтинг</p>
+                  <p className="text-2xl font-bold text-foreground">{completedAppointments}</p>
+                  <p className="text-xs text-muted-foreground">Завершено</p>
                 </div>
                 <div className="w-px bg-border" />
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-foreground">10</p>
-                  <p className="text-xs text-muted-foreground">Специализаций</p>
+                  <p className="text-2xl font-bold text-foreground">{upcomingAppointments}</p>
+                  <p className="text-xs text-muted-foreground">Предстоящих</p>
                 </div>
               </div>
             </div>

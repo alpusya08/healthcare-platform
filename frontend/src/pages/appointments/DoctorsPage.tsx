@@ -9,6 +9,7 @@ import { Card, CardContent } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { Skeleton } from "@/shared/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
 import type { Doctor } from "@/features/appointments/types";
@@ -428,8 +429,22 @@ export function DoctorsPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="rounded-2xl border-border animate-pulse">
-                <CardContent className="pt-6 pb-5 h-40" />
+              <Card key={i} className="rounded-2xl border-border">
+                <CardContent className="pt-6 pb-5">
+                  <div className="flex items-start gap-4">
+                    <Skeleton className="w-14 h-14 rounded-2xl shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                      <Skeleton className="h-3 w-full mt-2" />
+                      <Skeleton className="h-3 w-4/5" />
+                      <div className="flex gap-2 mt-3">
+                        <Skeleton className="h-8 flex-1 rounded-xl" />
+                        <Skeleton className="h-8 flex-1 rounded-xl" />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
               </Card>
             ))}
           </div>
@@ -439,7 +454,9 @@ export function DoctorsPage() {
               <Search className="w-8 h-8 text-muted-foreground" />
             </div>
             <p className="text-lg font-semibold text-foreground">Врачи не найдены</p>
-            <p className="text-muted-foreground mt-1 text-sm">Попробуйте изменить параметры поиска</p>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {hasActiveFilters ? "Попробуйте изменить фильтры" : "Попробуйте изменить параметры поиска"}
+            </p>
             {hasActiveFilters && (
               <Button variant="outline" className="mt-4 rounded-xl" onClick={clearFilters}>
                 Сбросить фильтры

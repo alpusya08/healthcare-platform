@@ -81,7 +81,7 @@ export function Navbar() {
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all",
                     active
-                      ? "bg-primary/10 text-primary"
+                      ? "bg-primary/15 text-primary font-semibold"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                   )}
                 >
@@ -180,7 +180,7 @@ export function Navbar() {
                   onClick={() => setMobileOpen(false)}
                   className={cn(
                     "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
-                    active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                    active ? "bg-primary/15 text-primary font-semibold" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
                   )}
                 >
                   <Icon className="w-4 h-4" />

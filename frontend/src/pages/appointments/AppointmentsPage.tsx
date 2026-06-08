@@ -19,6 +19,7 @@ import { ReviewModal } from "@/widgets/review-modal/ReviewModal";
 import { AppointmentDetailModal } from "@/widgets/appointment-detail/AppointmentDetailModal";
 import { RescheduleModal } from "@/widgets/reschedule-modal/RescheduleModal";
 import { PaymentModal } from "@/widgets/payment-modal/PaymentModal";
+import { Skeleton } from "@/shared/ui/skeleton";
 
 const STATUS_LABELS: Record<AppointmentStatus, string> = {
   SCHEDULED: "Запланировано",
@@ -240,22 +241,24 @@ function CompletedAppointmentCard({
             </div>
 
             <div className="flex items-center gap-2 mt-4">
-              {(appt.status === "COMPLETED" || (appt.status === "SCHEDULED" && new Date(appt.startTime) <= new Date())) && !appt.hasReview ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="rounded-xl h-8 text-xs gap-1.5 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950"
-                  onClick={(e) => { e.stopPropagation(); onReview(appt); }}
-                >
-                  <Star className="w-3.5 h-3.5" />
-                  Оставить отзыв
-                </Button>
-              ) : appt.status === "COMPLETED" && appt.hasReview ? (
-                <Badge variant="success" className="gap-1.5">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Отзыв оставлен
-                </Badge>
-              ) : null}
+              {(appt.status === "COMPLETED" || (appt.status === "SCHEDULED" && new Date(appt.startTime) <= new Date())) && (
+                appt.hasReview ? (
+                  <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                    Отзыв оставлен
+                  </span>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl h-8 text-xs gap-1.5 border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950"
+                    onClick={(e) => { e.stopPropagation(); onReview(appt); }}
+                  >
+                    <Star className="w-3.5 h-3.5" />
+                    Оставить отзыв
+                  </Button>
+                )
+              )}
               <Button
                 size="sm"
                 variant="ghost"
@@ -326,7 +329,26 @@ export function AppointmentsPage() {
 
       <div className="container mx-auto px-4 py-8 space-y-8">
         {isLoading ? (
-          <div className="text-center py-16 text-muted-foreground">Загрузка...</div>
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i} className="rounded-2xl border-border">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-start gap-4">
+                    <Skeleton className="w-12 h-12 rounded-2xl shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                      <Skeleton className="h-3 w-56 mt-3" />
+                      <div className="flex gap-2 mt-4">
+                        <Skeleton className="h-8 w-24 rounded-xl" />
+                        <Skeleton className="h-8 w-24 rounded-xl" />
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         ) : appointments.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-20 h-20 rounded-2xl bg-muted flex items-center justify-center mb-6">

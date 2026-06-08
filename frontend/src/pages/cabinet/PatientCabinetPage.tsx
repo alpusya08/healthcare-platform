@@ -82,7 +82,10 @@ export function PatientCabinetPage() {
     onError: () => toast.error("Не удалось сохранить изменения"),
   });
 
-  const scheduled = appointments.filter((a) => a.status === "SCHEDULED");
+  const now = new Date();
+  const scheduled = appointments
+    .filter((a) => a.status === "SCHEDULED" && new Date(a.startTime) > now)
+    .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
   const completed = appointments.filter((a) => a.status === "COMPLETED");
   const withReviews = appointments.filter((a) => a.hasReview);
   const withAiAnalysis = appointments.filter((a) => !!a.aiSessionId);

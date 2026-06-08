@@ -280,7 +280,7 @@ export function AnalysisPage() {
                     onCheckedChange={(v) => setConsentGiven(Boolean(v))}
                     className="mt-0.5"
                   />
-                  <Label htmlFor="consent" className="text-sm leading-relaxed cursor-pointer">
+                  <Label htmlFor="consent" className="text-sm font-normal leading-relaxed cursor-pointer">
                     Я даю согласие на анализ введённых данных для предварительной оценки состояния здоровья.
                     Понимаю, что результат не является медицинским диагнозом.
                   </Label>
