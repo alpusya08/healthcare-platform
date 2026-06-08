@@ -1,64 +1,68 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, FileText, AlertTriangle, CheckCircle2, Clock,
-  ListOrdered, Brain, ShieldAlert, Info,
+  ArrowLeft, FileText, AlertTriangle, Brain,
+  CheckCircle, XCircle, AlertCircle, CheckCircle2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
+import { Textarea } from "@/shared/ui/textarea";
+import { Label } from "@/shared/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Separator } from "@/shared/ui/separator";
-import { doctorApi } from "@/features/doctor/api/doctorApi";
+import { cn } from "@/shared/lib/utils";
+import { doctorApi, type FeedbackVerdict } from "@/features/doctor/api/doctorApi";
+import { ReportView } from "@/pages/analysis/AnalysisPage";
 
-/* ─── triage config ────────────────────────────────────────────── */
+// ── verdict config ────────────────────────────────────────────────
 
-const TRIAGE_CONFIG = {
-  EMERGENCY: {
-    label: "Экстренный",
-    badgeClass: "bg-red-100 text-red-700 border-red-300 dark:bg-red-950/40 dark:text-red-400 dark:border-red-700",
-    icon: AlertTriangle,
-    iconClass: "text-red-600",
-    bgClass: "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800",
+const VERDICT_CONFIG: Record<FeedbackVerdict, {
+  label: string;
+  desc: string;
+  icon: typeof CheckCircle;
+  selected: string;
+  idle: string;
+}> = {
+  APPROVED: {
+    label: "Подтвердить анализ",
+    desc: "AI-диагноз соответствует клинической картине",
+    icon: CheckCircle,
+    selected: "border-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400",
+    idle: "border-border hover:border-emerald-300 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/10 text-muted-foreground",
   },
-  URGENT: {
-    label: "Срочный",
-    badgeClass: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700",
-    icon: Clock,
-    iconClass: "text-amber-600",
-    bgClass: "bg-amber-50 border-amber-200 dark:bg-amber-950/20 dark:border-amber-800",
+  PARTIAL: {
+    label: "Частично верно",
+    desc: "Диагноз верен, но требует уточнений",
+    icon: AlertCircle,
+    selected: "border-amber-400 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400",
+    idle: "border-border hover:border-amber-300 hover:bg-amber-50/50 dark:hover:bg-amber-950/10 text-muted-foreground",
   },
-  ROUTINE: {
-    label: "Плановый",
-    badgeClass: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-700",
-    icon: CheckCircle2,
-    iconClass: "text-green-600",
-    bgClass: "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800",
+  REJECTED: {
+    label: "Отклонить анализ",
+    desc: "AI-диагноз не соответствует действительности",
+    icon: XCircle,
+    selected: "border-red-400 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400",
+    idle: "border-border hover:border-red-300 hover:bg-red-50/50 dark:hover:bg-red-950/10 text-muted-foreground",
   },
-  INSUFFICIENT_DATA: {
-    label: "Недостаточно данных",
-    badgeClass: "bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700",
-    icon: Info,
-    iconClass: "text-slate-500",
-    bgClass: "bg-slate-50 border-slate-200 dark:bg-slate-900 dark:border-slate-700",
-  },
-} as const;
+};
+
+// ── page ──────────────────────────────────────────────────────────
 
 function fmt(iso: string) {
-  return new Date(iso).toLocaleString("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  return new Date(iso).toLocaleDateString("ru-RU", {
+    day: "numeric", month: "long", year: "numeric",
   });
 }
-
-/* ─── page ─────────────────────────────────────────────────────── */
 
 export function DoctorAiReportPage() {
   const { id: appointmentId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  /* fetch all appointments to find the one with this id */
+  const [verdict, setVerdict] = useState<FeedbackVerdict | null>(null);
+  const [comment, setComment] = useState("");
+  const [correctedDiagnosis, setCorrectedDiagnosis] = useState("");
+
   const { data: appointments = [], isLoading: apptLoading } = useQuery({
     queryKey: ["doctor", "appointments"],
     queryFn: doctorApi.myAppointments,
@@ -67,24 +71,46 @@ export function DoctorAiReportPage() {
   const appointment = appointments.find((a) => a.id === appointmentId);
   const sessionId = appointment?.aiSessionId ?? null;
 
-  const {
-    data: report,
-    isLoading: reportLoading,
-    isError,
-  } = useQuery({
+  const { data: report, isLoading: reportLoading, isError } = useQuery({
     queryKey: ["ai-report", sessionId],
     queryFn: () => doctorApi.getAiReport(sessionId!),
     enabled: !!sessionId,
     retry: false,
   });
 
+  const feedbackMutation = useMutation({
+    mutationFn: () =>
+      doctorApi.submitFeedback(appointmentId!, {
+        verdict: verdict!,
+        comment,
+        correctedDiagnosis: verdict === "REJECTED" ? correctedDiagnosis : undefined,
+      }),
+    onSuccess: () => {
+      toast.success("Оценка отправлена — спасибо за обратную связь");
+      queryClient.invalidateQueries({ queryKey: ["doctor", "appointments"] });
+      navigate(-1);
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        "Не удалось отправить оценку";
+      toast.error(msg);
+    },
+  });
+
   const isLoading = apptLoading || (!!sessionId && reportLoading);
-  const triage = report ? (TRIAGE_CONFIG[report.triage_level] ?? TRIAGE_CONFIG.INSUFFICIENT_DATA) : null;
-  const TriageIcon = triage?.icon;
+  const alreadyFeedback = appointment?.hasFeedback ?? false;
+  const canFeedback = appointment?.status === "COMPLETED" && !!sessionId && !alreadyFeedback;
+
+  const isSubmitDisabled =
+    !verdict ||
+    !comment.trim() ||
+    (verdict === "REJECTED" && !correctedDiagnosis.trim()) ||
+    feedbackMutation.isPending;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 py-2">
-      {/* Back button */}
+      {/* Back */}
       <Button
         variant="ghost"
         size="sm"
@@ -97,8 +123,8 @@ export function DoctorAiReportPage() {
 
       {/* Header */}
       <div className="flex items-start gap-3">
-        <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 shrink-0">
-          <Brain className="w-5 h-5 text-primary dark:text-primary/60" />
+        <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 shrink-0">
+          <Brain className="w-5 h-5 text-primary" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-foreground">AI-анализ симптомов</h1>
@@ -115,8 +141,8 @@ export function DoctorAiReportPage() {
 
       {/* Loading */}
       {isLoading && (
-        <Card className="border-border">
-          <CardContent className="py-16 text-center text-muted-foreground">
+        <Card>
+          <CardContent className="py-16 text-center text-muted-foreground text-sm">
             Загрузка анализа...
           </CardContent>
         </Card>
@@ -146,138 +172,110 @@ export function DoctorAiReportPage() {
         </Card>
       )}
 
-      {/* Report */}
-      {!isLoading && report && triage && TriageIcon && (
-        <div className="space-y-4">
+      {/* AI report */}
+      {!isLoading && report && (
+        <ReportView report={report} mode="doctor" />
+      )}
 
-          {/* Triage banner */}
-          <div className={`flex items-center gap-3 p-4 rounded-xl border ${triage.bgClass}`}>
-            <TriageIcon className={`w-6 h-6 shrink-0 ${triage.iconClass}`} />
-            <div className="flex-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Уровень срочности</p>
-              <p className={`text-lg font-bold ${triage.iconClass}`}>{triage.label}</p>
-            </div>
-            <span className={`text-xs px-2.5 py-1 rounded-full border font-semibold ${triage.badgeClass}`}>
-              {triage.label}
-            </span>
-          </div>
-
-          {/* Primary diagnosis */}
-          <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/20">
-            <CardContent className="pt-4 pb-4">
-              <p className="text-xs font-medium text-primary dark:text-primary/60 uppercase tracking-wide mb-1">
-                Основной диагноз
+      {/* ── Feedback section ─────────────────────────────────────── */}
+      {!isLoading && report && (
+        <Card className={cn(
+          "border-2",
+          alreadyFeedback
+            ? "border-emerald-200 dark:border-emerald-800"
+            : "border-primary/20"
+        )}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              {alreadyFeedback
+                ? <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                : <AlertCircle className="w-5 h-5 text-primary" />
+              }
+              {alreadyFeedback ? "Оценка уже отправлена" : "Оцените точность AI-анализа"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {alreadyFeedback ? (
+              <p className="text-sm text-muted-foreground">
+                Вы уже оставили обратную связь по этому анализу. Спасибо — ваша оценка помогает улучшать модель.
               </p>
-              <p className="text-base font-semibold text-foreground">{report.primary_diagnosis}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <div className="flex-1 h-1.5 rounded-full bg-blue-100 dark:bg-blue-900">
-                  <div
-                    className="h-1.5 rounded-full bg-blue-500"
-                    style={{ width: `${Math.round(report.confidence * 100)}%` }}
+            ) : !canFeedback ? (
+              <p className="text-sm text-muted-foreground">
+                Оценка будет доступна после завершения приёма.
+              </p>
+            ) : (
+              <>
+                {/* Verdict */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Точность диагноза</Label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {(Object.entries(VERDICT_CONFIG) as [FeedbackVerdict, typeof VERDICT_CONFIG[FeedbackVerdict]][]).map(([key, cfg]) => {
+                      const Icon = cfg.icon;
+                      const isSelected = verdict === key;
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => setVerdict(key)}
+                          className={cn(
+                            "flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all",
+                            isSelected ? cfg.selected : cfg.idle
+                          )}
+                        >
+                          <Icon className="w-5 h-5 shrink-0" />
+                          <div>
+                            <p className="font-semibold text-sm">{cfg.label}</p>
+                            <p className="text-xs opacity-70 mt-0.5">{cfg.desc}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Corrected diagnosis (only for REJECTED) */}
+                {verdict === "REJECTED" && (
+                  <div className="space-y-1.5 p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
+                    <Label className="text-sm font-semibold text-red-700 dark:text-red-400">
+                      Правильный диагноз <span className="font-normal">(обязательно)</span>
+                    </Label>
+                    <Textarea
+                      placeholder="Укажите ваш диагноз или правильное заключение..."
+                      rows={3}
+                      value={correctedDiagnosis}
+                      onChange={(e) => setCorrectedDiagnosis(e.target.value)}
+                      className="resize-none border-red-200 dark:border-red-800"
+                    />
+                    <p className="text-xs text-red-600 dark:text-red-400">
+                      Этот диагноз будет использован для улучшения AI-модели
+                    </p>
+                  </div>
+                )}
+
+                {/* Comment */}
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-semibold">
+                    Комментарий <span className="font-normal text-muted-foreground">(обязательно)</span>
+                  </Label>
+                  <Textarea
+                    placeholder="Опишите вашу оценку, уточнения или коррекции к AI-анализу..."
+                    rows={3}
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    className="resize-none"
                   />
                 </div>
-                <span className="text-xs font-medium text-blue-700 dark:text-primary/60 shrink-0">
-                  {Math.round(report.confidence * 100)}% уверенность
-                </span>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Explanation */}
-          {report.explanation && (
-            <Card className="border-border">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <Info className="w-4 h-4" />
-                  Объяснение
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {report.explanation}
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Recommendations */}
-          {report.recommendations.length > 0 && (
-            <Card className="border-border">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <ListOrdered className="w-4 h-4" />
-                  Рекомендации
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ol className="space-y-2">
-                  {report.recommendations.map((rec, i) => (
-                    <li key={i} className="flex gap-3 text-sm text-muted-foreground">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">
-                        {i + 1}
-                      </span>
-                      {rec}
-                    </li>
-                  ))}
-                </ol>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Possible causes */}
-          {report.possible_causes && report.possible_causes.length > 0 && (
-            <Card className="border-border">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2 text-slate-700 dark:text-slate-300">
-                  <Brain className="w-4 h-4" />
-                  Возможные причины
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-1.5">
-                  {report.possible_causes.map((cause, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-muted-foreground">
-                      <span className="text-primary/60 shrink-0 mt-0.5">·</span>
-                      {cause}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Red flags */}
-          {report.red_flags && report.red_flags.length > 0 && (
-            <Card className="border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2 text-red-700 dark:text-red-400">
-                  <ShieldAlert className="w-4 h-4" />
-                  Тревожные симптомы
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-1.5">
-                  {report.red_flags.map((flag, i) => (
-                    <li key={i} className="flex gap-2 text-sm text-red-700 dark:text-red-400">
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                      {flag}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          <Separator />
-
-          {/* Footer */}
-          <p className="text-xs text-muted-foreground text-center pb-2">
-            Создан: {fmt(report.created_at)}
-            {report.model_version && (
-              <span className="ml-3 text-muted-foreground/60">Модель: {report.model_version}</span>
+                <Button
+                  className="w-full rounded-xl h-12 text-base font-semibold"
+                  disabled={isSubmitDisabled}
+                  onClick={() => feedbackMutation.mutate()}
+                >
+                  {feedbackMutation.isPending ? "Отправляем..." : "Отправить оценку"}
+                </Button>
+              </>
             )}
-          </p>
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

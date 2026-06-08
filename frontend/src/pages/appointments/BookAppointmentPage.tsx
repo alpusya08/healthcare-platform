@@ -278,6 +278,24 @@ export function BookAppointmentPage() {
     ? doctor.fullName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
     : "";
 
+  const DoctorAvatar = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
+    const sizeClass = size === "sm" ? "w-9 h-9 text-xs rounded-xl" : size === "lg" ? "w-16 h-16 text-base rounded-2xl" : "w-12 h-12 text-sm rounded-2xl";
+    if (doctor?.photoUrl) {
+      return (
+        <img
+          src={doctor.photoUrl}
+          alt={doctor.fullName}
+          className={`${sizeClass} object-cover shrink-0 shadow`}
+        />
+      );
+    }
+    return (
+      <div className={`${sizeClass} bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold flex items-center justify-center shrink-0 shadow`}>
+        {doctorInitials}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -459,7 +477,7 @@ export function BookAppointmentPage() {
 
             {/* Book button */}
             <Button
-              className="w-full rounded-xl h-13 text-base font-semibold shadow-md"
+              className="w-full rounded-2xl h-14 text-base font-semibold shadow-md"
               size="lg"
               onClick={handleBook}
               disabled={!selectedSlot || bookMutation.isPending}
@@ -477,9 +495,7 @@ export function BookAppointmentPage() {
                 <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-5 border-b border-border">
                   {doctor ? (
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm flex items-center justify-center shrink-0 shadow">
-                        {doctorInitials}
-                      </div>
+                      <DoctorAvatar size="md" />
                       <div className="min-w-0">
                         <p className="font-bold text-foreground truncate">{doctor.fullName}</p>
                         <p className="text-xs text-muted-foreground truncate mt-0.5">{doctor.specialization}</p>
@@ -579,9 +595,7 @@ export function BookAppointmentPage() {
             {/* Doctor */}
             {doctor && (
               <div className="flex items-center gap-3 p-4 rounded-2xl bg-muted/40 border border-border">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold text-sm flex items-center justify-center shrink-0">
-                  {doctorInitials}
-                </div>
+                <DoctorAvatar size="sm" />
                 <div>
                   <p className="font-semibold text-foreground">{doctor.fullName}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{doctor.specialization}</p>

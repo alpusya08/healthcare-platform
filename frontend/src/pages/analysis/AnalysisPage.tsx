@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Loader2, AlertTriangle, Phone, CheckCircle2,
   Info, ArrowRight, HelpCircle, Upload,
   MessageSquareOff, Brain, Shield, Clock,
-  ListChecks, FileText, Download, Share2, Stethoscope,
-  TrendingDown, TrendingUp, Minus,
+  ListChecks, FileText, Download,
+  TrendingDown, TrendingUp, Minus, RotateCcw, Home,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
@@ -502,14 +502,16 @@ function NonMedicalScreen({ onReset }: { onReset: () => void }) {
   );
 }
 
-function ReportView({
+export function ReportView({
   report,
   onReset,
   sessionFiles = [],
+  mode = "patient",
 }: {
   report: AnalysisReport;
-  onReset: () => void;
+  onReset?: () => void;
   sessionFiles?: { name: string; summary: string }[];
+  mode?: "patient" | "doctor";
 }) {
   const navigate = useNavigate();
   const cfg = TRIAGE_CONFIG[report.triage_level];
@@ -521,15 +523,78 @@ function ReportView({
     report.symptom_duration_days != null ||
     report.is_worsening != null;
 
-  const handleShare = () => {
-    const url = `${window.location.origin}/ai-analysis?sessionId=${report.session_id}`;
-    navigator.clipboard.writeText(url).then(() => {
-      // toast shown via sonner if needed — keep dependency-free here
-    });
-    navigator.clipboard.writeText(url);
-  };
+  const handlePrint = () => {
+    const triageLabel = cfg.label;
+    const confidenceStr = `${confidencePct}%`;
+    const date = new Date().toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
 
-  const handlePrint = () => window.print();
+    const redFlagsHtml = report.red_flags?.length
+      ? `<ul>${report.red_flags.map((f) => `<li>${f}</li>`).join("")}</ul>`
+      : "<p>Нет</p>";
+
+    const recsHtml = report.recommendations?.length
+      ? `<ol>${report.recommendations.map((r) => `<li>${r}</li>`).join("")}</ol>`
+      : "";
+
+    const nextStepsHtml = report.next_steps?.length
+      ? report.next_steps.map((s) => `<tr><td><b>${s.timeframe}</b></td><td>${s.action}</td><td>${s.detail || ""}</td></tr>`).join("")
+      : "";
+
+    const html = `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">
+<title>Отчёт AI-анализа — ${report.primary_diagnosis}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; margin: 40px; line-height: 1.6; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  h2 { font-size: 14px; color: #444; margin: 20px 0 6px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-weight: bold; font-size: 12px; }
+  .badge-emergency { background:#fee2e2; color:#991b1b; }
+  .badge-urgent    { background:#fef3c7; color:#92400e; }
+  .badge-routine   { background:#d1fae5; color:#065f46; }
+  .badge-info      { background:#dbeafe; color:#1e40af; }
+  .meta { color: #666; font-size: 12px; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  td, th { border: 1px solid #e5e7eb; padding: 6px 10px; text-align: left; }
+  th { background: #f9fafb; font-weight: bold; font-size: 12px; }
+  ul, ol { margin: 4px 0; padding-left: 20px; }
+  li { margin-bottom: 3px; }
+  .disclaimer { margin-top: 30px; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; font-size: 11px; color: #666; }
+  @media print { body { margin: 20px; } }
+</style></head><body>
+<h1>Отчёт AI-анализа симптомов</h1>
+<p class="meta">Дата: ${date} · Версия модели: ${report.model_version} · Сессия: ${String(report.session_id).slice(0, 8)}…</p>
+
+<span class="badge badge-${report.triage_level === "EMERGENCY" ? "emergency" : report.triage_level === "URGENT" ? "urgent" : report.triage_level === "INSUFFICIENT_DATA" ? "info" : "routine"}">
+  ${triageLabel}
+</span>
+
+<h2>Предварительный диагноз</h2>
+<p><b>${report.primary_diagnosis}</b> — уверенность ${confidenceStr}</p>
+${report.summary ? `<p>${report.summary}</p>` : ""}
+
+<h2>Объяснение</h2>
+<p>${report.explanation}</p>
+
+${report.possible_causes?.length ? `<h2>Возможные причины</h2><ul>${report.possible_causes.map((c) => `<li>${c}</li>`).join("")}</ul>` : ""}
+
+<h2>Рекомендации</h2>
+${recsHtml}
+
+${report.red_flags?.length ? `<h2>Тревожные симптомы</h2>${redFlagsHtml}` : ""}
+
+${nextStepsHtml ? `<h2>Что делать дальше</h2><table><thead><tr><th>Когда</th><th>Действие</th><th>Детали</th></tr></thead><tbody>${nextStepsHtml}</tbody></table>` : ""}
+
+${report.recommended_specialization ? `<h2>Рекомендуемый специалист</h2><p>${report.recommended_specialization}</p>` : ""}
+
+<div class="disclaimer">${report.disclaimer}</div>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+  };
 
   return (
     <div className="space-y-5">
@@ -779,7 +844,7 @@ function ReportView({
       )}
 
       {/* ── Slots widget ─────────────────────────────────────────── */}
-      {report.triage_level !== "EMERGENCY" && (
+      {mode === "patient" && (report.triage_level === "URGENT" || report.triage_level === "ROUTINE" || report.triage_level === "INSUFFICIENT_DATA") && (
         <UpcomingSlotsCard
           specializationCode={report.recommended_specialization}
           aiSessionId={report.session_id}
@@ -819,7 +884,7 @@ function ReportView({
               <a
                 href="tel:103"
                 onClick={(e) => e.stopPropagation()}
-                className="font-black text-lg shrink-0 hover:opacity-90 transition-opacity"
+                className="flex items-center justify-center w-12 h-12 rounded-full bg-white text-red-600 font-black text-lg shadow-md hover:scale-105 active:scale-95 transition-transform shrink-0"
               >
                 103
               </a>
@@ -829,52 +894,46 @@ function ReportView({
       )}
 
       {/* ── Action buttons ───────────────────────────────────────── */}
-      <div className="space-y-3">
-        <Button
-          asChild
-          className="w-full rounded-xl h-12 text-base gap-2"
-          size="lg"
+      {mode === "doctor" && (
+        <button
+          onClick={handlePrint}
+          className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-border hover:border-primary/40 hover:bg-muted/40 transition-all text-sm font-semibold text-muted-foreground hover:text-foreground"
         >
-          <Link
-            to={
-              report.recommended_specialization
-                ? `${routes.patient.doctors}?specialization=${report.recommended_specialization}&from=ai`
-                : routes.patient.doctors
-            }
-          >
-            <Stethoscope className="w-5 h-5" />
-            Записаться к рекомендованному врачу
-          </Link>
-        </Button>
+          <Download className="w-4 h-4" />
+          Скачать PDF
+        </button>
+      )}
+      {mode === "patient" && <div className="grid grid-cols-3 gap-3">
+        <button
+          onClick={onReset}
+          className="flex flex-col items-center gap-2 px-3 py-4 rounded-2xl border-2 border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary transition-all group"
+        >
+          <div className="w-9 h-9 rounded-xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors">
+            <RotateCcw className="w-4 h-4 text-primary" />
+          </div>
+          <span className="text-xs font-semibold text-primary leading-tight text-center">Проверить снова</span>
+        </button>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Button
-            variant="outline"
-            className="rounded-xl gap-2"
-            onClick={handlePrint}
-          >
-            <Download className="w-4 h-4" />
-            Скачать PDF
-          </Button>
-          <Button
-            variant="outline"
-            className="rounded-xl gap-2"
-            onClick={handleShare}
-          >
-            <Share2 className="w-4 h-4" />
-            Поделиться с врачом
-          </Button>
-        </div>
+        <button
+          onClick={handlePrint}
+          className="flex flex-col items-center gap-2 px-3 py-4 rounded-2xl border-2 border-border hover:border-primary/40 hover:bg-muted/40 transition-all group"
+        >
+          <div className="w-9 h-9 rounded-xl bg-muted group-hover:bg-muted/70 flex items-center justify-center transition-colors">
+            <Download className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </div>
+          <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground leading-tight text-center transition-colors">Скачать PDF</span>
+        </button>
 
-        <div className="flex gap-3">
-          <Button variant="ghost" onClick={onReset} className="flex-1 rounded-xl">
-            Проверить снова
-          </Button>
-          <Button variant="ghost" onClick={() => navigate(routes.patient.home)} className="flex-1 rounded-xl">
-            На главную
-          </Button>
-        </div>
-      </div>
+        <button
+          onClick={() => navigate(routes.patient.home)}
+          className="flex flex-col items-center gap-2 px-3 py-4 rounded-2xl border-2 border-border hover:border-primary/40 hover:bg-muted/40 transition-all group"
+        >
+          <div className="w-9 h-9 rounded-xl bg-muted group-hover:bg-muted/70 flex items-center justify-center transition-colors">
+            <Home className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+          </div>
+          <span className="text-xs font-semibold text-muted-foreground group-hover:text-foreground leading-tight text-center transition-colors">На главную</span>
+        </button>
+      </div>}
     </div>
   );
 }

@@ -5,8 +5,7 @@ import {
   Stethoscope, Calendar, Clock, FileText, CheckCheck,
   Star, MessageSquare, UserCog, Phone, Mail,
   AlertCircle, TrendingUp, Users, Banknote, Shield,
-  Video, Brain, ChevronDown, ChevronUp,
-  ListOrdered, X as XIcon, CheckCircle2,
+  Video, Brain, CheckCircle2, X as XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -17,8 +16,8 @@ import { cn } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/model/authStore";
 import { doctorApi, type DoctorAppointment } from "@/features/doctor/api/doctorApi";
 import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
-import { DoctorFeedbackModal } from "./DoctorFeedbackModal";
-import type { AnalysisReport } from "@/features/analysis/types";
+
+import { routes } from "@/shared/config/routes";
 
 /* ─── helpers ─────────────────────────────────────────────────── */
 
@@ -205,22 +204,6 @@ function AppointmentCard({
   );
 }
 
-/* ─── triage badge helper ──────────────────────────────────────── */
-
-const TRIAGE_BADGE: Record<string, string> = {
-  EMERGENCY: "bg-red-100 text-red-700 border-red-300 dark:bg-red-950/40 dark:text-red-400 dark:border-red-700",
-  URGENT: "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700",
-  ROUTINE: "bg-green-100 text-green-700 border-green-300 dark:bg-green-950/40 dark:text-green-400 dark:border-green-700",
-  INSUFFICIENT_DATA: "bg-slate-100 text-slate-600 border-slate-300 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700",
-};
-
-const TRIAGE_LABELS_MODAL: Record<string, string> = {
-  EMERGENCY: "Экстренный",
-  URGENT: "Срочный",
-  ROUTINE: "Плановый",
-  INSUFFICIENT_DATA: "Недостаточно данных",
-};
-
 /* ─── patient detail modal ─────────────────────────────────────── */
 
 function PatientDetailModal({
@@ -228,37 +211,16 @@ function PatientDetailModal({
   onClose,
   onComplete,
   onNoShow,
-  onFeedback,
 }: {
   appt: DoctorAppointment;
   onClose: () => void;
   onComplete: () => void;
   onNoShow: () => void;
-  onFeedback: () => void;
 }) {
-  const [aiReport, setAiReport] = useState<AnalysisReport | null>(null);
-  const [loadingAi, setLoadingAi] = useState(false);
-  const [aiError, setAiError] = useState(false);
-  const [showAi, setShowAi] = useState(false);
-
+  const navigate = useNavigate();
   const durationMin = Math.round(
     (new Date(appt.endTime).getTime() - new Date(appt.startTime).getTime()) / 60000
   );
-
-  async function handleOpenAi() {
-    if (aiReport) { setShowAi(true); return; }
-    setLoadingAi(true);
-    setAiError(false);
-    try {
-      const data = await doctorApi.getAiReport(appt.aiSessionId!);
-      setAiReport(data);
-      setShowAi(true);
-    } catch {
-      setAiError(true);
-    } finally {
-      setLoadingAi(false);
-    }
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -320,96 +282,16 @@ function PatientDetailModal({
               </div>
             )}
 
-            {/* AI analysis section */}
+            {/* AI analysis — redirect to full report page */}
             {appt.aiSessionId && (
-              <div className="rounded-xl border border-blue-200 dark:border-blue-800 overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-2 bg-blue-50 dark:bg-blue-950/40">
-                  <div className="flex items-center gap-2 text-sm text-blue-700 dark:text-blue-300 font-medium">
-                    <Brain className="w-4 h-4 shrink-0" />
-                    AI-анализ симптомов
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {!showAi ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:text-blue-300 dark:hover:bg-blue-900"
-                        onClick={handleOpenAi}
-                        disabled={loadingAi}
-                      >
-                        {loadingAi ? "Загрузка..." : "Открыть AI-анализ"}
-                        {!loadingAi && <ChevronDown className="w-3 h-3 ml-1" />}
-                      </Button>
-                    ) : (
-                      <button
-                        onClick={() => setShowAi(false)}
-                        className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                      >
-                        <ChevronUp className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {aiError && (
-                  <div className="px-3 py-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border-t border-red-200 dark:border-red-800">
-                    Не удалось загрузить анализ
-                  </div>
-                )}
-
-                {showAi && aiReport && (
-                  <div className="px-3 py-3 border-t border-blue-200 dark:border-blue-800 space-y-3">
-                    {/* Triage badge */}
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border font-semibold ${TRIAGE_BADGE[aiReport.triage_level] ?? TRIAGE_BADGE.INSUFFICIENT_DATA}`}>
-                        {TRIAGE_LABELS_MODAL[aiReport.triage_level] ?? aiReport.triage_level}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        Уверенность: {Math.round(aiReport.confidence * 100)}%
-                      </span>
-                    </div>
-
-                    {/* Primary diagnosis */}
-                    <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900">
-                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-0.5">Диагноз</p>
-                      <p className="text-sm font-semibold text-foreground">{aiReport.primary_diagnosis}</p>
-                    </div>
-
-                    {/* Recommendations (max 4) */}
-                    {aiReport.recommendations.length > 0 && (
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1 mb-1.5">
-                          <ListOrdered className="w-3.5 h-3.5" />
-                          Рекомендации
-                        </p>
-                        <ol className="space-y-1">
-                          {aiReport.recommendations.slice(0, 4).map((rec, i) => (
-                            <li key={i} className="flex gap-2 text-xs text-muted-foreground">
-                              <span className="shrink-0 w-4 h-4 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 text-[10px] font-bold flex items-center justify-center">
-                                {i + 1}
-                              </span>
-                              {rec}
-                            </li>
-                          ))}
-                          {aiReport.recommendations.length > 4 && (
-                            <li className="text-xs text-muted-foreground/60 pl-6">
-                              +{aiReport.recommendations.length - 4} ещё...
-                            </li>
-                          )}
-                        </ol>
-                      </div>
-                    )}
-
-                    <button
-                      onClick={() => setShowAi(false)}
-                      className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 flex items-center gap-1"
-                    >
-                      <XIcon className="w-3 h-3" />
-                      Свернуть
-                    </button>
-                  </div>
-                )}
-              </div>
+              <Button
+                variant="outline"
+                className="w-full rounded-xl border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                onClick={() => { navigate(routes.doctor.aiReport.replace(":id", appt.id)); onClose(); }}
+              >
+                <Brain className="w-4 h-4 mr-2" />
+                Открыть AI-анализ пациента
+              </Button>
             )}
           </div>
 
@@ -430,14 +312,8 @@ function PatientDetailModal({
               <>
                 <Button className="w-full rounded-xl" onClick={() => { onComplete(); onClose(); }}>
                   <CheckCheck className="w-4 h-4 mr-2" />
-                  Завершить приём
+                  {appt.aiSessionId ? "Завершить и оценить AI-анализ" : "Завершить приём"}
                 </Button>
-                {appt.aiSessionId && (
-                  <p className="text-xs text-muted-foreground text-center py-1">
-                    <MessageSquare className="w-3 h-3 inline mr-1" />
-                    Обратная связь будет доступна после завершения приёма
-                  </p>
-                )}
                 <Button variant="ghost" className="w-full rounded-xl text-muted-foreground hover:text-destructive"
                   onClick={() => { onNoShow(); onClose(); }}>
                   <AlertCircle className="w-4 h-4 mr-2" />
@@ -445,10 +321,14 @@ function PatientDetailModal({
                 </Button>
               </>
             )}
-            {appt.status === "COMPLETED" && !appt.hasFeedback && (
-              <Button variant="outline" className="w-full rounded-xl" onClick={() => { onFeedback(); onClose(); }}>
+            {appt.status === "COMPLETED" && appt.aiSessionId && !appt.hasFeedback && (
+              <Button
+                variant="outline"
+                className="w-full rounded-xl border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30"
+                onClick={() => { navigate(routes.doctor.aiReport.replace(":id", appt.id)); onClose(); }}
+              >
                 <MessageSquare className="w-4 h-4 mr-2" />
-                Оставить комментарий к AI-отчёту
+                Оценить AI-анализ
               </Button>
             )}
           </div>
@@ -465,7 +345,6 @@ export function DoctorDashboard() {
   const [activeTab, setActiveTab] = useState<Tab>("appointments");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [selectedAppt, setSelectedAppt] = useState<DoctorAppointment | null>(null);
-  const [feedbackTarget, setFeedbackTarget] = useState<DoctorAppointment | null>(null);
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
 
@@ -905,28 +784,17 @@ export function DoctorDashboard() {
             appt={selectedAppt}
             onClose={() => setSelectedAppt(null)}
             onComplete={() => {
-              completeMutation.mutate(selectedAppt.id);
+              const apptId = selectedAppt.id;
+              const aiSessionId = selectedAppt.aiSessionId;
+              completeMutation.mutate(apptId);
               setSelectedAppt(null);
+              if (aiSessionId) {
+                navigate(routes.doctor.aiReport.replace(":id", apptId));
+              }
             }}
             onNoShow={() => {
               noShowMutation.mutate(selectedAppt.id);
               setSelectedAppt(null);
-            }}
-            onFeedback={() => {
-              setFeedbackTarget(selectedAppt);
-              setSelectedAppt(null);
-            }}
-          />
-        )}
-
-        {/* ── Feedback modal ── */}
-        {feedbackTarget && (
-          <DoctorFeedbackModal
-            appointment={feedbackTarget}
-            onClose={() => setFeedbackTarget(null)}
-            onSuccess={() => {
-              setFeedbackTarget(null);
-              queryClient.invalidateQueries({ queryKey: ["doctor", "appointments"] });
             }}
           />
         )}
