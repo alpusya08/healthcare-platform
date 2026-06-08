@@ -619,7 +619,7 @@ ${report.recommended_specialization ? `<h2>Рекомендуемый специ
               <p className={`font-semibold text-base leading-snug ${cfg.color}`}>
                 {report.primary_diagnosis}
               </p>
-              {report.triage_level === "EMERGENCY" && (
+              {report.triage_level === "EMERGENCY" && mode === "patient" && (
                 <p className="text-sm font-medium text-red-700 dark:text-red-400 flex items-center gap-1.5">
                   <Phone className="w-4 h-4 shrink-0" />
                   Немедленно вызовите скорую помощь — 103
@@ -878,19 +878,21 @@ ${report.recommended_specialization ? `<h2>Рекомендуемый специ
                 </span>
               ))}
             </div>
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-600 text-white">
-              <Phone className="w-4 h-4 shrink-0" />
-              <p className="text-sm font-medium flex-1">
-                При любом из этих симптомов — звонить 103 немедленно
-              </p>
-              <a
-                href="tel:103"
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center justify-center w-12 h-12 rounded-full bg-white text-red-600 font-black text-lg shadow-md hover:scale-105 active:scale-95 transition-transform shrink-0"
-              >
-                103
-              </a>
-            </div>
+            {mode === "patient" && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-600 text-white">
+                <Phone className="w-4 h-4 shrink-0" />
+                <p className="text-sm font-medium flex-1">
+                  При любом из этих симптомов — звонить 103 немедленно
+                </p>
+                <a
+                  href="tel:103"
+                  onClick={(e) => e.stopPropagation()}
+                  className="flex items-center justify-center w-12 h-12 rounded-full bg-white text-red-600 font-black text-lg shadow-md hover:scale-105 active:scale-95 transition-transform shrink-0"
+                >
+                  103
+                </a>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
