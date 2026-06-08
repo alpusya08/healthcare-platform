@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Moon, Sun, LogOut, ChevronDown, LayoutDashboard, Calendar, FileText, User, Heart } from "lucide-react";
+import { Moon, Sun, LogOut, ChevronDown, Calendar, FileText, Star, User, Heart } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import {
@@ -17,8 +17,9 @@ import { cn } from "@/shared/lib/utils";
 import { NotificationBell } from "@/widgets/notification-bell/NotificationBell";
 
 const NAV_LINKS = [
-  { to: routes.doctor.dashboard, label: "Панель", icon: LayoutDashboard, exact: true },
+  { to: routes.doctor.dashboard, label: "Записи", icon: Calendar, exact: true },
   { to: routes.doctor.schedule, label: "Расписание", icon: Calendar, exact: false },
+  { to: routes.doctor.reviews, label: "Отзывы", icon: Star, exact: false },
   { to: "/doctor/ai-reports", label: "AI Отчёты", icon: FileText, exact: false },
 ];
 

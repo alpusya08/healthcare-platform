@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Calendar, Clock, XCircle, Plus, Star, CheckCircle2,
-  FileText, CalendarX, Video, ArrowLeftRight, CreditCard, AlertTriangle,
+  FileText, CalendarX, Video, MessageCircle, CreditCard, AlertTriangle,
 } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
@@ -14,10 +14,10 @@ import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
 import type { Appointment, AppointmentStatus } from "@/features/appointments/types";
+import { chatApi } from "@/features/chat/api/chatApi";
 import { routes } from "@/shared/config/routes";
 import { ReviewModal } from "@/widgets/review-modal/ReviewModal";
 import { AppointmentDetailModal } from "@/widgets/appointment-detail/AppointmentDetailModal";
-import { RescheduleModal } from "@/widgets/reschedule-modal/RescheduleModal";
 import { PaymentModal } from "@/widgets/payment-modal/PaymentModal";
 import { Skeleton } from "@/shared/ui/skeleton";
 
@@ -82,14 +82,16 @@ function UpcomingAppointmentCard({
   appt,
   onCancel,
   onOpen,
-  onReschedule,
+  onChat,
   onPay,
+  unreadCount = 0,
 }: {
   appt: Appointment;
   onCancel: (appt: Appointment) => void;
   onOpen: (appt: Appointment) => void;
-  onReschedule: (appt: Appointment) => void;
+  onChat: (appt: Appointment) => void;
   onPay: (appt: Appointment) => void;
+  unreadCount?: number;
 }) {
   return (
     <Card
@@ -108,9 +110,23 @@ function UpcomingAppointmentCard({
                 <p className="font-semibold text-foreground truncate text-base">{appt.doctorName}</p>
                 <p className="text-sm text-muted-foreground">{appt.specialization}</p>
               </div>
-              <Badge variant={getDisplayStatus(appt).variant} className="shrink-0">
-                {getDisplayStatus(appt).label}
-              </Badge>
+              <div className="flex items-center gap-2 shrink-0">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onChat(appt); }}
+                    className="relative flex items-center justify-center"
+                    title={`${unreadCount} новых сообщений`}
+                  >
+                    <MessageCircle className="w-5 h-5 text-primary" />
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  </button>
+                )}
+                <Badge variant={getDisplayStatus(appt).variant}>
+                  {getDisplayStatus(appt).label}
+                </Badge>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 mt-3 text-sm text-muted-foreground">
@@ -171,12 +187,12 @@ function UpcomingAppointmentCard({
               )}
               <Button
                 size="sm"
-                variant="outline"
-                className="rounded-xl h-8 text-xs gap-1.5"
-                onClick={(e) => { e.stopPropagation(); onReschedule(appt); }}
+                variant={unreadCount > 0 ? "default" : "outline"}
+                className="rounded-xl h-8 text-xs gap-1.5 relative"
+                onClick={(e) => { e.stopPropagation(); onChat(appt); }}
               >
-                <ArrowLeftRight className="w-3.5 h-3.5" />
-                Перенести
+                <MessageCircle className="w-3.5 h-3.5" />
+                {unreadCount > 0 ? `Чат (${unreadCount})` : "Чат с врачом"}
               </Button>
               <Button
                 size="sm"
@@ -208,10 +224,14 @@ function CompletedAppointmentCard({
   appt,
   onReview,
   onOpen,
+  onChat,
+  unreadCount = 0,
 }: {
   appt: Appointment;
   onReview: (appt: Appointment) => void;
   onOpen: (appt: Appointment) => void;
+  onChat: (appt: Appointment) => void;
+  unreadCount?: number;
 }) {
   return (
     <Card
@@ -228,9 +248,23 @@ function CompletedAppointmentCard({
                 <p className="font-semibold text-foreground truncate">{appt.doctorName}</p>
                 <p className="text-sm text-muted-foreground">{appt.specialization}</p>
               </div>
-              <Badge variant={getDisplayStatus(appt).variant} className="shrink-0">
-                {getDisplayStatus(appt).label}
-              </Badge>
+              <div className="flex items-center gap-2 shrink-0">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onChat(appt); }}
+                    className="relative flex items-center justify-center"
+                    title={`${unreadCount} новых сообщений`}
+                  >
+                    <MessageCircle className="w-5 h-5 text-primary" />
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  </button>
+                )}
+                <Badge variant={getDisplayStatus(appt).variant}>
+                  {getDisplayStatus(appt).label}
+                </Badge>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
@@ -240,7 +274,7 @@ function CompletedAppointmentCard({
               </span>
             </div>
 
-            <div className="flex items-center gap-2 mt-4">
+            <div className="flex flex-wrap items-center gap-2 mt-4">
               {(appt.status === "COMPLETED" || (appt.status === "SCHEDULED" && new Date(appt.startTime) <= new Date())) && (
                 appt.hasReview ? (
                   <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -261,6 +295,15 @@ function CompletedAppointmentCard({
               )}
               <Button
                 size="sm"
+                variant={unreadCount > 0 ? "default" : "outline"}
+                className="rounded-xl h-8 text-xs gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                onClick={(e) => { e.stopPropagation(); onChat(appt); }}
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                {unreadCount > 0 ? `Чат (${unreadCount})` : "Чат"}
+              </Button>
+              <Button
+                size="sm"
                 variant="ghost"
                 className="rounded-xl h-8 text-xs gap-1.5 ml-auto"
                 onClick={(e) => { e.stopPropagation(); onOpen(appt); }}
@@ -277,10 +320,10 @@ function CompletedAppointmentCard({
 }
 
 export function AppointmentsPage() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [reviewTarget, setReviewTarget] = useState<Appointment | null>(null);
   const [detailTarget, setDetailTarget] = useState<Appointment | null>(null);
-  const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
   const [payTarget, setPayTarget] = useState<Appointment | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Appointment | null>(null);
 
@@ -288,6 +331,12 @@ export function AppointmentsPage() {
     queryKey: ["appointments"],
     queryFn: appointmentsApi.myAppointments,
     staleTime: 0,
+  });
+
+  const { data: unreadCounts = {} } = useQuery({
+    queryKey: ["chat", "unread"],
+    queryFn: chatApi.getUnreadCounts,
+    refetchInterval: 10000,
   });
 
   const cancelMutation = useMutation({
@@ -384,8 +433,9 @@ export function AppointmentsPage() {
                       appt={a}
                       onCancel={(appt) => setCancelTarget(appt)}
                       onOpen={setDetailTarget}
-                      onReschedule={setRescheduleTarget}
+                      onChat={(appt) => navigate(routes.patient.chat.replace(":appointmentId", appt.id))}
                       onPay={setPayTarget}
+                      unreadCount={unreadCounts[a.id] ?? 0}
                     />
                   ))}
                 </div>
@@ -407,6 +457,8 @@ export function AppointmentsPage() {
                       appt={a}
                       onReview={setReviewTarget}
                       onOpen={setDetailTarget}
+                      onChat={(appt) => navigate(routes.patient.chat.replace(":appointmentId", appt.id))}
+                      unreadCount={unreadCounts[a.id] ?? 0}
                     />
                   ))}
                 </div>
@@ -428,6 +480,8 @@ export function AppointmentsPage() {
                       appt={a}
                       onReview={setReviewTarget}
                       onOpen={setDetailTarget}
+                      onChat={(appt) => navigate(routes.patient.chat.replace(":appointmentId", appt.id))}
+                      unreadCount={unreadCounts[a.id] ?? 0}
                     />
                   ))}
                 </div>
@@ -451,13 +505,6 @@ export function AppointmentsPage() {
         onCancel={(id) => { setCancelTarget(appointments.find(a => a.id === id) ?? null); setDetailTarget(null); }}
         onReview={(appt) => { setReviewTarget(appt); setDetailTarget(null); }}
       />
-
-      {rescheduleTarget && (
-        <RescheduleModal
-          appointment={rescheduleTarget}
-          onClose={() => setRescheduleTarget(null)}
-        />
-      )}
 
       {payTarget && (
         <PaymentModal

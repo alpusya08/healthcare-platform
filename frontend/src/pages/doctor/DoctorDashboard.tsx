@@ -3,20 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Stethoscope, Calendar, Clock, FileText, CheckCheck,
-  Star, MessageSquare, UserCog, Phone, Mail,
-  AlertCircle, TrendingUp, Users, Banknote, Shield,
+  MessageSquare, Phone,
+  AlertCircle, Users,
   Video, Brain, CheckCircle2, X as XIcon,
+  ArrowRight, ChevronRight, MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Separator } from "@/shared/ui/separator";
 import { cn } from "@/shared/lib/utils";
 import { useAuthStore } from "@/features/auth/model/authStore";
 import { doctorApi, type DoctorAppointment } from "@/features/doctor/api/doctorApi";
-import { appointmentsApi } from "@/features/appointments/api/appointmentsApi";
-
+import { chatApi } from "@/features/chat/api/chatApi";
 import { routes } from "@/shared/config/routes";
 
 /* ─── helpers ─────────────────────────────────────────────────── */
@@ -24,20 +24,22 @@ import { routes } from "@/shared/config/routes";
 function isToday(iso: string) {
   const d = new Date(iso);
   const now = new Date();
-  return d.getFullYear() === now.getFullYear() &&
+  return (
+    d.getFullYear() === now.getFullYear() &&
     d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
+    d.getDate() === now.getDate()
+  );
 }
 function isThisWeek(iso: string) {
   const d = new Date(iso);
   const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay() + 1);
-  startOfWeek.setHours(0, 0, 0, 0);
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-  endOfWeek.setHours(23, 59, 59, 999);
-  return d >= startOfWeek && d <= endOfWeek;
+  const start = new Date(now);
+  start.setDate(now.getDate() - now.getDay() + 1);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return d >= start && d <= end;
 }
 function fmt(iso: string) {
   return new Date(iso).toLocaleString("ru-RU", {
@@ -50,6 +52,12 @@ function fmtTime(iso: string) {
 }
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" });
+}
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Доброе утро";
+  if (h < 17) return "Добрый день";
+  return "Добрый вечер";
 }
 
 /* ─── status config ───────────────────────────────────────────── */
@@ -68,16 +76,9 @@ const STATUS_COLORS = {
   NO_SHOW: "bg-muted text-muted-foreground border-border",
 } as const;
 
-/* ─── tabs ────────────────────────────────────────────────────── */
+/* ─── date filter ─────────────────────────────────────────────── */
 
-type Tab = "appointments" | "reviews" | "profile";
 type DateFilter = "today" | "week" | "all";
-
-const TABS: { id: Tab; label: string; icon: typeof Calendar }[] = [
-  { id: "appointments", label: "Записи", icon: Calendar },
-  { id: "reviews", label: "Отзывы", icon: Star },
-  { id: "profile", label: "Профиль", icon: Users },
-];
 
 const DATE_FILTERS: { id: DateFilter; label: string }[] = [
   { id: "today", label: "Сегодня" },
@@ -94,6 +95,8 @@ function AppointmentCard({
   onNoShow,
   completing,
   noShowing,
+  unreadCount = 0,
+  onChat,
 }: {
   appt: DoctorAppointment;
   onOpen: () => void;
@@ -101,6 +104,8 @@ function AppointmentCard({
   onNoShow?: () => void;
   completing?: boolean;
   noShowing?: boolean;
+  unreadCount?: number;
+  onChat?: () => void;
 }) {
   const durationMin = Math.round(
     (new Date(appt.endTime).getTime() - new Date(appt.startTime).getTime()) / 60000
@@ -108,27 +113,25 @@ function AppointmentCard({
 
   return (
     <Card
-      className="shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer border-border hover:border-primary/30 rounded-2xl"
+      className="shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer border-border hover:border-primary/30 rounded-2xl"
       onClick={onOpen}
     >
       <CardContent className="pt-5 pb-5">
         <div className="flex items-start gap-4">
-          {/* Avatar */}
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0 font-bold text-white text-sm shadow-md">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0 font-bold text-white text-sm shadow-sm">
             {appt.patientName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
           </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <p className="font-bold text-xl text-foreground truncate">{appt.patientName}</p>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
+                <p className="font-semibold text-base text-foreground truncate">{appt.patientName}</p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
                     {fmt(appt.startTime)}
                     <span className="text-muted-foreground/60">({durationMin} мин)</span>
                   </span>
-                  {/* Type badge */}
                   {appt.type === "ONLINE" ? (
                     <Badge className="text-[10px] px-2 py-0.5 bg-success/10 text-success border-success/20 rounded-full">
                       Онлайн
@@ -146,19 +149,32 @@ function AppointmentCard({
                   )}
                 </div>
                 {appt.complaint && (
-                  <div className="mt-2.5 bg-secondary rounded-xl px-3 py-2">
+                  <div className="mt-2 bg-secondary rounded-xl px-3 py-2">
                     <p className="text-xs text-muted-foreground italic line-clamp-2">
                       «{appt.complaint}»
                     </p>
                   </div>
                 )}
               </div>
-              <span className={`text-xs px-2.5 py-1 rounded-full border font-medium shrink-0 ${STATUS_COLORS[appt.status]}`}>
-                {STATUS_LABELS[appt.status]}
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                {unreadCount > 0 && onChat && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onChat(); }}
+                    className="relative flex items-center justify-center"
+                    title={`${unreadCount} новых сообщений`}
+                  >
+                    <MessageCircle className="w-5 h-5 text-primary" />
+                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5 leading-none">
+                      {unreadCount > 9 ? "9+" : unreadCount}
+                    </span>
+                  </button>
+                )}
+                <span className={`text-xs px-2.5 py-1 rounded-full border font-medium ${STATUS_COLORS[appt.status]}`}>
+                  {STATUS_LABELS[appt.status]}
+                </span>
+              </div>
             </div>
 
-            {/* Action buttons column for SCHEDULED */}
             {appt.status === "SCHEDULED" && (onComplete || onNoShow) && (
               <div className="flex flex-col gap-1.5 mt-3 w-fit" onClick={(e) => e.stopPropagation()}>
                 {appt.type === "ONLINE" && appt.meetingLink && (
@@ -234,7 +250,6 @@ function PatientDetailModal({
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-xl leading-none">×</button>
           </div>
 
-          {/* Patient */}
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center font-bold text-white shrink-0">
               {appt.patientName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
@@ -254,13 +269,13 @@ function PatientDetailModal({
 
           <Separator />
 
-          {/* Details */}
           <div className="space-y-3 text-sm">
             <div className="flex items-start gap-3">
               <Calendar className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs text-muted-foreground">Дата и время</p>
-                <p className="font-medium">{fmtDate(appt.startTime)}, {fmtTime(appt.startTime)} – {fmtTime(appt.endTime)}
+                <p className="font-medium">
+                  {fmtDate(appt.startTime)}, {fmtTime(appt.startTime)} – {fmtTime(appt.endTime)}
                   <span className="text-muted-foreground font-normal ml-1">({durationMin} мин)</span>
                 </p>
               </div>
@@ -282,7 +297,15 @@ function PatientDetailModal({
               </div>
             )}
 
-            {/* AI analysis — redirect to full report page */}
+            <Button
+              variant="outline"
+              className="w-full rounded-xl border-primary/30 text-primary hover:bg-primary/10"
+              onClick={() => { navigate(routes.doctor.chat.replace(":appointmentId", appt.id)); onClose(); }}
+            >
+              <MessageCircle className="w-4 h-4 mr-2" />
+              Написать пациенту
+            </Button>
+
             {appt.aiSessionId && (
               <Button
                 variant="outline"
@@ -297,7 +320,6 @@ function PatientDetailModal({
 
           <Separator />
 
-          {/* Actions */}
           <div className="flex flex-col gap-2">
             {appt.status === "SCHEDULED" && appt.type === "ONLINE" && appt.meetingLink && (
               <Button
@@ -314,8 +336,11 @@ function PatientDetailModal({
                   <CheckCheck className="w-4 h-4 mr-2" />
                   {appt.aiSessionId ? "Завершить и оценить AI-анализ" : "Завершить приём"}
                 </Button>
-                <Button variant="ghost" className="w-full rounded-xl text-muted-foreground hover:text-destructive"
-                  onClick={() => { onNoShow(); onClose(); }}>
+                <Button
+                  variant="ghost"
+                  className="w-full rounded-xl text-muted-foreground hover:text-destructive"
+                  onClick={() => { onNoShow(); onClose(); }}
+                >
                   <AlertCircle className="w-4 h-4 mr-2" />
                   Пациент не явился
                 </Button>
@@ -342,7 +367,6 @@ function PatientDetailModal({
 
 export function DoctorDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<Tab>("appointments");
   const [dateFilter, setDateFilter] = useState<DateFilter>("all");
   const [selectedAppt, setSelectedAppt] = useState<DoctorAppointment | null>(null);
   const queryClient = useQueryClient();
@@ -353,16 +377,10 @@ export function DoctorDashboard() {
     queryFn: doctorApi.myAppointments,
   });
 
-  const { data: doctorProfile } = useQuery({
-    queryKey: ["doctor", "profile"],
-    queryFn: doctorApi.getProfile,
-    enabled: activeTab === "profile",
-  });
-
-  const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
-    queryKey: ["doctor-reviews", user?.id],
-    queryFn: () => appointmentsApi.doctorReviews(user!.id),
-    enabled: !!user?.id && activeTab === "reviews",
+  const { data: unreadCounts = {} } = useQuery({
+    queryKey: ["chat", "unread"],
+    queryFn: chatApi.getUnreadCounts,
+    refetchInterval: 10000,
   });
 
   const completeMutation = useMutation({
@@ -383,9 +401,18 @@ export function DoctorDashboard() {
     onError: () => toast.error("Не удалось изменить статус"),
   });
 
-  /* derived */
+  const now = new Date();
+
   const todayAppts = useMemo(
     () => appointments.filter((a) => a.status === "SCHEDULED" && isToday(a.startTime)),
+    [appointments]
+  );
+
+  const nextAppt = useMemo(
+    () =>
+      appointments
+        .filter((a) => a.status === "SCHEDULED" && new Date(a.startTime) > now)
+        .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())[0] ?? null,
     [appointments]
   );
 
@@ -401,404 +428,343 @@ export function DoctorDashboard() {
 
   const totalCompleted = appointments.filter((a) => a.status === "COMPLETED").length;
   const withAi = appointments.filter((a) => a.aiSessionId).length;
-  const avgRating = reviews.length > 0
-    ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
-    : "—";
+  const pendingFeedback = appointments.filter((a) => a.status === "COMPLETED" && a.aiSessionId && !a.hasFeedback).length;
 
-  const initials = user
-    ? user.fullName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()
-    : "Д";
-
-  const todayStr = new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
+  const firstName = user?.fullName.split(" ")[1] ?? user?.fullName.split(" ")[0] ?? "Доктор";
 
   return (
     <div className="min-h-screen bg-background">
 
-      {/* ── Gradient Header ── */}
-      <div className="bg-gradient-to-br from-primary/5 via-background to-accent/10 border-b border-border py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div>
-              <p className="text-sm font-medium text-primary/70 uppercase tracking-widest mb-1">Кабинет врача</p>
-              <h1 className="text-3xl font-bold text-foreground">{user?.fullName}</h1>
-              <p className="mt-1 text-muted-foreground">
-                Добро пожаловать обратно
-              </p>
-            </div>
-            {/* Stats chips */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                { icon: Calendar, label: "Сегодня", value: todayAppts.length, color: "text-primary" },
-                { icon: CheckCheck, label: "Завершено", value: totalCompleted, color: "text-success" },
-                { icon: Users, label: "Всего", value: appointments.length, color: "text-info" },
-                { icon: FileText, label: "AI-анализ", value: withAi, color: "text-warning" },
-              ].map(({ icon: Icon, label, value, color }) => (
-                <div key={label} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-background/80 border border-border shadow-sm">
-                  <Icon className={cn("w-4 h-4", color)} />
-                  <span className="text-sm font-bold text-foreground">{value}</span>
-                  <span className="text-xs text-muted-foreground">{label}</span>
+      {/* ── Hero ── */}
+      <div className="bg-gradient-to-br from-primary/5 via-background to-accent/10 border-b border-border">
+        <div className="container mx-auto px-4 py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+
+            {/* Left */}
+            <div className="space-y-8">
+              <div className="space-y-4">
+                <p className="text-sm font-medium text-muted-foreground">
+                  {greeting()}, {firstName} 👋
+                </p>
+                <h1 className="text-4xl sm:text-5xl font-bold text-foreground leading-tight">
+                  Кабинет<br />
+                  <span className="text-primary">врача</span>
+                </h1>
+                <p className="text-lg text-muted-foreground max-w-md leading-relaxed">
+                  Управляйте записями пациентов, просматривайте AI-анализы и отслеживайте расписание в одном месте
+                </p>
+              </div>
+
+              {/* Quick action buttons */}
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  size="lg"
+                  className="rounded-xl shadow-lg gap-2 px-6"
+                  onClick={() => navigate(routes.doctor.schedule)}
+                >
+                  <Calendar className="w-5 h-5" />
+                  Расписание
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="rounded-xl shadow-lg gap-2 px-6"
+                  onClick={() => navigate("/doctor/ai-reports")}
+                >
+                  <Brain className="w-5 h-5" />
+                  AI Отчёты
+                  {withAi > 0 && (
+                    <span className="ml-1 bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-full">
+                      {withAi}
+                    </span>
+                  )}
+                </Button>
+              </div>
+
+              {/* Stats row */}
+              <div className="flex flex-wrap gap-6 pt-2">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-foreground">{todayAppts.length}</p>
+                  <p className="text-xs text-muted-foreground">Сегодня</p>
                 </div>
-              ))}
+                <div className="w-px bg-border" />
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-foreground">{totalCompleted}</p>
+                  <p className="text-xs text-muted-foreground">Завершено</p>
+                </div>
+                <div className="w-px bg-border" />
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-foreground">{appointments.length}</p>
+                  <p className="text-xs text-muted-foreground">Всего записей</p>
+                </div>
+                {pendingFeedback > 0 && (
+                  <>
+                    <div className="w-px bg-border" />
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-amber-500">{pendingFeedback}</p>
+                      <p className="text-xs text-muted-foreground">Ждут оценки</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Right: floating cards */}
+            <div className="hidden lg:flex flex-col gap-4">
+              {/* Next appointment */}
+              <Card className="shadow-lg hover:shadow-xl transition-all rounded-2xl border-border bg-card">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0">
+                      <Calendar className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {nextAppt ? "Следующий приём" : "Расписание"}
+                      </p>
+                      <p className="text-sm font-semibold text-foreground truncate mt-0.5">
+                        {nextAppt ? nextAppt.patientName : "Нет предстоящих записей"}
+                      </p>
+                      {nextAppt && (
+                        <p className="text-xs text-muted-foreground">{fmt(nextAppt.startTime)}</p>
+                      )}
+                    </div>
+                    {nextAppt && (
+                      <Badge className="shrink-0 bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200">
+                        Скоро
+                      </Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* AI feedback pending */}
+              <Card className="shadow-lg hover:shadow-xl transition-all rounded-2xl border-border bg-card ml-8">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-10 h-10 rounded-2xl flex items-center justify-center shrink-0",
+                      pendingFeedback > 0
+                        ? "bg-gradient-to-br from-amber-500 to-amber-600"
+                        : "bg-gradient-to-br from-emerald-500 to-emerald-600"
+                    )}>
+                      <Brain className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">AI Отчёты</p>
+                      <p className="text-sm font-semibold text-foreground mt-0.5">
+                        {pendingFeedback > 0
+                          ? `${pendingFeedback} ждут вашей оценки`
+                          : "Все отчёты оценены"}
+                      </p>
+                    </div>
+                    <Badge className={cn("ml-auto shrink-0", pendingFeedback > 0
+                      ? "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200"
+                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200"
+                    )}>
+                      {pendingFeedback > 0 ? `${pendingFeedback}` : "✓"}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Today stats */}
+              <Card className="shadow-lg hover:shadow-xl transition-all rounded-2xl border-border bg-card">
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shrink-0">
+                      <Users className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Сегодня</p>
+                      <p className="text-sm font-semibold text-foreground mt-0.5">
+                        {todayAppts.length > 0
+                          ? `${todayAppts.length} ${todayAppts.length === 1 ? "запись" : "записей"} запланировано`
+                          : "Записей на сегодня нет"}
+                      </p>
+                    </div>
+                    <Badge className="ml-auto shrink-0 bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 border-violet-200">
+                      {todayAppts.length}
+                    </Badge>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8 space-y-8">
+      {/* ── Content ── */}
+      <div className="container mx-auto px-4 py-12 space-y-10">
 
-        {/* ── Today Banner ── */}
-        {todayAppts.length > 0 && activeTab === "appointments" && (
-          <div className="rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/20 px-6 py-4 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-primary" />
+        {/* Next appointment banner */}
+        {nextAppt && (
+          <Card className="shadow-lg rounded-2xl border-primary/20 bg-gradient-to-r from-primary/5 to-accent/10">
+            <CardContent className="pt-5 pb-5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0">
+                    <Clock className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-primary uppercase tracking-widest">Следующий приём</p>
+                    <p className="text-base font-bold text-foreground mt-0.5">{nextAppt.patientName}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {nextAppt.type === "ONLINE" ? "Онлайн" : "Офлайн"} · {fmt(nextAppt.startTime)}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  className="rounded-xl shadow-lg"
+                  onClick={() => setSelectedAppt(nextAppt)}
+                >
+                  Открыть <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
               </div>
-              <div>
-                <p className="font-semibold text-foreground capitalize">{todayStr}</p>
-                <p className="text-sm text-muted-foreground">
-                  Запланировано приёмов сегодня
-                </p>
-              </div>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-3xl font-bold text-primary">{todayAppts.length}</p>
-              <p className="text-xs text-muted-foreground">{todayAppts.length === 1 ? "приём" : "приёма"}</p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
 
-        {/* ── Custom Tab Buttons ── */}
-        <div className="flex gap-2 p-1.5 rounded-2xl bg-secondary/50 w-fit">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={cn(
-                "flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all",
-                activeTab === id
-                  ? "bg-primary text-white shadow-lg"
-                  : "hover:bg-secondary text-muted-foreground"
-              )}
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-              {id === "appointments" && appointments.length > 0 && (
-                <span className={cn(
-                  "ml-0.5 text-xs px-1.5 py-0.5 rounded-full font-bold",
-                  activeTab === id ? "bg-white/20 text-white" : "bg-primary/10 text-primary"
-                )}>
-                  {appointments.length}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        {/* Pending AI feedback banner */}
+        {pendingFeedback > 0 && (
+          <Card className="shadow-lg rounded-2xl border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-amber-50/30 dark:from-amber-950/30 dark:to-transparent">
+            <CardContent className="pt-5 pb-5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500 flex items-center justify-center shrink-0">
+                    <Brain className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest">AI-анализы</p>
+                    <p className="text-base font-bold text-foreground mt-0.5">
+                      {pendingFeedback} {pendingFeedback === 1 ? "отчёт ожидает" : "отчёта ожидают"} вашей оценки
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Оценка AI помогает улучшать точность модели
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-xl border-amber-300 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                  onClick={() => navigate("/doctor/ai-reports")}
+                >
+                  Перейти <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* ── Tab: Appointments ── */}
-        {activeTab === "appointments" && (
-          <div className="space-y-6">
-            {/* Date filter buttons */}
+        {/* Appointments section */}
+        <div className="space-y-5">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Записи пациентов</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {appointments.length > 0
+                  ? `Всего ${appointments.length} записей`
+                  : "Пациенты пока не записывались"}
+              </p>
+            </div>
             <div className="flex items-center gap-2">
               {DATE_FILTERS.map(({ id, label }) => (
                 <Button
                   key={id}
                   size="sm"
                   variant={dateFilter === id ? "default" : "outline"}
-                  className="rounded-full px-5"
+                  className="rounded-full px-4 h-8 text-xs"
                   onClick={() => setDateFilter(id)}
                 >
                   {label}
                 </Button>
               ))}
             </div>
-
-            {isLoading ? (
-              <div className="text-center py-16 text-muted-foreground">
-                <Clock className="w-8 h-8 mx-auto mb-3 animate-pulse text-primary/40" />
-                Загрузка...
-              </div>
-            ) : filteredAppts.length === 0 ? (
-              <Card className="border-dashed rounded-2xl">
-                <CardContent className="py-16 text-center">
-                  <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-                  <p className="font-semibold text-foreground text-lg">Записей нет</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {dateFilter !== "all" ? "Нет записей за выбранный период" : "Пациенты пока не записывались"}
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-8">
-                {scheduled.length > 0 && (
-                  <div className="space-y-4">
-                    <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-primary inline-block" />
-                      Предстоящие · {scheduled.length}
-                    </h2>
-                    {scheduled.map((a) => (
-                      <AppointmentCard
-                        key={a.id}
-                        appt={a}
-                        onOpen={() => setSelectedAppt(a)}
-                        onComplete={() => completeMutation.mutate(a.id)}
-                        onNoShow={() => noShowMutation.mutate(a.id)}
-                        completing={completeMutation.isPending}
-                        noShowing={noShowMutation.isPending}
-                      />
-                    ))}
-                  </div>
-                )}
-                {past.length > 0 && (
-                  <div className="space-y-4">
-                    <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-muted-foreground/40 inline-block" />
-                      История · {past.length}
-                    </h2>
-                    {past.map((a) => (
-                      <AppointmentCard
-                        key={a.id}
-                        appt={a}
-                        onOpen={() => setSelectedAppt(a)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
-        )}
 
-        {/* ── Tab: Reviews ── */}
-        {activeTab === "reviews" && (
-          <div className="space-y-6">
-            {/* Centered rating display */}
-            {reviews.length > 0 && (
-              <Card className="shadow-lg rounded-2xl border-border">
-                <CardContent className="py-8">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="flex items-center gap-3">
-                      <Star className="w-10 h-10 fill-amber-400 text-amber-400" />
-                      <span className="text-5xl font-bold text-foreground">{avgRating}</span>
-                    </div>
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3, 4, 5].map((i) => (
-                        <Star
-                          key={i}
-                          className={cn(
-                            "w-5 h-5",
-                            parseFloat(avgRating) >= i ? "fill-amber-400 text-amber-400" : "text-muted-foreground/20"
-                          )}
-                        />
-                      ))}
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      На основе {reviews.length} {reviews.length === 1 ? "отзыва" : "отзывов"}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            <Card className="shadow-lg hover:shadow-xl transition-all rounded-2xl border-border">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Star className="w-5 h-5 text-amber-400" />
-                  Отзывы пациентов
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {reviewsLoading ? (
-                  <p className="text-sm text-muted-foreground py-6 text-center">Загрузка...</p>
-                ) : reviews.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Star className="w-12 h-12 text-muted-foreground/20 mx-auto mb-4" />
-                    <p className="font-semibold text-foreground">Отзывов пока нет</p>
-                    <p className="text-sm text-muted-foreground mt-1">Завершите приёмы, чтобы получить отзывы</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-border">
-                    {reviews.map((review) => (
-                      <div key={review.id} className="py-5 first:pt-0 last:pb-0">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-sm font-bold text-white shrink-0">
-                              {review.patientName.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <p className="text-sm font-semibold text-foreground">{review.patientName}</p>
-                              <p className="text-xs text-muted-foreground">{fmtDate(review.createdAt)}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                              <Star key={i} className={cn("w-4 h-4", i <= review.rating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/20")} />
-                            ))}
-                          </div>
-                        </div>
-                        {review.comment && (
-                          <div className="mt-3 pl-13 ml-13">
-                            <p className="text-sm text-muted-foreground leading-relaxed bg-secondary rounded-xl px-4 py-3 italic">
-                              «{review.comment}»
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+          {isLoading ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <Clock className="w-8 h-8 mx-auto mb-3 animate-pulse text-primary/40" />
+              Загрузка...
+            </div>
+          ) : filteredAppts.length === 0 ? (
+            <Card className="border-dashed rounded-2xl">
+              <CardContent className="py-16 text-center">
+                <Calendar className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="font-semibold text-foreground text-lg">Записей нет</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {dateFilter !== "all"
+                    ? "Нет записей за выбранный период"
+                    : "Пациенты пока не записывались"}
+                </p>
               </CardContent>
             </Card>
-          </div>
-        )}
-
-        {/* ── Tab: Profile ── */}
-        {activeTab === "profile" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Profile card */}
-            <Card className="shadow-lg hover:shadow-xl transition-all rounded-2xl border-border">
-              <CardContent className="pt-8 pb-6">
-                <div className="flex flex-col items-center text-center gap-4">
-                  {/* Avatar with initials */}
-                  <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-3xl font-bold text-white shadow-lg">
-                    {initials}
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-foreground">{user?.fullName}</h2>
-                    {/* Badge row */}
-                    <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-                      {doctorProfile && (
-                        <Badge variant="secondary" className="rounded-xl">
-                          <Stethoscope className="w-3 h-3 mr-1" />
-                          {doctorProfile.specialization}
-                        </Badge>
-                      )}
-                      {doctorProfile?.verified && (
-                        <Badge className="rounded-xl bg-info/10 text-info border-info/20">
-                          <Shield className="w-3 h-3 mr-1" />
-                          Верифицирован
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  <Separator className="w-full" />
-                  <div className="w-full space-y-2.5 text-left">
-                    <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                      <Mail className="w-4 h-4 shrink-0 text-primary/60" />
-                      <span className="truncate">{user?.email}</span>
-                    </div>
-                    {doctorProfile?.consultationFee != null && (
-                      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-                        <Banknote className="w-4 h-4 shrink-0 text-primary/60" />
-                        <span>{doctorProfile.consultationFee.toLocaleString("ru-RU")} ₸</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2 w-full pt-1">
-                    <Button
-                      variant="outline"
-                      className="flex-1 rounded-xl text-sm"
-                      onClick={() => navigate("/doctor/profile")}
-                    >
-                      Редактировать
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="flex-1 rounded-xl text-sm"
-                      onClick={() => navigate("/doctor/schedule")}
-                    >
-                      <Calendar className="w-3.5 h-3.5 mr-1.5" />
-                      Расписание
-                    </Button>
-                  </div>
+          ) : (
+            <div className="space-y-8">
+              {scheduled.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary inline-block" />
+                    Предстоящие · {scheduled.length}
+                  </h3>
+                  {scheduled.map((a) => (
+                    <AppointmentCard
+                      key={a.id}
+                      appt={a}
+                      onOpen={() => setSelectedAppt(a)}
+                      onComplete={() => completeMutation.mutate(a.id)}
+                      onNoShow={() => noShowMutation.mutate(a.id)}
+                      completing={completeMutation.isPending}
+                      noShowing={noShowMutation.isPending}
+                      unreadCount={unreadCounts[a.id] ?? 0}
+                      onChat={() => navigate(routes.doctor.chat.replace(":appointmentId", a.id))}
+                    />
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Info panel */}
-            <div className="lg:col-span-2 space-y-5">
-              {doctorProfile ? (
-                <>
-                  {/* 4 stat cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {[
-                      { label: "Опыт", value: `${doctorProfile.yearsExperience} лет`, icon: TrendingUp, color: "text-primary" },
-                      { label: "Консультаций", value: totalCompleted, icon: Users, color: "text-info" },
-                      { label: "Рейтинг", value: doctorProfile.averageRating > 0 ? `★ ${Number(doctorProfile.averageRating).toFixed(1)}` : "—", icon: Star, color: "text-warning" },
-                      { label: "Стоимость", value: doctorProfile.consultationFee ? `${Number(doctorProfile.consultationFee).toLocaleString("ru-RU")} ₸` : "—", icon: Banknote, color: "text-success" },
-                    ].map(({ label, value, icon: Icon, color }) => (
-                      <Card key={label} className="shadow-lg hover:shadow-xl transition-all rounded-xl border-border text-center">
-                        <CardContent className="pt-4 pb-3">
-                          <Icon className={cn("w-5 h-5 mx-auto mb-1.5", color)} />
-                          <p className="text-lg font-bold text-foreground">{value}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{label}</p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-
-                  {/* Professional info */}
-                  <Card className="shadow-lg hover:shadow-xl transition-all rounded-2xl border-border">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-semibold">Профессиональная информация</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-0 text-sm">
-                      {[
-                        { label: "Специализация", value: doctorProfile.specialization },
-                        { label: "Номер лицензии", value: doctorProfile.licenseNumber },
-                      ].map(({ label, value }) => (
-                        <div key={label} className="flex justify-between py-2.5 border-b border-border last:border-0">
-                          <span className="text-muted-foreground">{label}</span>
-                          <span className="font-medium text-foreground">{value}</span>
-                        </div>
-                      ))}
-                    </CardContent>
-                  </Card>
-
-                  {/* Bio section */}
-                  {doctorProfile.bio && (
-                    <Card className="shadow-lg hover:shadow-xl transition-all rounded-2xl border-border">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-semibold">О враче</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{doctorProfile.bio}</p>
-                      </CardContent>
-                    </Card>
-                  )}
-                </>
-              ) : (
-                <div className="flex items-center justify-center py-16 text-muted-foreground">
-                  <div className="text-center">
-                    <UserCog className="w-10 h-10 mx-auto mb-3 opacity-30 animate-pulse" />
-                    <p>Загрузка профиля...</p>
-                  </div>
+              )}
+              {past.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-muted-foreground/40 inline-block" />
+                    История · {past.length}
+                  </h3>
+                  {past.map((a) => (
+                    <AppointmentCard
+                      key={a.id}
+                      appt={a}
+                      onOpen={() => setSelectedAppt(a)}
+                      unreadCount={unreadCounts[a.id] ?? 0}
+                      onChat={() => navigate(routes.doctor.chat.replace(":appointmentId", a.id))}
+                    />
+                  ))}
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* ── Patient detail modal ── */}
-        {selectedAppt && (
-          <PatientDetailModal
-            appt={selectedAppt}
-            onClose={() => setSelectedAppt(null)}
-            onComplete={() => {
-              const apptId = selectedAppt.id;
-              const aiSessionId = selectedAppt.aiSessionId;
-              completeMutation.mutate(apptId);
-              setSelectedAppt(null);
-              if (aiSessionId) {
-                navigate(routes.doctor.aiReport.replace(":id", apptId));
-              }
-            }}
-            onNoShow={() => {
-              noShowMutation.mutate(selectedAppt.id);
-              setSelectedAppt(null);
-            }}
-          />
-        )}
       </div>
+
+      {/* ── Patient detail modal ── */}
+      {selectedAppt && (
+        <PatientDetailModal
+          appt={selectedAppt}
+          onClose={() => setSelectedAppt(null)}
+          onComplete={() => {
+            const apptId = selectedAppt.id;
+            const aiSessionId = selectedAppt.aiSessionId;
+            completeMutation.mutate(apptId);
+            setSelectedAppt(null);
+            if (aiSessionId) navigate(routes.doctor.aiReport.replace(":id", apptId));
+          }}
+          onNoShow={() => {
+            noShowMutation.mutate(selectedAppt.id);
+            setSelectedAppt(null);
+          }}
+        />
+      )}
     </div>
   );
 }

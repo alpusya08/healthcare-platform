@@ -16,13 +16,16 @@ export const routes = {
     clinics: "/clinics",
     cabinet: "/cabinet",
     profile: "/profile",
+    chat: "/chat/:appointmentId",
   },
 
   doctor: {
     dashboard: "/doctor",
     schedule: "/doctor/schedule",
+    reviews: "/doctor/reviews",
     appointment: "/doctor/appointments/:id",
     aiReport: "/doctor/appointments/:id/ai-report",
+    chat: "/doctor/chat/:appointmentId",
   },
 
   admin: {
