@@ -202,9 +202,17 @@ export function DoctorProfilePage() {
           {/* Doctor hero */}
           <div className="flex flex-col sm:flex-row items-start gap-6">
             {/* Large avatar */}
-            <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-white font-bold text-3xl flex items-center justify-center shrink-0 shadow-lg">
-              {initials}
-            </div>
+            {doctor.photoUrl ? (
+              <img
+                src={doctor.photoUrl}
+                alt={doctor.fullName}
+                className="w-24 h-24 rounded-2xl object-cover shrink-0 shadow-lg"
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-white font-bold text-3xl flex items-center justify-center shrink-0 shadow-lg">
+                {initials}
+              </div>
+            )}
 
             {/* Name, specialty, badges */}
             <div className="flex-1 min-w-0 space-y-3">

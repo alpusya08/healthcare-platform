@@ -469,7 +469,7 @@ export function AnalysisPage() {
           {step === "report" && report && (
             report.triage_level === "INSUFFICIENT_DATA" && report.confidence === 0
               ? <NonMedicalScreen onReset={handleReset} />
-              : <ReportView report={report} onReset={handleReset} sessionFiles={uploadedFiles} />
+              : <ReportView report={report} onReset={handleReset} sessionFiles={uploadedFiles} hideSlots={!!searchParams.get("sessionId")} />
           )}
 
         </div>
@@ -507,11 +507,13 @@ export function ReportView({
   onReset,
   sessionFiles = [],
   mode = "patient",
+  hideSlots = false,
 }: {
   report: AnalysisReport;
   onReset?: () => void;
   sessionFiles?: { name: string; summary: string }[];
   mode?: "patient" | "doctor";
+  hideSlots?: boolean;
 }) {
   const navigate = useNavigate();
   const cfg = TRIAGE_CONFIG[report.triage_level];
@@ -844,7 +846,7 @@ ${report.recommended_specialization ? `<h2>Рекомендуемый специ
       )}
 
       {/* ── Slots widget ─────────────────────────────────────────── */}
-      {mode === "patient" && (
+      {mode === "patient" && !hideSlots && (
         <UpcomingSlotsCard
           specializationCode={report.recommended_specialization}
           aiSessionId={report.session_id}
