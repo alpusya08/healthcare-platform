@@ -31,5 +31,15 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             """)
     List<Appointment> findByDoctorIdOrderBySlot(@Param("doctorId") UUID doctorId);
 
+    @Query("""
+            SELECT a FROM Appointment a
+            JOIN FETCH a.patient p JOIN FETCH p.user
+            JOIN FETCH a.timeSlot
+            WHERE a.doctor.id = :doctorId AND a.status = :status
+            ORDER BY a.timeSlot.startTime DESC
+            """)
+    List<Appointment> findByDoctorIdAndStatusOrderBySlot(@Param("doctorId") UUID doctorId,
+                                                          @Param("status") AppointmentStatus status);
+
     Optional<Appointment> findByIdAndPatientId(UUID id, UUID patientId);
 }

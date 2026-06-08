@@ -291,8 +291,11 @@ public class AppointmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<DoctorAppointmentResponse> listForDoctor(UUID doctorId) {
-        return appointmentRepository.findByDoctorIdOrderBySlot(doctorId).stream()
+    public List<DoctorAppointmentResponse> listForDoctor(UUID doctorId, AppointmentStatus status) {
+        List<Appointment> appointments = (status != null)
+                ? appointmentRepository.findByDoctorIdAndStatusOrderBySlot(doctorId, status)
+                : appointmentRepository.findByDoctorIdOrderBySlot(doctorId);
+        return appointments.stream()
                 .map(this::toDoctorAppointmentResponse)
                 .toList();
     }

@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import kz.healthcare.platform.appointments.application.AppointmentService;
 import kz.healthcare.platform.appointments.application.ScheduleService;
 import kz.healthcare.platform.appointments.application.dto.*;
+import kz.healthcare.platform.appointments.domain.AppointmentStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,8 +25,9 @@ public class DoctorPortalController {
 
     @GetMapping("/appointments")
     public List<DoctorAppointmentResponse> myAppointments(
-            @AuthenticationPrincipal UUID doctorId) {
-        return appointmentService.listForDoctor(doctorId);
+            @AuthenticationPrincipal UUID doctorId,
+            @RequestParam(required = false) AppointmentStatus status) {
+        return appointmentService.listForDoctor(doctorId, status);
     }
 
     @PostMapping("/appointments/{appointmentId}/feedback")

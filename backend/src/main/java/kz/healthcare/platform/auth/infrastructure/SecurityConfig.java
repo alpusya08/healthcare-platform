@@ -75,6 +75,7 @@ public class SecurityConfig {
     public AuthenticationEntryPoint authenticationEntryPoint() {
         return (request, response, authException) -> {
             response.setStatus(401);
+            response.setCharacterEncoding("UTF-8");
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write(new ObjectMapper().writeValueAsString(Map.of(
                 "status", 401,
@@ -88,6 +89,7 @@ public class SecurityConfig {
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, accessDeniedException) -> {
             response.setStatus(403);
+            response.setCharacterEncoding("UTF-8");
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write(new ObjectMapper().writeValueAsString(Map.of(
                 "status", 403,

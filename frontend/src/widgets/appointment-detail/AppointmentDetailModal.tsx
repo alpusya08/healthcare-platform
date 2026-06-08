@@ -3,6 +3,7 @@ import {
   Monitor, MapPin, XCircle, Star, CheckCircle2, ChevronRight, Video, Brain,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { routes } from "@/shared/config/routes";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/shared/ui/dialog";
@@ -184,7 +185,7 @@ export function AppointmentDetailModal({ appointment: appt, onClose, onCancel, o
               <Button
                 variant="outline"
                 className="w-full border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30"
-                onClick={() => { navigate(`/analysis?sessionId=${appt.aiSessionId}`); onClose(); }}
+                onClick={() => { navigate(`${routes.patient.aiAnalysis}?sessionId=${appt.aiSessionId}`); onClose(); }}
               >
                 <Brain className="w-4 h-4 mr-2" />
                 Посмотреть AI-анализ
