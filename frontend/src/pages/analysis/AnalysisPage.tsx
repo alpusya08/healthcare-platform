@@ -844,7 +844,7 @@ ${report.recommended_specialization ? `<h2>Рекомендуемый специ
       )}
 
       {/* ── Slots widget ─────────────────────────────────────────── */}
-      {mode === "patient" && (report.triage_level === "URGENT" || report.triage_level === "ROUTINE" || report.triage_level === "INSUFFICIENT_DATA") && (
+      {mode === "patient" && (
         <UpcomingSlotsCard
           specializationCode={report.recommended_specialization}
           aiSessionId={report.session_id}
