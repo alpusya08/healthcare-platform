@@ -669,7 +669,7 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
           <Link
             to={
               report.recommended_specialization
-                ? `${routes.patient.doctors}?specialization=${report.recommended_specialization}`
+                ? `${routes.patient.doctors}?specialization=${report.recommended_specialization}&from=ai`
                 : routes.patient.doctors
             }
           >

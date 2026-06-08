@@ -303,9 +303,12 @@ export function AppointmentsPage() {
   const upcoming = appointments.filter(
     (a) => a.status === "SCHEDULED" && new Date(a.startTime) > now,
   );
-  const past = appointments.filter(
-    (a) => a.status !== "SCHEDULED" || new Date(a.startTime) <= now,
-  );
+  const completed = appointments
+    .filter((a) => a.status === "COMPLETED")
+    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+  const other = appointments
+    .filter((a) => a.status === "CANCELLED" || a.status === "NO_SHOW" || (a.status === "SCHEDULED" && new Date(a.startTime) <= now))
+    .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
 
   return (
     <div>
@@ -390,14 +393,36 @@ export function AppointmentsPage() {
             )}
 
             {/* Completed section */}
-            {past.length > 0 && (
+            {completed.length > 0 && (
+              <section className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+                  <h2 className="text-lg font-semibold text-foreground">Завершённые приёмы</h2>
+                  <Badge variant="success" className="rounded-xl px-2.5">{completed.length}</Badge>
+                </div>
+                <div className="space-y-4">
+                  {completed.map((a) => (
+                    <CompletedAppointmentCard
+                      key={a.id}
+                      appt={a}
+                      onReview={setReviewTarget}
+                      onOpen={setDetailTarget}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Cancelled / no-show / past-scheduled section */}
+            {other.length > 0 && (
               <section className="space-y-4">
                 <div className="flex items-center gap-3">
                   <FileText className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-lg font-semibold text-foreground">Завершённые приёмы</h2>
+                  <h2 className="text-lg font-semibold text-foreground">История</h2>
+                  <Badge variant="secondary" className="rounded-xl px-2.5">{other.length}</Badge>
                 </div>
                 <div className="space-y-4">
-                  {past.map((a) => (
+                  {other.map((a) => (
                     <CompletedAppointmentCard
                       key={a.id}
                       appt={a}

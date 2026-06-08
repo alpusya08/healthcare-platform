@@ -153,7 +153,7 @@ export function UpcomingSlotsCard({ specializationCode, aiSessionId, limit = 3 }
             </p>
             <Button
               variant="link"
-              onClick={() => navigate(`/doctors${specializationCode ? `?specialization=${specializationCode}` : ""}`)}
+              onClick={() => navigate(`/doctors${specializationCode ? `?specialization=${specializationCode}&from=ai` : ""}`)}
               className="mt-1"
             >
               Посмотреть всех врачей
@@ -166,7 +166,7 @@ export function UpcomingSlotsCard({ specializationCode, aiSessionId, limit = 3 }
             ))}
             <Button
               variant="ghost"
-              onClick={() => navigate(`/doctors${specializationCode ? `?specialization=${specializationCode}` : ""}`)}
+              onClick={() => navigate(`/doctors${specializationCode ? `?specialization=${specializationCode}&from=ai` : ""}`)}
               className="w-full mt-1 text-blue-700 dark:text-blue-400"
             >
               Выбрать другого врача

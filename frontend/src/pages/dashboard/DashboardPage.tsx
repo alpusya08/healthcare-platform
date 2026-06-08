@@ -4,7 +4,7 @@ import { useState } from "react";
 import {
   Activity, Calendar, ArrowRight, Brain, Heart, Stethoscope, Bone,
   Wind, Ear, Scissors, Syringe, Clock, Search,
-  ChevronRight, AlertCircle, Pill, Eye, Shield, Zap,
+  ChevronRight, AlertCircle, Pill, Microscope, Shield, Zap,
   MessageSquare,
 } from "lucide-react";
 import { Card, CardContent } from "@/shared/ui/card";
@@ -21,7 +21,7 @@ const SPECIALIZATIONS = [
   { code: "neurology",        label: "Неврология",        icon: Brain,       color: "text-violet-600",  bg: "bg-violet-50 dark:bg-violet-950/40",  border: "hover:border-violet-300 dark:hover:border-violet-700" },
   { code: "gastroenterology", label: "Гастроэнтерология", icon: Pill,        color: "text-amber-600",   bg: "bg-amber-50 dark:bg-amber-950/40",    border: "hover:border-amber-300 dark:hover:border-amber-700"  },
   { code: "orthopedics",      label: "Ортопедия",         icon: Bone,        color: "text-orange-600",  bg: "bg-orange-50 dark:bg-orange-950/40",  border: "hover:border-orange-300 dark:hover:border-orange-700" },
-  { code: "dermatology",      label: "Дерматология",      icon: Eye,         color: "text-pink-500",    bg: "bg-pink-50 dark:bg-pink-950/40",      border: "hover:border-pink-300 dark:hover:border-pink-700"    },
+  { code: "dermatology",      label: "Дерматология",      icon: Microscope,  color: "text-pink-500",    bg: "bg-pink-50 dark:bg-pink-950/40",      border: "hover:border-pink-300 dark:hover:border-pink-700"    },
   { code: "pulmonology",      label: "Пульмонология",     icon: Wind,        color: "text-sky-600",     bg: "bg-sky-50 dark:bg-sky-950/40",        border: "hover:border-sky-300 dark:hover:border-sky-700"      },
   { code: "endocrinology",    label: "Эндокринология",    icon: Syringe,     color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/40", border: "hover:border-emerald-300 dark:hover:border-emerald-700" },
   { code: "otolaryngology",   label: "ЛОР",               icon: Ear,         color: "text-indigo-600",  bg: "bg-indigo-50 dark:bg-indigo-950/40",  border: "hover:border-indigo-300 dark:hover:border-indigo-700" },
@@ -288,7 +288,7 @@ export function DashboardPage() {
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Например: кардиолог, головная боль..."
+                    placeholder="Например: Иванов, кардиолог, терапия..."
                     className="pl-12 h-12 rounded-2xl border-2 text-base"
                   />
                 </div>

@@ -227,6 +227,7 @@ export function DoctorsPage() {
   };
 
   const specFilter = searchParams.get("specialization");
+  const fromAI = searchParams.get("from") === "ai";
 
   return (
     <div className="min-h-screen bg-background">
@@ -260,7 +261,7 @@ export function DoctorsPage() {
       <div className="container mx-auto px-4 py-12 space-y-6">
 
         {/* ── AI Recommendation Banner ──────────────────────────────── */}
-        {specFilter && selectedSpec === specFilter && (
+        {fromAI && specFilter && selectedSpec === specFilter && (
           <Card className="shadow-lg rounded-2xl border-primary/20 bg-gradient-to-r from-primary/5 to-accent/10">
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center gap-3">
