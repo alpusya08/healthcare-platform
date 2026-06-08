@@ -149,7 +149,7 @@ IMPORTANT RULES:
 - End the explanation with: Важно: это предварительная оценка, а не диагноз — обязательно покажитесь врачу.
 
 Return a single JSON object:
-{"primary_diagnosis":"1 simple sentence in Russian saying what is likely going on","summary":"1-2 plain sentences summarising the situation","explanation":"2 plain sentences explaining what this probably means for the patient, ending with the disclaimer above","possible_causes":["plain cause 1","plain cause 2","plain cause 3"],"red_flags":[],"recommendations":["simple action 1","simple action 2","simple action 3"],"triage_level":"ROUTINE","recommended_specialization":"therapy","confidence":0.6}
+{"primary_diagnosis":"1 simple sentence in Russian saying what is likely going on","summary":"1-2 plain sentences summarising the situation","explanation":"2 plain sentences explaining what this probably means for the patient, ending with the disclaimer above","possible_causes":["plain cause 1","plain cause 2","plain cause 3"],"red_flags":[],"recommendations":["simple action 1","simple action 2","simple action 3"],"triage_level":"ROUTINE","recommended_specialization":"therapy","confidence":0.6,"next_steps":[{"timeframe":"Сегодня","action":"first immediate action","detail":"brief why or how"},{"timeframe":"В ближайшие 2–3 дня","action":"second action","detail":"brief context"},{"timeframe":"В течение недели","action":"third action","detail":"brief context"}]}
 
 triage_level: EMERGENCY (call ambulance now) / URGENT (see doctor today) / ROUTINE (schedule appointment).
 recommended_specialization — use ONLY one of these exact codes: therapy, neurology, cardiology, dermatology, endocrinology, gastroenterology, orthopedics, surgery, pulmonology, otolaryngology.
@@ -460,6 +460,7 @@ class GeneralSymptomDomain(MedicalDomain):
             red_flags=llm_diagnosis.red_flags,
             summary=llm_diagnosis.summary,
             candidate_diagnoses=candidates,
+            next_steps=llm_diagnosis.next_steps,
         )
 
     async def _llm_predict(self, features: MedicalFeatures) -> Diagnosis:
@@ -473,6 +474,17 @@ class GeneralSymptomDomain(MedicalDomain):
         }
         triage = triage_map.get(str(raw.get("triage_level", "ROUTINE")).upper(), TriageLevel.ROUTINE)
 
+        raw_steps = raw.get("next_steps", [])
+        next_steps = []
+        if isinstance(raw_steps, list):
+            for s in raw_steps:
+                if isinstance(s, dict) and s.get("timeframe") and s.get("action"):
+                    next_steps.append({
+                        "timeframe": str(s["timeframe"]),
+                        "action": str(s["action"]),
+                        "detail": str(s.get("detail", "")),
+                    })
+
         return Diagnosis(
             domain=self.code,
             primary_diagnosis=raw.get("primary_diagnosis", "Жалобы требуют уточнения"),
@@ -485,6 +497,7 @@ class GeneralSymptomDomain(MedicalDomain):
             possible_causes=raw.get("possible_causes", []),
             red_flags=raw.get("red_flags", []),
             summary=raw.get("summary", ""),
+            next_steps=next_steps,
         )
 
     async def _llm_next_question(

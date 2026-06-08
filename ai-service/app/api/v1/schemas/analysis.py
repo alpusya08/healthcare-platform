@@ -53,6 +53,12 @@ class DiagnosisCandidateDto(BaseModel):
     icd10: Optional[str] = None
 
 
+class NextStepItem(BaseModel):
+    timeframe: str
+    action: str
+    detail: str = ""
+
+
 class AnalysisReportResponse(BaseModel):
     session_id: UUID
     triage_level: TriageLevel
@@ -68,3 +74,8 @@ class AnalysisReportResponse(BaseModel):
     red_flags: list[str] = Field(default_factory=list)
     summary: str = ""
     candidate_diagnoses: list[DiagnosisCandidateDto] = Field(default_factory=list)
+    next_steps: list[NextStepItem] = Field(default_factory=list)
+    pain_severity: Optional[int] = None
+    symptom_duration_days: Optional[int] = None
+    is_worsening: Optional[bool] = None
+    uploaded_files: list[str] = Field(default_factory=list)

@@ -22,6 +22,12 @@ export interface AnswerResponse {
   is_complete: boolean;
 }
 
+export interface NextStep {
+  timeframe: string;
+  action: string;
+  detail: string;
+}
+
 export interface AnalysisReport {
   session_id: string;
   triage_level: TriageLevel;
@@ -36,4 +42,9 @@ export interface AnalysisReport {
   possible_causes: string[];
   red_flags: string[];
   summary: string;
+  next_steps: NextStep[];
+  pain_severity: number | null;
+  symptom_duration_days: number | null;
+  is_worsening: boolean | null;
+  uploaded_files: string[];
 }

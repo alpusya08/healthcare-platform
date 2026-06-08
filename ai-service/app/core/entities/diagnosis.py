@@ -29,9 +29,11 @@ class Diagnosis:
     possible_causes: list[str] = field(default_factory=list)
     red_flags: list[str] = field(default_factory=list)
     summary: str = ""
-    # Top-K diagnosis hypotheses produced by the domain ML model (may be empty
-    # if no domain model was available for the recommended specialization).
     candidate_diagnoses: list[DiagnosisCandidate] = field(default_factory=list)
+    next_steps: list[dict] = field(default_factory=list)
+    pain_severity: Optional[int] = None
+    symptom_duration_days: Optional[int] = None
+    is_worsening: Optional[bool] = None
 
 
 @dataclass

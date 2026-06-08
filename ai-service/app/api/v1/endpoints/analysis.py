@@ -217,6 +217,23 @@ async def finalize_analysis(
     await _persist_session_features(db, session, triage_features, diagnosis)
     await _persist_general_session(db, session, diagnosis)
 
+    # Symptom metrics extracted from triage features
+    _ps = triage_features.get("pain_severity")
+    _sd = triage_features.get("symptom_duration_days")
+    _iw = triage_features.get("is_worsening")
+    try:
+        pain_severity = int(_ps) if _ps is not None else None
+    except (TypeError, ValueError):
+        pain_severity = None
+    try:
+        symptom_duration_days = int(_sd) if _sd is not None else None
+    except (TypeError, ValueError):
+        symptom_duration_days = None
+    try:
+        is_worsening = bool(int(_iw)) if _iw is not None else None
+    except (TypeError, ValueError):
+        is_worsening = None
+
     candidates = [
         {
             "code": c.code,
@@ -226,6 +243,17 @@ async def finalize_analysis(
             "icd10": c.icd10,
         }
         for c in diagnosis.candidate_diagnoses
+    ]
+
+    from app.api.v1.schemas.analysis import NextStepItem
+    next_steps = [
+        NextStepItem(
+            timeframe=s.get("timeframe", ""),
+            action=s.get("action", ""),
+            detail=s.get("detail", ""),
+        )
+        for s in diagnosis.next_steps
+        if s.get("timeframe") and s.get("action")
     ]
 
     report = AnalysisReportResponse(
@@ -243,6 +271,11 @@ async def finalize_analysis(
         red_flags=diagnosis.red_flags,
         summary=diagnosis.summary,
         candidate_diagnoses=candidates,
+        next_steps=next_steps,
+        pain_severity=pain_severity,
+        symptom_duration_days=symptom_duration_days,
+        is_worsening=is_worsening,
+        uploaded_files=list(session.file_summaries),
     )
     await _persist_session_report(db, session.id, report)
     return report

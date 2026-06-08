@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import {
   Loader2, AlertTriangle, Phone, CheckCircle2,
-  Info, ArrowRight, Calendar, HelpCircle, Upload,
+  Info, ArrowRight, HelpCircle, Upload,
   MessageSquareOff, Brain, Shield, Clock,
+  ListChecks, FileText, Download, Share2, Stethoscope,
+  TrendingDown, TrendingUp, Minus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/shared/ui/button";
@@ -467,7 +469,7 @@ export function AnalysisPage() {
           {step === "report" && report && (
             report.triage_level === "INSUFFICIENT_DATA" && report.confidence === 0
               ? <NonMedicalScreen onReset={handleReset} />
-              : <ReportView report={report} onReset={handleReset} />
+              : <ReportView report={report} onReset={handleReset} sessionFiles={uploadedFiles} />
           )}
 
         </div>
@@ -500,15 +502,38 @@ function NonMedicalScreen({ onReset }: { onReset: () => void }) {
   );
 }
 
-function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () => void }) {
+function ReportView({
+  report,
+  onReset,
+  sessionFiles = [],
+}: {
+  report: AnalysisReport;
+  onReset: () => void;
+  sessionFiles?: { name: string; summary: string }[];
+}) {
   const navigate = useNavigate();
   const cfg = TRIAGE_CONFIG[report.triage_level];
   const Icon = cfg.icon;
   const confidencePct = Math.round(report.confidence * 100);
 
+  const hasMetrics =
+    report.pain_severity != null ||
+    report.symptom_duration_days != null ||
+    report.is_worsening != null;
+
+  const handleShare = () => {
+    const url = `${window.location.origin}/ai-analysis?sessionId=${report.session_id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      // toast shown via sonner if needed — keep dependency-free here
+    });
+    navigator.clipboard.writeText(url);
+  };
+
+  const handlePrint = () => window.print();
+
   return (
     <div className="space-y-5">
-      {/* Hero triage card */}
+      {/* ── Hero triage card ─────────────────────────────────────── */}
       <Card className={`shadow-2xl border-2 ${cfg.border}`}>
         <CardContent className="pt-6 pb-6">
           <div className="flex items-start gap-4">
@@ -556,9 +581,65 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
         </CardContent>
       </Card>
 
-      {/* 2-col grid */}
+      {/* ── Symptom metrics row ──────────────────────────────────── */}
+      {hasMetrics && (
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="shadow-md">
+            <CardContent className="pt-4 pb-4 flex flex-col items-center text-center gap-1">
+              <p className="text-xs text-muted-foreground">Интенсивность</p>
+              <p className={`text-2xl font-bold ${
+                report.pain_severity != null && report.pain_severity >= 7
+                  ? "text-red-500"
+                  : report.pain_severity != null && report.pain_severity >= 4
+                  ? "text-amber-500"
+                  : "text-foreground"
+              }`}>
+                {report.pain_severity != null ? `${report.pain_severity}/10` : "—"}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-md">
+            <CardContent className="pt-4 pb-4 flex flex-col items-center text-center gap-1">
+              <p className="text-xs text-muted-foreground">Длительность</p>
+              <p className="text-2xl font-bold text-foreground">
+                {report.symptom_duration_days != null
+                  ? report.symptom_duration_days < 1
+                    ? "< дня"
+                    : `${report.symptom_duration_days} дн.`
+                  : "—"}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="shadow-md">
+            <CardContent className="pt-4 pb-4 flex flex-col items-center text-center gap-1">
+              <p className="text-xs text-muted-foreground">Ухудшение</p>
+              <div className="flex items-center gap-1">
+                {report.is_worsening === true && (
+                  <TrendingDown className="w-5 h-5 text-red-500" />
+                )}
+                {report.is_worsening === false && (
+                  <TrendingUp className="w-5 h-5 text-emerald-500" />
+                )}
+                {report.is_worsening == null && (
+                  <Minus className="w-5 h-5 text-muted-foreground" />
+                )}
+                <p className={`text-2xl font-bold ${
+                  report.is_worsening === true
+                    ? "text-red-500"
+                    : report.is_worsening === false
+                    ? "text-emerald-500"
+                    : "text-muted-foreground"
+                }`}>
+                  {report.is_worsening === true ? "Да" : report.is_worsening === false ? "Нет" : "—"}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ── 2-col grid: causes / recommendations / red flags ─────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Possible diagnoses */}
         {report.possible_causes && report.possible_causes.length > 0 && (
           <Card className="shadow-md">
             <CardHeader className="pb-3 bg-gradient-to-br from-primary/5 to-transparent rounded-t-xl">
@@ -580,7 +661,6 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
           </Card>
         )}
 
-        {/* Recommendations */}
         {report.recommendations.length > 0 && (
           <Card className="shadow-md">
             <CardHeader className="pb-3 bg-gradient-to-br from-safe/5 to-transparent rounded-t-xl">
@@ -602,7 +682,6 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
           </Card>
         )}
 
-        {/* Red flags */}
         {report.red_flags && report.red_flags.length > 0 && (
           <Card className="shadow-md border-emergency/20 sm:col-span-2">
             <CardHeader className="pb-3 bg-gradient-to-br from-emergency/5 to-transparent rounded-t-xl">
@@ -625,7 +704,7 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
         )}
       </div>
 
-      {/* Summary */}
+      {/* ── Summary ──────────────────────────────────────────────── */}
       {report.summary && (
         <Card className="shadow-md">
           <CardHeader className="pb-3">
@@ -640,7 +719,66 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
         </Card>
       )}
 
-      {/* Available slots widget */}
+      {/* ── Next steps timeline ──────────────────────────────────── */}
+      {report.next_steps && report.next_steps.length > 0 && (
+        <Card className="shadow-md">
+          <CardHeader className="pb-3 bg-gradient-to-br from-primary/5 to-transparent rounded-t-xl">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <ListChecks className="w-4 h-4 text-primary" />
+              Что делать дальше
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2 pb-4">
+            <div>
+              {report.next_steps.map((step, i) => (
+                <div key={i} className="flex gap-3">
+                  <div className="flex flex-col items-center pt-1">
+                    <div className="w-3 h-3 rounded-full bg-primary shrink-0" />
+                    {i < report.next_steps.length - 1 && (
+                      <div className="w-px flex-1 bg-border my-1.5 min-h-[20px]" />
+                    )}
+                  </div>
+                  <div className="pb-4 min-w-0 flex-1">
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest">
+                      {step.timeframe}
+                    </span>
+                    <p className="text-sm font-semibold text-foreground mt-0.5">{step.action}</p>
+                    {step.detail && (
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{step.detail}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Uploaded documents ───────────────────────────────────── */}
+      {sessionFiles.length > 0 && (
+        <Card className="shadow-md">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <FileText className="w-4 h-4 text-primary" />
+              Прикреплённые документы
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 space-y-2">
+            {sessionFiles.map((f, i) => (
+              <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl border border-border bg-muted/20">
+                <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span className="text-sm text-foreground flex-1 truncate">{f.name}</span>
+                <Badge variant="success" className="gap-1 text-xs shrink-0">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Учтён
+                </Badge>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Slots widget ─────────────────────────────────────────── */}
       {report.triage_level !== "EMERGENCY" && (
         <UpcomingSlotsCard
           specializationCode={report.recommended_specialization}
@@ -648,23 +786,54 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
         />
       )}
 
-      {/* Disclaimer */}
+      {/* ── Disclaimer ───────────────────────────────────────────── */}
       <p className="text-xs text-muted-foreground leading-relaxed px-1 border-t border-border pt-4">
         ⚕️ {report.disclaimer}
       </p>
 
-      {/* Action buttons */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <Button
-          variant="outline"
-          onClick={onReset}
-          className="rounded-xl"
-        >
-          Проверить снова
-        </Button>
+      {/* ── Tревожные симптомы (red flags pill block) ─────────────── */}
+      {report.red_flags && report.red_flags.length > 0 && (
+        <Card className="shadow-md border-red-200 dark:border-red-900">
+          <CardHeader className="pb-3 bg-gradient-to-br from-red-50/60 to-transparent dark:from-red-950/20 rounded-t-xl">
+            <CardTitle className="text-sm flex items-center gap-2 text-red-700 dark:text-red-400">
+              <AlertTriangle className="w-4 h-4" />
+              Тревожные симптомы
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-2 pb-4 space-y-3">
+            <div className="flex flex-wrap gap-2">
+              {report.red_flags.map((flag, i) => (
+                <span
+                  key={i}
+                  className="px-3 py-1 rounded-full text-xs bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800"
+                >
+                  {flag}
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-red-600 text-white">
+              <Phone className="w-4 h-4 shrink-0" />
+              <p className="text-sm font-medium flex-1">
+                При любом из этих симптомов — звонить 103 немедленно
+              </p>
+              <a
+                href="tel:103"
+                onClick={(e) => e.stopPropagation()}
+                className="font-black text-lg shrink-0 hover:opacity-90 transition-opacity"
+              >
+                103
+              </a>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Action buttons ───────────────────────────────────────── */}
+      <div className="space-y-3">
         <Button
           asChild
-          className="flex-1 rounded-xl"
+          className="w-full rounded-xl h-12 text-base gap-2"
+          size="lg"
         >
           <Link
             to={
@@ -673,17 +842,38 @@ function ReportView({ report, onReset }: { report: AnalysisReport; onReset: () =
                 : routes.patient.doctors
             }
           >
-            <Calendar className="mr-2 w-4 h-4" />
-            Найти врача
+            <Stethoscope className="w-5 h-5" />
+            Записаться к рекомендованному врачу
           </Link>
         </Button>
-        <Button
-          variant="ghost"
-          onClick={() => navigate(routes.patient.home)}
-          className="rounded-xl"
-        >
-          На главную
-        </Button>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            variant="outline"
+            className="rounded-xl gap-2"
+            onClick={handlePrint}
+          >
+            <Download className="w-4 h-4" />
+            Скачать PDF
+          </Button>
+          <Button
+            variant="outline"
+            className="rounded-xl gap-2"
+            onClick={handleShare}
+          >
+            <Share2 className="w-4 h-4" />
+            Поделиться с врачом
+          </Button>
+        </div>
+
+        <div className="flex gap-3">
+          <Button variant="ghost" onClick={onReset} className="flex-1 rounded-xl">
+            Проверить снова
+          </Button>
+          <Button variant="ghost" onClick={() => navigate(routes.patient.home)} className="flex-1 rounded-xl">
+            На главную
+          </Button>
+        </div>
       </div>
     </div>
   );
