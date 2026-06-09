@@ -202,17 +202,25 @@ export function DoctorProfilePage() {
           {/* Doctor hero */}
           <div className="flex flex-col sm:flex-row items-start gap-6">
             {/* Large avatar */}
-            {doctor.photoUrl ? (
-              <img
-                src={doctor.photoUrl}
-                alt={doctor.fullName}
-                className="w-24 h-24 rounded-2xl object-cover shrink-0 shadow-lg"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-white font-bold text-3xl flex items-center justify-center shrink-0 shadow-lg">
+            <div className="relative w-24 h-24 shrink-0">
+              {doctor.photoUrl && (
+                <img
+                  src={doctor.photoUrl}
+                  alt={doctor.fullName}
+                  className="w-24 h-24 rounded-2xl object-cover shadow-lg absolute inset-0"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                    (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex";
+                  }}
+                />
+              )}
+              <div
+                className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary to-primary/70 text-white font-bold text-3xl items-center justify-center shadow-lg absolute inset-0"
+                style={{ display: doctor.photoUrl ? "none" : "flex" }}
+              >
                 {initials}
               </div>
-            )}
+            </div>
 
             {/* Name, specialty, badges */}
             <div className="flex-1 min-w-0 space-y-3">

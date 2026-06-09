@@ -61,19 +61,27 @@ function getInitials(name: string) {
 }
 
 function DoctorAvatar({ name, photoUrl, muted = false }: { name: string; photoUrl?: string | null; muted?: boolean }) {
-  if (photoUrl) {
-    return (
-      <img
-        src={photoUrl}
-        alt={name}
-        className="w-12 h-12 rounded-2xl object-cover shrink-0"
-        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-      />
-    );
-  }
+  const initials = getInitials(name);
+  const fallbackClass = `w-12 h-12 rounded-2xl font-bold items-center justify-center text-sm shrink-0 ${muted ? "bg-muted text-muted-foreground" : "bg-gradient-to-br from-primary to-primary/70 text-white"}`;
   return (
-    <div className={`w-12 h-12 rounded-2xl font-bold flex items-center justify-center text-sm shrink-0 ${muted ? "bg-muted text-muted-foreground" : "bg-gradient-to-br from-primary to-primary/70 text-white"}`}>
-      {getInitials(name)}
+    <div className="relative w-12 h-12 shrink-0">
+      {photoUrl && (
+        <img
+          src={photoUrl}
+          alt={name}
+          className="w-12 h-12 rounded-2xl object-cover absolute inset-0"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+            (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex";
+          }}
+        />
+      )}
+      <div
+        className={`${fallbackClass} absolute inset-0`}
+        style={{ display: photoUrl ? "none" : "flex" }}
+      >
+        {initials}
+      </div>
     </div>
   );
 }

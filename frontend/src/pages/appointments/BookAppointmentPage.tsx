@@ -280,18 +280,26 @@ export function BookAppointmentPage() {
 
   const DoctorAvatar = ({ size = "md" }: { size?: "sm" | "md" | "lg" }) => {
     const sizeClass = size === "sm" ? "w-9 h-9 text-xs rounded-xl" : size === "lg" ? "w-16 h-16 text-base rounded-2xl" : "w-12 h-12 text-sm rounded-2xl";
-    if (doctor?.photoUrl) {
-      return (
-        <img
-          src={doctor.photoUrl}
-          alt={doctor.fullName}
-          className={`${sizeClass} object-cover shrink-0 shadow`}
-        />
-      );
-    }
+    const photoUrl = doctor?.photoUrl;
     return (
-      <div className={`${sizeClass} bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold flex items-center justify-center shrink-0 shadow`}>
-        {doctorInitials}
+      <div className={`relative ${sizeClass} shrink-0`}>
+        {photoUrl && (
+          <img
+            src={photoUrl}
+            alt={doctor!.fullName}
+            className={`${sizeClass} object-cover shadow absolute inset-0`}
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+              (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex";
+            }}
+          />
+        )}
+        <div
+          className={`${sizeClass} bg-gradient-to-br from-primary to-primary/70 text-primary-foreground font-bold items-center justify-center shadow absolute inset-0`}
+          style={{ display: photoUrl ? "none" : "flex" }}
+        >
+          {doctorInitials}
+        </div>
       </div>
     );
   };

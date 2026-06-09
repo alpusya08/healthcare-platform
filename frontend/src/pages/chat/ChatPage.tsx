@@ -45,18 +45,24 @@ function PatientContactCard({ appt }: { appt: Appointment }) {
   const initials = appt.doctorName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div className="flex items-center gap-4 p-4 bg-card border-b border-border">
-      <div className="shrink-0">
-        {appt.doctorPhotoUrl ? (
+      <div className="relative w-12 h-12 shrink-0">
+        {appt.doctorPhotoUrl && (
           <img
             src={appt.doctorPhotoUrl}
             alt={appt.doctorName}
-            className="w-12 h-12 rounded-2xl object-cover shadow-sm"
+            className="w-12 h-12 rounded-2xl object-cover shadow-sm absolute inset-0"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+              (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex";
+            }}
           />
-        ) : (
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center font-bold text-white text-sm shadow-sm">
-            {initials}
-          </div>
         )}
+        <div
+          className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/70 items-center justify-center font-bold text-white text-sm shadow-sm absolute inset-0"
+          style={{ display: appt.doctorPhotoUrl ? "none" : "flex" }}
+        >
+          {initials}
+        </div>
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-foreground truncate">{appt.doctorName}</p>

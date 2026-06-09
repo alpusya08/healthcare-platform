@@ -50,19 +50,26 @@ function getDoctorInitials(name: string) {
 }
 
 function DoctorAvatar({ name, photoUrl }: { name: string; photoUrl?: string | null }) {
-  if (photoUrl) {
-    return (
-      <img
-        src={photoUrl}
-        alt={name}
-        className="w-12 h-12 rounded-xl object-cover shrink-0"
-        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-      />
-    );
-  }
+  const initials = getDoctorInitials(name);
   return (
-    <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900 flex items-center justify-center font-bold text-blue-700 dark:text-blue-300 shrink-0">
-      {getDoctorInitials(name)}
+    <div className="relative w-12 h-12 shrink-0">
+      {photoUrl && (
+        <img
+          src={photoUrl}
+          alt={name}
+          className="w-12 h-12 rounded-xl object-cover absolute inset-0"
+          onError={(e) => {
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+            (e.currentTarget.nextElementSibling as HTMLElement).style.display = "flex";
+          }}
+        />
+      )}
+      <div
+        className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900 items-center justify-center font-bold text-blue-700 dark:text-blue-300 absolute inset-0"
+        style={{ display: photoUrl ? "none" : "flex" }}
+      >
+        {initials}
+      </div>
     </div>
   );
 }
